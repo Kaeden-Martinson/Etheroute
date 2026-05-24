@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FAQ - Etheroute</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="stylesheet" href="/css/faq.css">
+</head>
+<body>
+    <div class="header">
+        <div class="header-left" onclick="window.location.href='/'">
+            <div class="logo-mini" data-icon="logo"></div>
+            <div class="brand">Etheroute</div>
+        </div>
+        <div class="nav-links">
+            <a href="/" class="nav-link">Home</a>
+            <a href="/faq" class="nav-link active">FAQ</a>
+            <a href="/about" class="nav-link">About</a>
+            <div class="auth-buttons" id="authButtons">
+                <a href="/auth" class="nav-link login-btn">Sign In</a>
+                <a href="/auth" class="nav-link signup-btn">Get Started</a>
+            </div>
+            <a href="/dashboard" class="nav-link signup-btn" id="dashboardBtn" style="display: none;">Dashboard</a>
+        </div>
+    </div>
+
+    <div class="container">
+        <h1>Frequently Asked Questions</h1>
+        <p class="subtitle">Find answers to common questions about Etheroute</p>
+
+        <!-- Account & Registration -->
+        <div class="faq-section">
+            <h2 class="faq-category">Account & Registration</h2>
+
+            <div class="faq-item">
+                <div class="faq-question" onclick="toggleFaq(this)">
+                    <h3>How do I create an account?</h3>
+                    <div class="faq-toggle">▼</div>
+                </div>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        <p>Click on "Get Started" in the top navigation bar and select the "Sign Up" tab. Enter your desired username and a strong password (minimum 8 characters). Agree to our Terms of Service and Privacy Policy, then click "Create Account". That's it!</p>
+                        <div class="highlight"><strong>No KYC Required:</strong> We don't ask for personal information like email or real name. Just a username and password.</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question" onclick="toggleFaq(this)">
+                    <h3>Do you require KYC (Know Your Customer) verification?</h3>
+                    <div class="faq-toggle">▼</div>
+                </div>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        <p>No. Etheroute does not require any KYC verification. We only collect a username and password. No personal information, email, ID, or address is needed. This is part of our privacy-first approach.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question" onclick="toggleFaq(this)">
+                    <h3>What if I forget my password?</h3>
+                    <div class="faq-toggle">▼</div>
+                </div>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        <p>Since we don't collect email addresses, password recovery works through security questions. Contact our support team at support@cryptosaas.io with your username and we can help you reset your password securely.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question" onclick="toggleFaq(this)">
+                    <h3>Is my password secure?</h3>
+                    <div class="faq-toggle">▼</div>
+                </div>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        <p>Yes. Passwords are hashed and encrypted using industry-standard encryption protocols. We never store plain-text passwords, and your password is only known to you.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Withdrawals & Transactions -->
+        <div class="faq-section">
+            <h2 class="faq-category">Withdrawals & Transactions</h2>
+
+            <div class="faq-item">
+                <div class="faq-question" onclick="toggleFaq(this)">
+                    <h3>Which cryptocurrencies can I withdraw?</h3>
+                    <div class="faq-toggle">▼</div>
+                </div>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        <p>We support withdrawals on four major blockchain networks:</p>
+                        <ul>
+                            <li><strong>Ethereum (ETH)</strong> - ERC-20 compatible</li>
+                            <li><strong>Bitcoin (BTC)</strong> - Bitcoin network</li>
+                            <li><strong>Solana (SOL)</strong> - Solana network</li>
+                            <li><strong>Litecoin (LTC)</strong> - Litecoin network</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question" onclick="toggleFaq(this)">
+                    <h3>What are the withdrawal fees?</h3>
+                    <div class="faq-toggle">▼</div>
+                </div>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        <p>We charge a <strong>5% platform fee</strong> on all withdrawals. Additionally, blockchain network fees may apply depending on current network conditions. Both fees are clearly displayed before you confirm your withdrawal.</p>
+                        <div class="highlight"><strong>Example:</strong> If you withdraw $100, the 5% fee is $5, so you receive $95 to your wallet (plus any blockchain fees).</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question" onclick="toggleFaq(this)">
+                    <h3>How long does a withdrawal take?</h3>
+                    <div class="faq-toggle">▼</div>
+                </div>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        <p>Withdrawal times depend on the blockchain network:</p>
+                        <ul>
+                            <li><strong>Ethereum:</strong> 30 seconds to 2 minutes</li>
+                            <li><strong>Bitcoin:</strong> 10 to 30 minutes</li>
+                            <li><strong>Solana:</strong> 15 to 45 seconds</li>
+                            <li><strong>Litecoin:</strong> 2 to 5 minutes</li>
+                        </ul>
+                        <p>These times depend on network congestion. We provide real-time status updates via WebSocket.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question" onclick="toggleFaq(this)">
+                    <h3>Can I cancel a withdrawal?</h3>
+                    <div class="faq-toggle">▼</div>
+                </div>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        <p>Once a withdrawal is confirmed on the blockchain, it <strong>cannot be reversed</strong>. Cryptocurrency transactions are irreversible by design. Always verify the receiving address before confirming a withdrawal.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question" onclick="toggleFaq(this)">
+                    <h3>What is the minimum withdrawal amount?</h3>
+                    <div class="faq-toggle">▼</div>
+                </div>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        <p>The minimum withdrawal amount is <strong>$5 USD per chain</strong>. This ensures your withdrawal fees remain reasonable relative to your withdrawal amount.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question" onclick="toggleFaq(this)">
+                    <h3>Are there withdrawal limits?</h3>
+                    <div class="faq-toggle">▼</div>
+                </div>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        <p>No daily withdrawal limits exist. You can withdraw as much as you want, as many times as you want. Limits depend only on your available balance.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Security & Privacy -->
+        <div class="faq-section">
+            <h2 class="faq-category">Security & Privacy</h2>
+
+            <div class="faq-item">
+                <div class="faq-question" onclick="toggleFaq(this)">
+                    <h3>Is my data safe?</h3>
+                    <div class="faq-toggle">▼</div>
+                </div>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        <p>Yes. We use bank-grade encryption for all data in transit and at rest. Your wallet addresses are encrypted, and your transactions are secured. See our <a href="/privacy" style="color: #1a1a1a; font-weight: 600;">Privacy Policy</a> for more details.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question" onclick="toggleFaq(this)">
+                    <h3>Do you store my private keys?</h3>
+                    <div class="faq-toggle">▼</div>
+                </div>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        <p>No. We never store, access, or have any control over your private keys. You maintain complete control of your wallets. We only process withdrawals on your behalf.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question" onclick="toggleFaq(this)">
+                    <h3>What data do you collect?</h3>
+                    <div class="faq-toggle">▼</div>
+                </div>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        <p>We collect:</p>
+                        <ul>
+                            <li>Username (your identifier)</li>
+                            <li>Wallet addresses (to process withdrawals)</li>
+                            <li>Transaction history</li>
+                            <li>Technical data (IP, browser info for security)</li>
+                        </ul>
+                        <p>We do NOT collect personal information like email, phone, name, or location.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question" onclick="toggleFaq(this)">
+                    <h3>How do I delete my account?</h3>
+                    <div class="faq-toggle">▼</div>
+                </div>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        <p>You can request account deletion at any time by contacting support@cryptosaas.io with your username. We will delete your account and associated data within 30 days, except for transaction records which may be retained for legal compliance.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Technical -->
+        <div class="faq-section">
+            <h2 class="faq-category">Technical</h2>
+
+            <div class="faq-item">
+                <div class="faq-question" onclick="toggleFaq(this)">
+                    <h3>Do you offer an API?</h3>
+                    <div class="faq-toggle">▼</div>
+                </div>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        <p>Yes! We offer a REST API for programmatic access. Check our <a href="#" style="color: #1a1a1a; font-weight: 600;">API documentation</a> for integration details and endpoints.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question" onclick="toggleFaq(this)">
+                    <h3>How do I get real-time status updates?</h3>
+                    <div class="faq-toggle">▼</div>
+                </div>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        <p>We use WebSocket connections to push real-time updates. Your client automatically subscribes to transaction and payout updates. You'll see live status changes as your withdrawal progresses.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question" onclick="toggleFaq(this)">
+                    <h3>What happens if the blockchain network is congested?</h3>
+                    <div class="faq-toggle">▼</div>
+                </div>
+                <div class="faq-answer">
+                    <div class="faq-answer-content">
+                        <p>During high network congestion, transactions may take longer and network fees may be higher. We use smart fee estimation to optimize your transaction costs. You can see estimated fees before confirming your withdrawal.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="contact-section">
+            <h2>Still have questions?</h2>
+            <p>Can't find the answer you're looking for? Contact our support team.</p>
+            <p style="margin-top: 16px;">
+                <strong>Email:</strong> support@cryptosaas.io<br>
+                <strong>Response time:</strong> Usually within 24 hours
+            </p>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+        <div class="footer-content">
+            <div class="footer-grid">
+                <div class="footer-section">
+                    <h4>Support</h4>
+                    <a href="/docs" class="footer-link">Documentation</a>
+                    <a href="/api-reference" class="footer-link">API Reference</a>
+                    <a href="/help" class="footer-link">Help Center</a>
+                </div>
+                <div class="footer-section">
+                    <h4>Company</h4>
+                    <a href="/about" class="footer-link">About Us</a>
+                    <a href="https://discord.gg" class="footer-link" target="_blank">Discord</a>
+                    <a href="https://t.me" class="footer-link" target="_blank">Telegram</a>
+                </div>
+                <div class="footer-section">
+                    <h4>Legal</h4>
+                    <a href="/privacy" class="footer-link">Privacy Policy</a>
+                    <a href="/terms" class="footer-link">Terms of Service</a>
+                    <a href="/compliance" class="footer-link">Compliance</a>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2026 Etheroute. All rights reserved. | Secure Multi-Chain Withdrawal Platform</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/faq.js"></script>
+    <script src="/js/icons.js"></script>
+</body>
+</html>

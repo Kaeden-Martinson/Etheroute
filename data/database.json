@@ -1,0 +1,148 @@
+{
+  "users": [
+    {
+      "id": "0921623d-8f05-4bc6-a154-f37830341dc6",
+      "username": "Logic",
+      "passwordHash": "fe2b7b6f89356a3b45a54c3b97dff9ef1c9aefd77acdce6a5df380d1400ab0b3",
+      "createdAt": "2026-05-23T03:24:47.730Z",
+      "lastLogin": "2026-05-23T20:38:29.527Z",
+      "apiKey": "Jq06EDriPmZfUgIv9J2tvSeiEoq2cnPB",
+      "apiKeyGeneratedAt": "2026-05-23T19:21:58.458Z"
+    },
+    {
+      "id": "0def2dc1-87b5-41e4-aa8b-a985a1964dee",
+      "username": "Logic1",
+      "passwordHash": "fe2b7b6f89356a3b45a54c3b97dff9ef1c9aefd77acdce6a5df380d1400ab0b3",
+      "createdAt": "2026-05-23T04:43:20.239Z",
+      "lastLogin": "2026-05-23T05:49:11.720Z"
+    },
+    {
+      "id": "ad89eaf3-c84d-477c-a62c-a98cf6acc530",
+      "username": "Logic2",
+      "passwordHash": "626aa60100e38a2b0a8c9b3512116bfb3ff9db5b986b21b27c2989e011629435",
+      "createdAt": "2026-05-23T05:49:04.687Z"
+    },
+    {
+      "id": "b59d116b-509c-477c-88bc-c7e36805dfd1",
+      "username": "testuser",
+      "passwordHash": "d519397a4e89a7a66d28a266ed00a679bdee93fddec9ebba7d01ff27c39c1a99",
+      "createdAt": "2026-05-23T05:53:43.307Z"
+    }
+  ],
+  "wallets": [
+    {
+      "id": "b9cce974-cac6-4bf1-ab25-3162ac2e759d",
+      "clientId": "0921623d-8f05-4bc6-a154-f37830341dc6",
+      "address": "0x8462Dc02DCCBD5de5483BE59717E948a3250df6E",
+      "chain": "ETH",
+      "privateKey": "0x1bd715526a0febd3175376553c1a477762ee68dc4573651bc704ce81a8365815",
+      "seedPhrase": "time topic autumn inside tortoise rib desert renew hero enter million skill",
+      "balance": 0.003327959835621435,
+      "balanceUSD": 7.059135284926763,
+      "lastUpdated": "2026-05-24T03:32:29.486Z",
+      "isActive": true,
+      "createdAt": "2026-05-20T21:05:15.566Z"
+    },
+    {
+      "id": "2af44678-fb5a-4756-b2be-57de577dd21b",
+      "clientId": "0921623d-8f05-4bc6-a154-f37830341dc6",
+      "address": "LfrqNk5h8c2JFt3wqM9Vm57d8ftrRZAUad",
+      "chain": "LTC",
+      "network": "mainnet",
+      "privateKey": "4b6c051f86a9e4d9f1a4f618713c573a6153c08e9e74758af2128e2d513b437b",
+      "publicKey": "2,155,224,196,90,58,64,65,153,148,241,109,64,236,182,130,74,22,247,125,20,22,63,63,4,177,186,121,127,205,26,175,170",
+      "wif": "T5ab2rw3ZdgGBZvVyMGPbQ3KnG3VtwuPTdopHcAu52kQJ8SXtwM4",
+      "seedPhrase": "drop island region enrich blanket coil float comic patrol chimney cheap mobile",
+      "derivationPath": "m/44'/2'/0'/0/0",
+      "balance": 0.01351317,
+      "balanceUSD": 0.7207924878,
+      "lastUpdated": "2026-05-24T03:32:29.655Z",
+      "isActive": true,
+      "createdAt": "2026-05-22T03:05:46.846Z"
+    },
+    {
+      "id": "1bbe38ba-bf5c-49c9-98ec-10e86fa02ef9",
+      "clientId": "0def2dc1-87b5-41e4-aa8b-a985a1964dee",
+      "address": "0x83bbEb9CE8E7321371421E62A0A0dFAdE2CD1B94",
+      "chain": "ETH",
+      "network": "mainnet",
+      "privateKey": "0x0414a0a0782b506bf63d04b64c1b72f0d67f973d30f8e5f5d87a815eba3b8316",
+      "seedPhrase": "steel cycle meadow trip narrow aunt fun butter bacon keen swear fiscal",
+      "derivationPath": "m/44'/60'/0'/0/0",
+      "balance": 0,
+      "balanceUSD": 0,
+      "lastUpdated": "2026-05-23T05:49:13.781Z",
+      "isActive": true,
+      "createdAt": "2026-05-23T05:43:39.990Z"
+    },
+    {
+      "id": "9775ff44-317c-475a-89bb-9112a2adf8b7",
+      "clientId": "b59d116b-509c-477c-88bc-c7e36805dfd1",
+      "address": "0xc67510A24e059a6716f579594B54f2064810006C",
+      "chain": "ETH",
+      "network": "mainnet",
+      "privateKey": "0x4de19ec3aa33739f261c59c50f91c710facc2ca823c64720bb5d92ac0e96e40b",
+      "seedPhrase": "promote forget double olive marriage eagle riot rate tourist problem void oblige",
+      "derivationPath": "m/44'/60'/0'/0/0",
+      "balance": 0,
+      "balanceUSD": 0,
+      "lastUpdated": "2026-05-23T06:11:55.197Z",
+      "isActive": true,
+      "createdAt": "2026-05-23T05:55:26.965Z"
+    },
+    {
+      "id": "3fc45fef-663d-40fc-ab9f-d30cf429b3ba",
+      "clientId": "b59d116b-509c-477c-88bc-c7e36805dfd1",
+      "address": "bc1q6gs427s9k8ddfwslcd5vv8lycdxxj46vgdd8lr",
+      "chain": "BTC",
+      "network": "mainnet",
+      "privateKey": "8cd487fe515f365208014c2beeef772d6f14f9cf601ce69a9d0438709e053faf",
+      "publicKey": "3,28,75,48,26,44,73,31,113,117,222,13,249,113,60,122,85,152,176,195,34,129,32,22,161,184,99,22,20,87,104,203,32",
+      "wif": "L1wU1BRsaGLRkYb9FDLKDrSpEYxuZ4QvrNPygMKUw46N1cL1RFGE",
+      "seedPhrase": "long wasp lift photo choose knock magic fragile butter thank security pear",
+      "derivationPath": "m/44'/0'/0'/0/0",
+      "balance": 0,
+      "balanceUSD": 0,
+      "lastUpdated": "2026-05-23T06:11:55.200Z",
+      "isActive": true,
+      "createdAt": "2026-05-23T06:03:15.785Z"
+    },
+    {
+      "id": "694d8c66-5ff9-4bd5-87ea-8b82ad1e3b69",
+      "clientId": "0921623d-8f05-4bc6-a154-f37830341dc6",
+      "address": "0x64e4CAB10E2501681972DA31b902C73C5dFe7C31",
+      "chain": "ETH",
+      "network": "mainnet",
+      "privateKey": "0xf2541332e58f8e67370e048d6d8943b04331ecf1404736b5b24dfca4539a5cc7",
+      "seedPhrase": "spatial coconut grow lamp enlist device resemble accident demand raven drill gate",
+      "derivationPath": "m/44'/60'/0'/0/0",
+      "balance": 0,
+      "balanceUSD": 0,
+      "lastUpdated": "2026-05-24T03:32:29.487Z",
+      "isActive": true,
+      "createdAt": "2026-05-23T21:30:38.435Z"
+    }
+  ],
+  "payouts": [],
+  "transactions": [
+    {
+      "id": "a220348b-5be0-4d1a-938d-227ad6ae4081",
+      "clientId": "0921623d-8f05-4bc6-a154-f37830341dc6",
+      "transactionHash": "0xe52c676de079c4ef5fec84dc7a890d4fa8eca844210783d8355582a95cc8785f",
+      "orderId": "direct_transfer_qrqfnekx6",
+      "type": "DIRECT_TRANSFER",
+      "chain": "ETH",
+      "nativeAmount": 0.0029685974191263225,
+      "usdAmount": 6.110534469143884,
+      "status": "CONFIRMED",
+      "fromAddress": "0x8462Dc02DCCBD5de5483BE59717E948a3250df6E",
+      "toAddress": "0xa8c00bd4ee3DF25010984692AACCDfc4c0e57469",
+      "finalAddress": "0xa8c00bd4ee3DF25010984692AACCDfc4c0e57469",
+      "blockNumber": null,
+      "createdAt": "2026-05-22T18:39:30.841Z",
+      "completedAt": "2026-05-22T18:39:51.411Z",
+      "broadcastedAt": "2026-05-22T18:39:30.841Z"
+    }
+  ],
+  "apiCalls": []
+}

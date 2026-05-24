@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>About - Etheroute</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="stylesheet" href="/css/about.css">
+</head>
+<body>
+    <div class="header">
+        <div class="header-left" onclick="window.location.href='/'">
+            <div class="logo-mini" data-icon="logo"></div>
+            <div class="brand">Etheroute</div>
+        </div>
+        <div class="nav-links">
+            <a href="/" class="nav-link">Home</a>
+            <a href="/faq" class="nav-link">FAQ</a>
+            <a href="/about" class="nav-link active">About</a>
+            <div class="auth-buttons" id="authButtons">
+                <a href="/auth" class="nav-link login-btn">Sign In</a>
+                <a href="/auth" class="nav-link signup-btn">Get Started</a>
+            </div>
+            <a href="/dashboard" class="nav-link signup-btn" id="dashboardBtn" style="display: none;">Dashboard</a>
+        </div>
+    </div>
+
+    <div class="hero">
+        <h1>About Etheroute</h1>
+        <p>Simplifying cryptocurrency withdrawals across multiple blockchains with zero KYC requirements and complete privacy.</p>
+    </div>
+
+    <div class="container">
+        <!-- Mission Section -->
+        <div class="section">
+            <h2>Our Mission</h2>
+            <p>At Etheroute, we believe in a future where cryptocurrency users have unrestricted access to their digital assets. Our mission is to provide a fast, secure, and private platform for withdrawing crypto across multiple blockchain networks without unnecessary barriers or invasive data collection.</p>
+            
+            <div class="highlight-box">
+                <h3>Zero KYC, Zero Compromise</h3>
+                <p>We respect your privacy. We don't require personal information, email verification, or identity documents. Just a username and password. That's it.</p>
+            </div>
+        </div>
+
+        <!-- Values Section -->
+        <div class="section">
+            <h2>Our Values</h2>
+            <div class="values-grid">
+                <div class="value-card">
+                    <div class="value-icon">🔒</div>
+                    <h3>Privacy First</h3>
+                    <p>We believe privacy is a fundamental right. We collect minimal data and encrypt everything.</p>
+                </div>
+                <div class="value-card">
+                    <div class="value-icon">⚡</div>
+                    <h3>Speed & Efficiency</h3>
+                    <p>Fast transactions with intelligent fee optimization across all supported networks.</p>
+                </div>
+                <div class="value-card">
+                    <div class="value-icon">🔐</div>
+                    <h3>Security</h3>
+                    <p>Bank-grade encryption and multi-layer security protocols protect your assets.</p>
+                </div>
+                <div class="value-card">
+                    <div class="value-icon">🌍</div>
+                    <h3>Accessibility</h3>
+                    <p>Available 24/7 to users worldwide with support for multiple blockchain networks.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Why Choose Us Section -->
+        <div class="section">
+            <h2>Why Choose Etheroute</h2>
+            <div class="feature-list">
+                <div class="feature-item">
+                    <strong>✓ No KYC</strong>
+                    <div>Zero personal information required. Just username and password.</div>
+                </div>
+                <div class="feature-item">
+                    <strong>✓ Multi-Chain</strong>
+                    <div>Withdraw from ETH, BTC, SOL, and LTC all in one platform.</div>
+                </div>
+                <div class="feature-item">
+                    <strong>✓ Real-Time Updates</strong>
+                    <div>WebSocket-powered live transaction status tracking.</div>
+                </div>
+                <div class="feature-item">
+                    <strong>✓ Fair Fees</strong>
+                    <div>Transparent 5% platform fee with no hidden charges.</div>
+                </div>
+                <div class="feature-item">
+                    <strong>✓ Encrypted</strong>
+                    <div>Military-grade encryption for all data in transit and at rest.</div>
+                </div>
+                <div class="feature-item">
+                    <strong>✓ Instant Setup</strong>
+                    <div>Create account and start withdrawing within minutes.</div>
+                </div>
+                <div class="feature-item">
+                    <strong>✓ API Available</strong>
+                    <div>Integrate our service into your application with our REST API.</div>
+                </div>
+                <div class="feature-item">
+                    <strong>✓ 24/7 Support</strong>
+                    <div>Round-the-clock support for all your withdrawal needs.</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Technology Section -->
+        <div class="section">
+            <h2>Technology Stack</h2>
+            <p>We use cutting-edge technology to ensure reliability, security, and performance:</p>
+            <div class="highlight-box">
+                <h3>Backend Infrastructure</h3>
+                <p><strong>Node.js</strong> with Express.js for high-performance request handling</p>
+                <p><strong>WebSocket</strong> for real-time client updates and live transaction tracking</p>
+                <p><strong>Multiple RPC Providers</strong> for blockchain interaction and verification</p>
+                <p><strong>Encryption</strong> using industry-standard protocols (AES-256)</p>
+            </div>
+
+            <div class="highlight-box">
+                <h3>Blockchain Integration</h3>
+                <p>Direct RPC connections to all supported networks:</p>
+                <ul style="margin-left: 20px; margin-top: 12px;">
+                    <li>Ethereum (via ethers.js)</li>
+                    <li>Bitcoin (via bitcoinjs-lib)</li>
+                    <li>Solana (via @solana/web3.js)</li>
+                    <li>Litecoin (via custom RPC integration)</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Timeline Section -->
+        <div class="section">
+            <h2>Our Journey</h2>
+            <div class="timeline">
+                <div class="timeline-item">
+                    <div class="timeline-year">2025</div>
+                    <div class="timeline-content">
+                        <p><strong>Etheroute Founded</strong> - Launched with Ethereum support and a vision for privacy-first crypto withdrawals.</p>
+                    </div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-year">2025</div>
+                    <div class="timeline-content">
+                        <p><strong>Multi-Chain Expansion</strong> - Added Bitcoin, Solana, and Litecoin support. Reached 1,000+ users.</p>
+                    </div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-year">2026</div>
+                    <div class="timeline-content">
+                        <p><strong>Real-Time Updates</strong> - Launched WebSocket infrastructure for live transaction tracking and improved user experience.</p>
+                    </div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-year">2026</div>
+                    <div class="timeline-content">
+                        <p><strong>API Release</strong> - Opened REST API for developers and business integration. Continuing to expand.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Contact Section -->
+        <div class="section">
+            <h2>Get in Touch</h2>
+            <p>Have questions about Etheroute? We'd love to hear from you. Reach out through any of these channels:</p>
+            <div class="highlight-box">
+                <p style="margin-bottom: 8px;"><strong>Email:</strong> support@cryptosaas.io</p>
+                <p style="margin-bottom: 8px;"><strong>Response Time:</strong> Usually within 24 hours</p>
+                <p style="margin-bottom: 0;"><strong>Status Page:</strong> status.cryptosaas.io</p>
+            </div>
+        </div>
+
+        <!-- CTA Section -->
+        <div class="cta-section">
+            <h2>Ready to Get Started?</h2>
+            <p>Start withdrawing your crypto across multiple networks in minutes. No KYC, no hassle.</p>
+            <a href="/auth" class="btn">Create Your Account</a>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+        <div class="footer-content">
+            <div class="footer-grid">
+                <div class="footer-section">
+                    <h4>Support</h4>
+                    <a href="/docs" class="footer-link">Documentation</a>
+                    <a href="/api-reference" class="footer-link">API Reference</a>
+                    <a href="/help" class="footer-link">Help Center</a>
+                </div>
+                <div class="footer-section">
+                    <h4>Company</h4>
+                    <a href="/about" class="footer-link">About Us</a>
+                    <a href="https://discord.gg" class="footer-link" target="_blank">Discord</a>
+                    <a href="https://t.me" class="footer-link" target="_blank">Telegram</a>
+                </div>
+                <div class="footer-section">
+                    <h4>Legal</h4>
+                    <a href="/privacy" class="footer-link">Privacy Policy</a>
+                    <a href="/terms" class="footer-link">Terms of Service</a>
+                    <a href="/compliance" class="footer-link">Compliance</a>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2026 Etheroute. All rights reserved. | Secure Multi-Chain Withdrawal Platform</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/about.js"></script>
+    <script src="/js/icons.js"></script>
+</body>
+</html>

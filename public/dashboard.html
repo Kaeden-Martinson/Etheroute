@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Etheroute</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="stylesheet" href="/css/dashboard.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="/js/icons.js"></script>
+</head>
+
+<body>
+    <div class="header">
+        <div class="header-left" onclick="window.location.href='/';">
+            <div class="logo-mini" data-icon="logo"></div>
+            <div class="brand">Etheroute</div>
+        </div>
+        
+        <div class="nav-links">
+            <a class="nav-link active" onclick="switchDashboardPage('overview')">Overview</a>
+            <a class="nav-link" onclick="switchDashboardPage('transactions')">Transactions</a>
+            <a class="nav-link" onclick="switchDashboardPage('wallets')">Wallets</a>
+            <a class="nav-link" onclick="switchDashboardPage('payouts')">Payouts</a>
+            <a class="nav-link" onclick="switchDashboardPage('withdrawal')">Withdrawal</a>
+            <a class="nav-link" onclick="openAPIModal()">API</a>
+        </div>
+        
+        <div class="header-right">
+            <div class="user-menu" onclick="toggleUserMenu()">
+                <div class="user-avatar" id="userAvatar">U</div>
+                <span id="username">User</span>
+            </div>
+            <button class="icon-btn" onclick="logout()">
+                <span data-icon="logout"></span>
+            </button>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Overview Page -->
+        <div id="overviewPage" class="dashboard-page" style="display: block;">
+        <!-- Total Balance Card -->
+        <div class="grid-2">
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">Total Balance</div>
+                        <div class="card-subtitle">Across all chains</div>
+                    </div>
+                </div>
+                <div class="balance-display" id="totalBalanceUSD">$0.00</div>
+                <div class="balance-label">USD Equivalent</div>
+                <div class="withdrawal-status" id="withdrawalStatus">
+                    <span class="status-text">Able to Withdraw</span>
+                    <span class="status-badge available"></span>
+                    <div class="info-tooltip" style="display: none;">You have sufficient balance to withdraw</div>
+                </div>
+            </div>
+
+            <!-- Quick Stats -->
+            <div class="card">
+                <div class="card-title">Account Statistics</div>
+                <div style="margin-top: 20px;">
+                    <div style="padding: 12px 0; border-bottom: 1px solid #f0f0f0; display: flex; justify-content: space-between;">
+                        <span style="color: #666;">Active Wallets</span>
+                        <span style="font-weight: 600;" id="walletCount">0</span>
+                    </div>
+                    <div style="padding: 12px 0; border-bottom: 1px solid #f0f0f0; display: flex; justify-content: space-between;">
+                        <span style="color: #666;">Supported Chains</span>
+                        <span style="font-weight: 600;">4</span>
+                    </div>
+                    <div style="padding: 12px 0; display: flex; justify-content: space-between;">
+                        <span style="color: #666;">Account Status</span>
+                        <span style="font-weight: 600; color: #2e7d32;">Active</span>
+                    </div>
+                    <div style="padding: 12px 0; border-top: 1px solid #f0f0f0; display: flex; justify-content: space-between;">
+                        <span style="color: #666;">API Status</span>
+                        <span style="font-weight: 600;">Available</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Wallets by Chain -->
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <div class="card-title">Your Wallets</div>
+                    <div class="card-subtitle">Receive payments on any chain</div>
+                </div>
+                <button class="btn-small btn-secondary" onclick="openCreateWalletModal()">
+                    <span data-icon="plus"></span>
+                    Add Wallet
+                </button>
+            </div>
+            <div class="wallets-grid" id="walletsContainer">
+                <div style="padding: 24px; text-align: center; color: #999;">
+                    <p>No wallets created yet. Add one to start receiving payments.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- API Calls Analytics -->
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <div class="card-title">API Calls</div>
+                    <div class="card-subtitle">Usage analytics over time</div>
+                </div>
+                <div style="display: flex; gap: 8px;">
+                    <button class="btn-small btn-secondary" onclick="switchChartPeriod('hour')" id="hourBtn">Hour</button>
+                    <button class="btn-small btn-secondary" onclick="switchChartPeriod('day')" id="dayBtn">Day</button>
+                    <button class="btn-small btn-secondary" onclick="switchChartPeriod('week')" id="weekBtn">Week</button>
+                </div>
+            </div>
+            <canvas id="apiCallsChart" style="max-height: 300px;"></canvas>
+        </div>
+        </div>
+
+        <!-- Transactions Page -->
+        <div id="transactionsPage" class="dashboard-page" style="display: none;">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">All Transactions</div>
+                </div>
+                <div id="allTransactionsList"></div>
+            </div>
+        </div>
+
+        <!-- Wallets Page -->
+        <div id="walletsPage" class="dashboard-page" style="display: none;">
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">Your Wallets</div>
+                        <div class="card-subtitle">Manage your cryptocurrency wallets</div>
+                    </div>
+                    <button class="btn-small btn-secondary" onclick="openCreateWalletModal()">
+                        <span data-icon="plus"></span>
+                        Add Wallet
+                    </button>
+                </div>
+                <div id="allWalletsList" style="position: relative;"></div>
+
+                <!-- Delete Wallet Confirmation Overlay -->
+                <div id="deleteConfirmationOverlay" class="delete-confirmation-overlay" style="position: absolute; top: 78px; left: 0; right: 0; bottom: 0;">
+                    <div class="confirmation-message">
+                        <div id="deleteConfirmationText">Are you sure you want to delete this wallet? This action cannot be undone.</div>
+                    </div>
+                    <div class="confirmation-buttons">
+                        <button class="btn-confirm" onclick="confirmDeleteWallet()">Confirm</button>
+                        <button class="btn-deny" onclick="denyDeleteWallet()">Cancel</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Payouts Page -->
+        <div id="payoutsPage" class="dashboard-page" style="display: none;">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">Payouts History</div>
+                </div>
+                <div id="allPayoutsList"></div>
+            </div>
+        </div>
+
+        <!-- Withdrawal Page -->
+        <div id="withdrawalPage" class="dashboard-page" style="display: none;">
+            <!-- Step Indicators -->
+            <div class="steps">
+                <div class="step-badge active" id="step1-badge">1. Connect</div>
+                <div class="step-badge" id="step2-badge">2. Select</div>
+                <div class="step-badge" id="step3-badge">3. Review</div>
+                <div class="step-badge" id="step4-badge">4. Confirm</div>
+            </div>
+
+            <!-- STEP 1: Connect -->
+            <div class="card section-step active" id="step1">
+                <div class="card-header">
+                    <div class="card-title">Connect Your Account</div>
+                </div>
+                <div class="form-group">
+                    <label>Recipient ETH Address</label>
+                    <input type="text" id="recipientAddress" placeholder="0x..." />
+                </div>
+                <div id="step1-message"></div>
+                <div class="button-group">
+                    <button class="btn-primary" onclick="loadWithdrawalWallets()">Load Wallets</button>
+                    <button class="btn-secondary" onclick="clearStep1()">Clear</button>
+                </div>
+            </div>
+
+            <!-- STEP 2: Select Chains -->
+            <div class="card section-step" id="step2">
+                <div class="card-header">
+                    <div class="card-title">Select Chains to Withdraw</div>
+                </div>
+                <p style="color: #999999; margin-bottom: 16px; font-size: 13px;">Minimum $5 USD per chain. Select which chains you want to withdraw from.</p>
+                <div class="wallet-grid" id="wallets-container"></div>
+                <div id="step2-message"></div>
+                <div class="button-group">
+                    <button class="btn-primary" onclick="getPreview()">Review & Continue</button>
+                    <button class="btn-secondary" onclick="goBackToStep(1)">Back</button>
+                </div>
+            </div>
+
+            <!-- STEP 3: Review -->
+            <div class="card section-step" id="step3">
+                <div class="card-header">
+                    <div class="card-title">Review Withdrawal</div>
+                </div>
+                <div id="preview-details"></div>
+                <div id="step3-message"></div>
+                <div class="button-group">
+                    <button class="btn-primary" onclick="goToStep(4)">Continue to Confirmation</button>
+                    <button class="btn-secondary" onclick="goBackToStep(2)">Back</button>
+                </div>
+            </div>
+
+            <!-- STEP 4: Confirm -->
+            <div class="card section-step" id="step4">
+                <div class="card-header">
+                    <div class="card-title">Final Confirmation</div>
+                </div>
+                <div class="alert alert-warning">⚠️ This action cannot be undone. Verify all details carefully.</div>
+                <div id="final-summary"></div>
+                <div id="step4-message"></div>
+                <div class="button-group">
+                    <button class="btn-primary" onclick="processWithdrawal()" id="confirmBtn">Confirm Withdrawal</button>
+                    <button class="btn-secondary" onclick="goBackToStep(3)">Back</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Withdrawal Modal -->
+    <div class="modal" id="withdrawalModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Withdraw to Ethereum</h2>
+            </div>
+            <button class="close-btn" onclick="closeWithdrawalModal()">
+                <span data-icon="close"></span>
+            </button>
+
+            <div class="error-message" id="withdrawalError"></div>
+
+            <div class="info-box">
+                <strong>Withdrawal Process</strong>
+                We'll swap all tokens to ETH, deduct 5% fee, and send 95% to your wallet.
+            </div>
+
+            <form id="withdrawalForm">
+                <div class="form-group">
+                    <label>Available Balance</label>
+                    <div style="padding: 12px; background: #f8f8f8; border-radius: 6px; font-weight: 600; font-family: 'Courier New', monospace;">
+                        <span id="availableBalance">$0.00</span>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Withdrawal Amount (USD)</label>
+                    <input type="number" id="withdrawalAmount" placeholder="0.00" min="2" step="0.01" required />
+                </div>
+
+                <div class="form-group">
+                    <label>Your Ethereum Address</label>
+                    <input type="text" id="withdrawalAddress" placeholder="0x..." required />
+                </div>
+
+                <div class="fee-summary">
+                    <div class="fee-item">
+                        <span class="fee-label">Withdrawal Amount</span>
+                        <div class="fee-value" id="feeAmount">$0.00</div>
+                    </div>
+                    <div class="fee-item">
+                        <span class="fee-label">Platform Fee (5%)</span>
+                        <div class="fee-value" id="feeTotal">$0.00</div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <strong style="color: #1a1a1a;">You will receive:</strong>
+                    <div style="margin-top: 8px; padding: 12px; background: #f0f0f0; border-radius: 6px; font-size: 18px; font-weight: 600; font-family: 'Courier New', monospace;">
+                        <span id="youWillReceive">$0.00</span>
+                    </div>
+                </div>
+
+                <div class="button-group">
+                    <button type="submit" class="btn-primary">Confirm Withdrawal</button>
+                    <button type="button" class="btn-secondary" onclick="closeWithdrawalModal()">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Create Wallet Modal -->
+    <div class="modal" id="createWalletModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Add Wallet</h2>
+            </div>
+            <button class="close-btn" onclick="closeCreateWalletModal()">
+                <span data-icon="close"></span>
+            </button>
+
+            <div class="info-box">
+                <strong>Minimum: $5.00 per wallet/chain</strong>
+                You must have at least $5 in a single wallet to withdraw from that chain.
+            </div>
+
+            <form id="createWalletForm">
+                <div class="form-group">
+                    <label>Select Blockchain</label>
+                    <select id="walletChain" required>
+                        <option value="">Choose a chain...</option>
+                        <option value="ETH">Ethereum (ETH)</option>
+                        <option value="BTC">Bitcoin (BTC)</option>
+                        <option value="LTC">Litecoin (LTC)</option>
+                        <option value="SOL">Solana (SOL)</option>
+                    </select>
+                </div>
+
+                <div class="button-group">
+                    <button type="submit" class="btn-primary">Create Wallet</button>
+                    <button type="button" class="btn-secondary" onclick="closeCreateWalletModal()">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- API Keys Modal -->
+    <div class="modal" id="apiModal" onclick="closeAPIModalOnClickOutside(event)">
+        <div class="modal-content">
+            <div class="modal-header" style="position: relative; display: flex; align-items: center; justify-content: space-between;">
+                <h2 class="modal-title">API Keys</h2>
+                <button class="close-btn" onclick="closeAPIModal()" style="position: relative; top: 0; right: 0; padding: 8px; margin: 0;">
+                    <span data-icon="close"></span>
+                </button>
+            </div>
+
+            <div class="info-box">
+                <strong>API Access</strong>
+                Use your API key to programmatically manage wallets and transactions.
+            </div>
+
+            <div id="apiKeysContainer" style="position: relative;">
+                <p style="text-align: center; color: #999;">Loading API keys...</p>
+            </div>
+
+            <div id="apiConfirmationOverlay" class="api-confirmation-overlay" style="position: absolute; top: 78px; left: 0; right: 0; bottom: 0px;">
+                <div class="confirmation-message">
+                    This will generate a new API key. Continue?
+                </div>
+                <div class="confirmation-buttons">
+                    <button class="btn-confirm" onclick="confirmGenerateAPIKey()">Confirm</button>
+                    <button class="btn-deny" onclick="denyGenerateAPIKey()">Deny</button>
+                </div>
+            </div>
+
+            <button class="btn-primary" style="margin-top: 16px;" onclick="generateNewAPIKey()">Generate New Key</button>
+        </div>
+    </div>
+
+    <script src="/js/dashboard.js"></script>
+</body>
+</html>
