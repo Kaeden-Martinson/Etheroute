@@ -46,12 +46,8 @@ class LitecoinWalletService {
    * @param {string} network - Network to use
    * @returns {Object} Wallet object with address, privateKey, publicKey, mnemonic, wif
    */
-  generateWalletFromMnemonic(mnemonic = null, network = 'mainnet') {
+  generateWalletFromMnemonic(mnemonic = null) {
     try {
-      if (!this.networks[network]) {
-        throw new Error(`Invalid network: ${network}`);
-      }
-
       // Generate or use provided mnemonic
       if (!mnemonic) {
         mnemonic = bip39.generateMnemonic();
@@ -64,8 +60,8 @@ class LitecoinWalletService {
 
       // Litecoin uses BIP44 path: m/44'/2'/0'/0/0
       // 2 is the Litecoin coin type
-      const derivationPath = this.networkConfig[network].derivation;
-      const root = bip32.fromSeed(seed, this.networks[network]);
+      const derivationPath = this.networkConfig.mainnet.derivation;
+      const root = bip32.fromSeed(seed, this.networks.mainnet);
       const derived = root.derivePath(derivationPath);
 
       // Get private key and public key
@@ -75,7 +71,7 @@ class LitecoinWalletService {
       // Create legacy address (P2PKH) - Litecoin L or M format
       const { address } = bitcoin.payments.p2pkh({
         pubkey: derived.publicKey,
-        network: this.networks[network],
+        network: this.networks.mainnet,
       });
 
       // Convert private key to WIF format
@@ -88,8 +84,8 @@ class LitecoinWalletService {
         wif,
         mnemonic,
         derivationPath: derivationPath,
-        network: network,
-        networkName: this.networkConfig[network].name,
+        network: 'mainnet',
+        networkName: this.networkConfig.mainnet.name,
       };
     } catch (error) {
       throw new Error(`Failed to generate Litecoin wallet: ${error.message}`);
@@ -102,12 +98,9 @@ class LitecoinWalletService {
    * @param {string} network - Network to query
    * @returns {Promise<Object>} Balance information
    */
-  async getBalance(address, network = 'mainnet') {
+  async getBalance(address) {
     try {
-      const endpoint = this.apiEndpoints[network];
-      if (!endpoint) {
-        throw new Error('Invalid network for balance query');
-      }
+      const endpoint = this.apiEndpoints.mainnet;
 
       const response = await ProxyService.fetch(`${endpoint}/address/${address}`);
 
@@ -120,7 +113,7 @@ class LitecoinWalletService {
           address,
           balanceSatoshis: 0,
           balanceLTC: 0,
-          network,
+          network: 'mainnet',
           timestamp: new Date().toISOString(),
           status: 'rate_limited',
           retryAfterSeconds: retryAfterMs ? Math.ceil(retryAfterMs / 1000) : null,
@@ -140,14 +133,14 @@ class LitecoinWalletService {
         address,
         balanceSatoshis: (data.chain_stats.funded_txo_sum || 0) - (data.chain_stats.spent_txo_sum || 0),
         balanceLTC,
-        network,
+        network: 'mainnet',
         timestamp: new Date().toISOString(),
         status: 'success',
       };
     } catch (error) {
       return {
         address,
-        network,
+        network: 'mainnet',
         status: 'error',
         error: error.message,
       };
@@ -161,9 +154,9 @@ class LitecoinWalletService {
    * @param {string} network - Network to query
    * @returns {Promise<Object>} Updated balance info
    */
-  async updateBalance(wallet, ltcToUsdRate, network = 'mainnet') {
+  async updateBalance(wallet, ltcToUsdRate) {
     try {
-      const balanceInfo = await this.getBalance(wallet.address, network);
+      const balanceInfo = await this.getBalance(wallet.address);
 
       if (balanceInfo.status === 'success') {
         // Update in database
@@ -172,6 +165,8 @@ class LitecoinWalletService {
           balanceUSD: balanceInfo.balanceLTC * ltcToUsdRate,
           lastUpdated: new Date().toISOString(),
         });
+
+        balanceInfo.balance = balanceInfo.balanceLTC * ltcToUsdRate; // For consistency in returned object
       }
 
       return balanceInfo;
@@ -192,10 +187,10 @@ class LitecoinWalletService {
    * @param {string} network - Litecoin network
    * @returns {Object} Wallet document
    */
-  createWallet(clientId, mnemonic = null, network = 'mainnet') {
+  createWallet(clientId, mnemonic = null) {
     try {
       // Generate wallet
-      const walletData = this.generateWalletFromMnemonic(mnemonic, network);
+      const walletData = this.generateWalletFromMnemonic(mnemonic);
 
       // Create wallet document
       const wallet = {
@@ -203,7 +198,7 @@ class LitecoinWalletService {
         clientId,
         address: walletData.address,
         chain: 'LTC',
-        network,
+        network: 'mainnet',
         privateKey: walletData.privateKey,
         publicKey: walletData.publicKey,
         wif: walletData.wif,
@@ -211,6 +206,7 @@ class LitecoinWalletService {
         derivationPath: walletData.derivationPath,
         balance: 0,
         balanceUSD: 0,
+        serviceSubtractions: 0,
         lastUpdated: new Date().toISOString(),
         isActive: true,
         createdAt: new Date().toISOString(),
@@ -230,12 +226,9 @@ class LitecoinWalletService {
    * @param {string} network - Network to query
    * @returns {Promise<Array>} Recent transactions
    */
-  async getTransactionHistory(address, limit = 10, network = 'mainnet') {
+  async getTransactionHistory(address, limit = 10) {
     try {
-      const endpoint = this.apiEndpoints[network];
-      if (!endpoint) {
-        throw new Error('Invalid network for transaction query');
-      }
+      const endpoint = this.apiEndpoints.mainnet;
 
       const response = await fetch(`${endpoint}/address/${address}/txs`);
 
@@ -255,7 +248,7 @@ class LitecoinWalletService {
 
       return {
         address,
-        network,
+        network: 'mainnet',
         transactions,
         status: 'success',
         timestamp: new Date().toISOString(),
@@ -263,7 +256,7 @@ class LitecoinWalletService {
     } catch (error) {
       return {
         address,
-        network,
+        network: 'mainnet',
         status: 'error',
         error: error.message,
       };
@@ -319,40 +312,23 @@ class LitecoinWalletService {
    */
   async estimateFee(targetConfirmations = 6) {
     try {
-      // Get the network's minimum relay fee
-      const minimumRelayFee = await this.getMinimumRelayFee();
+      // litecoinspace.org uses the same API format as mempool.space (sat/vB)
+      const res = await fetch(`${this.apiEndpoints.mainnet}/v1/fees/recommended`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
-      const response = await fetch(this.rpcEndpoints.mainnet, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          jsonrpc: '2.0',
-          id: 1,
-          method: 'estimatesmartfee',
-          params: [targetConfirmations],
-        }),
-      });
+      const fees = await res.json();
+      // fastestFee ≈ next block, halfHourFee ≈ 3 blocks, hourFee ≈ 6 blocks
+      let feeRateSatPerVb;
+      if (targetConfirmations <= 1)      feeRateSatPerVb = fees.fastestFee;
+      else if (targetConfirmations <= 3) feeRateSatPerVb = fees.halfHourFee;
+      else                               feeRateSatPerVb = fees.hourFee;
 
-      if (!response.ok) {
-        console.warn('[LitecoinWalletService] Fee estimation failed, using minimum relay fee');
-        return minimumRelayFee;
-      }
+      // P2WPKH SegWit 1-in 2-out transaction: ~141 vB
+      const txSizeVBytes = 141;
+      const feeSatoshis = Math.ceil(feeRateSatPerVb * txSizeVBytes);
 
-      const data = await response.json();
-
-      if (data.error || !data.result?.feerate) {
-        console.warn('[LitecoinWalletService] Could not estimate fee, using minimum relay fee');
-        return minimumRelayFee;
-      }
-
-      // feerate is in LTC/kB, convert to satoshis for typical tx size (~200 bytes)
-      const feeRateLtcPerKb = data.result.feerate;
-      const txSizeBytes = 200; // Typical SegWit transfer
-      const feeSatoshis = Math.ceil((feeRateLtcPerKb * 100000000 * txSizeBytes) / 1000);
-
-      const finalFee = Math.max(feeSatoshis, minimumRelayFee);
-      console.log(`[LitecoinWalletService] Estimated fee: ${feeSatoshis} sats (rate: ${feeRateLtcPerKb} LTC/kB), final fee with min relay: ${finalFee} sats`);
-      return finalFee;
+      console.log(`[LitecoinWalletService] Fee rate: ${feeRateSatPerVb} sat/vB → ${feeSatoshis} sats (${txSizeVBytes} vB)`);
+      return Math.max(feeSatoshis, 500);
     } catch (error) {
       console.error(`[LitecoinWalletService] Fee estimation error: ${error.message}`);
       return 1000; // Fallback

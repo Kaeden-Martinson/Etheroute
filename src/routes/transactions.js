@@ -2,6 +2,7 @@ const { Router } = require('express');
 const TransactionService = require('../services/TransactionService');
 const PayoutService = require('../services/PayoutService');
 const { db } = require('../config/database');
+const BalanceWatcher = require('../services/BalanceWatcher');
 const { ApiError } = require('../utils/errors');
 
 const router = Router();
@@ -35,6 +36,28 @@ router.get('/list', (req, res, next) => {
         failureReason: transaction.failureReason
       }))
     );
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * Get transaction history for a wallet
+ * POST /api/transactions/wallet
+ */
+router.post('/wallet', async (req, res, next) => {
+  try {
+    const { walletId } = req.body;
+    const { db } = require('../config/database');
+ 
+    const wallet = db.getById('wallets', walletId);
+    if (!wallet) {
+      throw new ApiError(404, 'Wallet not found');
+    }
+
+    const txHistory = await BalanceWatcher.getTransactionHistory(wallet);
+    
+    res.json(txHistory);
   } catch (error) {
     next(error);
   }

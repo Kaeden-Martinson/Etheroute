@@ -67,7 +67,8 @@ class AuthService {
       id: uuidv4(),
       username,
       passwordHash: hashPassword(password),
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      developer: false,
     };
 
     db.create('users', user);
@@ -119,8 +120,8 @@ class AuthService {
     if (!decoded) {
       return res.status(401).json({ error: 'Invalid or expired token' });
     }
-
-    req.user = decoded;
+    
+    req.body.clientId = decoded .clientId; // Ensure clientId is set in request body for downstream handlers
     next();
   }
 }

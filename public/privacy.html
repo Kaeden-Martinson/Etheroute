@@ -4,26 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Privacy Policy - Etheroute</title>
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="icon" type="image/svg+xml" href="/svg/favicon.svg">
     <link rel="stylesheet" href="/css/privacy.css">
 </head>
 <body>
-    <div class="header">
-        <div class="header-left" onclick="window.location.href='/'">
-            <div class="logo-mini" data-icon="logo"></div>
-            <div class="brand">Etheroute</div>
-        </div>
-        <div class="nav-links">
-            <a href="/privacy" class="nav-link active">Privacy</a>
-            <a href="/terms" class="nav-link">Terms</a>
-            <a href="/compliance" class="nav-link">Compliance</a>
-            <div class="auth-buttons" id="authButtons">
-                <a href="/auth" class="nav-link login-btn">Sign In</a>
-                <a href="/auth" class="nav-link signup-btn">Get Started</a>
-            </div>
-            <a href="/dashboard" class="nav-link signup-btn" id="dashboardBtn" style="display: none;">Dashboard</a>
-        </div>
-    </div>
+    <script src="/js/common/navbar.js"></script>
 
     <div class="container">
         <h1>Privacy Policy</h1>
@@ -56,11 +41,7 @@
         <h3>2.3 Technical Information</h3>
         <p>We automatically collect certain technical information:</p>
         <ul>
-            <li>IP address</li>
-            <li>Browser type and version</li>
-            <li>Device information</li>
             <li>Usage logs and timestamps</li>
-            <li>WebSocket connection data</li>
         </ul>
 
         <h2>3. How We Use Your Information</h2>
@@ -104,9 +85,6 @@
         <h3>7.2 Data Deletion</h3>
         <p>You may request deletion of your account and associated data. However, we may retain transaction records as required by law.</p>
 
-        <h3>7.3 Opt-Out</h3>
-        <p>You can disable WebSocket connections and real-time notifications in your account settings.</p>
-
         <h2>8. Cryptocurrency Addresses and Privacy</h2>
         <p>Cryptocurrency transactions are pseudonymous but not anonymous. Your wallet addresses and transaction amounts are visible on the blockchain, even though your username is not directly linked.</p>
 
@@ -126,7 +104,7 @@
         <p>In the event of a data breach involving your information, we will notify you as soon as possible via email or account notification.</p>
 
         <h2>14. Contact Information</h2>
-        <p>If you have questions or concerns about this Privacy Policy or our privacy practices, please contact us at privacy@cryptosaas.io</p>
+        <p>If you have questions or concerns about this Privacy Policy or our privacy practices, please contact us at support@etheroute.io</p>
 
         <h2>15. Your California Privacy Rights</h2>
         <p>If you are a California resident, you have the right to request information about the categories of personal information we collect and the purposes for which we use it.</p>
@@ -150,7 +128,7 @@
                     <h4>Company</h4>
                     <a href="/about" class="footer-link">About Us</a>
                     <a href="https://discord.gg" class="footer-link" target="_blank">Discord</a>
-                    <a href="https://t.me" class="footer-link" target="_blank">Telegram</a>
+                    <a href="https://t.me/etheroute" class="footer-link" target="_blank">Telegram</a>
                 </div>
                 <div class="footer-section">
                     <h4>Legal</h4>
@@ -165,5 +143,5 @@
         </div>
     </div>
     <script src="/js/privacy.js"></script>
-    <script src="/js/icons.js"></script></body>
+    <script src="/js/common/icons.js"></script></body>
 </html>

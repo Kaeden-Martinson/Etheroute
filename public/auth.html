@@ -4,27 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sign In / Sign Up - Etheroute</title>
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="icon" type="image/svg+xml" href="/svg/favicon.svg">
     <link rel="stylesheet" href="/css/auth.css">
 </head>
 <body>
-    <!-- Header -->
-    <div class="header">
-        <div class="header-left" onclick="window.location.href='/'">
-            <div class="logo-mini" data-icon="logo"></div>
-            <div class="brand">Etheroute</div>
-        </div>
-        <div class="nav-links">
-            <a href="/" class="nav-link">Home</a>
-            <a href="/faq" class="nav-link">FAQ</a>
-            <a href="/about" class="nav-link">About</a>
-            <div class="auth-buttons" id="authButtons">
-                <a href="/auth" class="nav-link login-btn">Sign In</a>
-                <a href="/auth" class="nav-link signup-btn">Get Started</a>
-            </div>
-            <a href="/dashboard" class="nav-link signup-btn" id="dashboardBtn" style="display: none;">Dashboard</a>
-        </div>
-    </div>
+    <script src="/js/common/navbar.js"></script>
 
     <!-- Auth Container -->
     <div class="auth-container">
@@ -108,23 +92,6 @@
     </div>
 
     <script src="/js/auth.js"></script>
-    <script>
-        // Check if user is already authenticated
-        window.addEventListener('load', () => {
-            const authToken = localStorage.getItem('authToken');
-            const clientId = localStorage.getItem('clientId');
-            
-            if (authToken && clientId) {
-                // User is authenticated, show dashboard button
-                document.getElementById('authButtons').style.display = 'none';
-                document.getElementById('dashboardBtn').style.display = 'block';
-            } else {
-                // User is not authenticated, show auth buttons
-                document.getElementById('authButtons').style.display = 'flex';
-                document.getElementById('dashboardBtn').style.display = 'none';
-            }
-        });
-    </script>
-    <script src="/js/icons.js"></script>
+    <script src="/js/common/icons.js"></script>
 </body>
 </html>

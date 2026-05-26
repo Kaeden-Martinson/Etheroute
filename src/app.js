@@ -1,7 +1,11 @@
 require('dotenv').config();
+const logger = require('./services/logger');
 const express = require('express');
 const { ApiError } = require('./utils/errors');
 const { db } = require('./config/database');
+
+// Authentication service
+const AuthService = require('./services/AuthService');
 
 // Routes
 const authRoutes = require('./routes/auth');
@@ -12,6 +16,7 @@ const transactionRoutes = require('./routes/transactions');
 const payoutRoutes = require('./routes/payouts');
 const apiKeysRoutes = require('./routes/api-keys');
 const apiCallsRoutes = require('./routes/api-calls');
+const statusRoutes = require('./routes/status');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -34,7 +39,7 @@ app.use((req, res, next) => {
 
 // Clean URL handler - serve HTML files without extension
 const path = require('path');
-app.get(['/', '/auth', '/dashboard', '/withdrawal', '/transactions', '/faq', '/about', '/terms', '/privacy', '/docs', '/api-reference', '/help', '/compliance'], (req, res) => {
+app.get(['/', '/auth', '/dashboard', '/withdrawal', '/transactions', '/faq', '/about', '/terms', '/privacy', '/docs', '/api-reference', '/help', '/compliance', '/status'], (req, res) => {
   let filename = 'index.html';
   
   if (req.path === '/auth') filename = 'auth.html';
@@ -49,6 +54,7 @@ app.get(['/', '/auth', '/dashboard', '/withdrawal', '/transactions', '/faq', '/a
   else if (req.path === '/api-reference') filename = 'api-reference.html';
   else if (req.path === '/help') filename = 'help.html';
   else if (req.path === '/compliance') filename = 'compliance.html';
+  else if (req.path === '/status') filename = 'status.html';
 
   res.sendFile(path.join(__dirname, '../public', filename));
 });
@@ -73,6 +79,29 @@ app.use((req, res, next) => {
 
   if (authHeader && authHeader.startsWith('Bearer ')) {
     const apiKey = authHeader.substring(7); // Remove 'Bearer ' prefix
+
+    if (apiKey.length !== 32) {
+      AuthService.verifyTokenMiddleware(req, res, next);
+      return;
+    };
+
+    res.on('finish', () => {
+      try {
+        const clientId = req.body && req.body.clientId;
+        if (clientId) {
+          db.create('apiCalls', {
+            id: require('crypto').randomUUID(),
+            clientId,
+            endpoint: req.path,
+            method: req.method,
+            statusCode: res.statusCode,
+            timestamp: new Date().toISOString()
+          });
+        }
+      } catch (err) {
+        console.error('[APICallTracker] Failed to log API call:', err.message);
+      }
+    });
     
     // Find user by API key
     const allUsers = db.getAll('users') || [];
@@ -92,7 +121,7 @@ app.use((req, res, next) => {
     }
   }
 
-  console.log(`Incoming request: ${req.method} ${req.path} - Client ID: ${resolvedClientId || 'None'}`);
+  logger.request(`Incoming request: ${req.method} ${req.path} - Client ID: ${resolvedClientId || 'None'}`);
   next();
 });
 
@@ -105,6 +134,7 @@ app.use('/api/transactions', transactionRoutes);
 app.use('/api/payouts', payoutRoutes);
 app.use('/api/api-keys', apiKeysRoutes);
 app.use('/api/api-calls', apiCallsRoutes);
+app.use('/api/status', statusRoutes);
 
 // 404 handler
 app.use((req, res) => {
@@ -123,7 +153,7 @@ app.use((err, _req, res, _next) => {
     });
   }
 
-  console.error('Error:', err);
+  logger.error('Error:', err);
   res.status(500).json({
     error: 'Internal Server Error',
     message: err.message || 'Something went wrong',
@@ -134,10 +164,10 @@ app.use((err, _req, res, _next) => {
 const startServer = () => {
   try {
     app.listen(PORT, () => {
-      console.log(`Etheroute API server is running on port ${PORT}`);
+      logger.info(`Etheroute API server is running on port ${PORT}`);
     });
   } catch (error) {
-    console.error('Failed to start server:', error);
+    logger.error('Failed to start server:', error);
     process.exit(1);
   }
 };

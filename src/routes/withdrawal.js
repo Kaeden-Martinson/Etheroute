@@ -1,25 +1,25 @@
 const { Router } = require('express');
 const PayoutService = require('../services/PayoutService');
+const logger = require('../services/logger');
 const { ApiError } = require('../utils/errors');
 
 const router = Router();
 
 /**
- * GET /api/withdrawal/preview
+ * POST /api/withdrawal/preview
  * Preview withdrawal without creating it - returns accurate data for UI
  */
-router.get('/preview', async (req, res, next) => {
+router.post('/preview', async (req, res, next) => {
   try {
-    const { clientId, recipientAddress, selectedChains } = req.body;
+    const { clientId, recipientAddress, selectedWallets } = req.body;
 
-    if (!clientId || !recipientAddress || !selectedChains) {
-      throw new ApiError(400, 'API Key is required along with recipientAddress and selectedChains');
+    if (!clientId || !recipientAddress) {
+      throw new ApiError(400, 'API Key is required along with recipientAddress');
     }
 
-    console.log(`\n[WithdrawalRoute] Getting preview for client: ${clientId}`);
+    logger.action(`[WithdrawalRoute] Getting preview for client: ${clientId}`);
 
-    const selectedChainsArray = selectedChains ? selectedChains.split(',').map(c => c.trim()) : null;
-    const preview = await PayoutService.getWithdrawalPreview(clientId, recipientAddress, selectedChainsArray);
+    const preview = await PayoutService.getWithdrawalPreview(clientId, recipientAddress, selectedWallets);
 
     res.json({
       success: true,
@@ -36,26 +36,26 @@ router.get('/preview', async (req, res, next) => {
  */
 router.post('/', async (req, res, next) => {
   try {
-    const { recipientAddress, selectedChains, clientId } = req.body;
+    const { recipientAddress, selectedWallets, clientId } = req.body;
 
     // Validate Client ID and recipient address
-    if (!clientId || !selectedChains || !recipientAddress) {
-      throw new ApiError(400, 'API Key is required along with recipientAddress and selectedChains');
+    if (!clientId || !recipientAddress) {
+      throw new ApiError(400, 'API Key is required along with recipientAddress');
     }
 
-    console.log(`\n[WithdrawalRoute] Creating withdrawal for client: ${clientId} to recipient: ${recipientAddress}`);
+    logger.action(`[WithdrawalRoute] Creating withdrawal for client: ${clientId} to recipient: ${recipientAddress}`);
 
-    // Use selected chains from request, or fall back to client's active chains
-    let chains = selectedChains;
-    if (!chains || !Array.isArray(chains) || chains.length === 0) {
-      chains = PayoutService.getClientActiveChains(clientId);
+    // Use selected wallet addresses from request, or fall back to all active wallet addresses
+    let walletAddresses = selectedWallets;
+    if (!walletAddresses || !Array.isArray(walletAddresses) || walletAddresses.length === 0) {
+      walletAddresses = PayoutService.getClientActiveWalletAddresses(clientId);
     }
 
-    if (chains.length === 0) {
+    if (walletAddresses.length === 0) {
       throw new ApiError(400, 'Client has no active wallets to withdraw from');
     }
 
-    const payout = await PayoutService.processWithdrawal(clientId, recipientAddress, chains);
+    const payout = await PayoutService.processWithdrawal(clientId, recipientAddress, walletAddresses);
 
     res.status(201).json({
       id: payout.id,

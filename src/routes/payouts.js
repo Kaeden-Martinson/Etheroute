@@ -21,21 +21,31 @@ router.get('/list', (req, res, next) => {
     res.json({
       success: true,
       count: payouts.length,
-      payouts: payouts.map((payout) => ({
-        id: payout.id,
-        clientId: payout.clientId,
-        status: payout.status,
-        totalAmountUsd: payout.totalAmountUsd,
-        platformFee: payout.platformFee,
-        netAmountUsd: payout.netAmountUsd,
-        chain: payout.chain,
-        recipientAddress: payout.recipientAddress,
-        type: payout.type,
-        createdAt: payout.createdAt,
-        updatedAt: payout.updatedAt,
-        completedAt: payout.completedAt,
-        withdrawalPlan: payout.withdrawalPlan,
-      })),
+      payouts: payouts.map((payout) => {
+        // Compute gasPerChain from the stored transfer plan
+        const gasPerChain = {};
+        for (const t of (payout.withdrawalPlan?.transfers || [])) {
+          if (!gasPerChain[t.chain]) gasPerChain[t.chain] = 0;
+          gasPerChain[t.chain] += t.estimatedGas || 0;
+        }
+        return {
+          id: payout.id,
+          clientId: payout.clientId,
+          status: payout.status,
+          totalAmountUsd: payout.totalAmountUsd,
+          platformFee: payout.platformFee,
+          estimatedTotalGas: payout.estimatedTotalGas || 0,
+          gasPerChain,
+          netAmountUsd: payout.netAmountUsd,
+          chain: payout.chain,
+          recipientAddress: payout.recipientAddress,
+          type: payout.type,
+          createdAt: payout.createdAt,
+          updatedAt: payout.updatedAt,
+          completedAt: payout.completedAt,
+          withdrawalPlan: payout.withdrawalPlan,
+        };
+      }),
     });
   } catch (error) {
     next(error);
@@ -56,6 +66,12 @@ router.get('/getPayout', (req, res, next) => {
       throw new ApiError(404, 'Payout not found');
     }
 
+    const gasPerChain = {};
+    for (const t of (payout.withdrawalPlan?.transfers || [])) {
+      if (!gasPerChain[t.chain]) gasPerChain[t.chain] = 0;
+      gasPerChain[t.chain] += t.estimatedGas || 0;
+    }
+
     res.json({
       success: true,
       payout: {
@@ -64,6 +80,8 @@ router.get('/getPayout', (req, res, next) => {
         status: payout.status,
         totalAmountUsd: payout.totalAmountUsd,
         platformFee: payout.platformFee,
+        estimatedTotalGas: payout.estimatedTotalGas || 0,
+        gasPerChain,
         netAmountUsd: payout.netAmountUsd,
         chain: payout.chain,
         recipientAddress: payout.recipientAddress,

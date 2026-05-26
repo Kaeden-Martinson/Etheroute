@@ -107,7 +107,7 @@ class ProxyService {
         },
       };
     }
-
+    
     return fetch(url, options);
   }
 

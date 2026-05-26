@@ -82,6 +82,7 @@ router.get('/stats', (req, res, next) => {
       period,
       labels,
       values,
+      periodTotal: values.reduce((sum, v) => sum + v, 0),
       totalCalls: userCalls.length
     });
   } catch (error) {

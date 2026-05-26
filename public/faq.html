@@ -4,26 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FAQ - Etheroute</title>
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="icon" type="image/svg+xml" href="/svg/favicon.svg">
     <link rel="stylesheet" href="/css/faq.css">
 </head>
 <body>
-    <div class="header">
-        <div class="header-left" onclick="window.location.href='/'">
-            <div class="logo-mini" data-icon="logo"></div>
-            <div class="brand">Etheroute</div>
-        </div>
-        <div class="nav-links">
-            <a href="/" class="nav-link">Home</a>
-            <a href="/faq" class="nav-link active">FAQ</a>
-            <a href="/about" class="nav-link">About</a>
-            <div class="auth-buttons" id="authButtons">
-                <a href="/auth" class="nav-link login-btn">Sign In</a>
-                <a href="/auth" class="nav-link signup-btn">Get Started</a>
-            </div>
-            <a href="/dashboard" class="nav-link signup-btn" id="dashboardBtn" style="display: none;">Dashboard</a>
-        </div>
-    </div>
+    <script src="/js/common/navbar.js"></script>
 
     <div class="container">
         <h1>Frequently Asked Questions</h1>
@@ -65,7 +50,7 @@
                 </div>
                 <div class="faq-answer">
                     <div class="faq-answer-content">
-                        <p>Since we don't collect email addresses, password recovery works through security questions. Contact our support team at support@cryptosaas.io with your username and we can help you reset your password securely.</p>
+                        <p>Since we don't collect email addresses, password recovery works through security questions. Contact our support team at <a href="https://t.me/etheroute" target="_blank">t.me/etheroute</a> with your username and we can help you reset your password securely.</p>
                     </div>
                 </div>
             </div>
@@ -132,7 +117,7 @@
                             <li><strong>Solana:</strong> 15 to 45 seconds</li>
                             <li><strong>Litecoin:</strong> 2 to 5 minutes</li>
                         </ul>
-                        <p>These times depend on network congestion. We provide real-time status updates via WebSocket.</p>
+                        <p>These times depend on network congestion. We provide real-time status updates via our REST-API.</p>
                     </div>
                 </div>
             </div>
@@ -156,7 +141,7 @@
                 </div>
                 <div class="faq-answer">
                     <div class="faq-answer-content">
-                        <p>The minimum withdrawal amount is <strong>$5 USD per chain</strong>. This ensures your withdrawal fees remain reasonable relative to your withdrawal amount.</p>
+                        <p>The minimum withdrawal amount is <strong>$5 USD (and gas fees) per chain</strong>. This ensures your withdrawal fees remain reasonable relative to your withdrawal amount.</p>
                     </div>
                 </div>
             </div>
@@ -214,7 +199,6 @@
                             <li>Username (your identifier)</li>
                             <li>Wallet addresses (to process withdrawals)</li>
                             <li>Transaction history</li>
-                            <li>Technical data (IP, browser info for security)</li>
                         </ul>
                         <p>We do NOT collect personal information like email, phone, name, or location.</p>
                     </div>
@@ -228,7 +212,7 @@
                 </div>
                 <div class="faq-answer">
                     <div class="faq-answer-content">
-                        <p>You can request account deletion at any time by contacting support@cryptosaas.io with your username. We will delete your account and associated data within 30 days, except for transaction records which may be retained for legal compliance.</p>
+                        <p>You can request account deletion at any time by contacting our support team at <a href="https://t.me/etheroute" target="_blank">t.me/etheroute</a> with your username. We will delete your account and associated data within 30 days, except for transaction records which may be retained for legal compliance.</p>
                     </div>
                 </div>
             </div>
@@ -257,7 +241,7 @@
                 </div>
                 <div class="faq-answer">
                     <div class="faq-answer-content">
-                        <p>We use WebSocket connections to push real-time updates. Your client automatically subscribes to transaction and payout updates. You'll see live status changes as your withdrawal progresses.</p>
+                        <p>We use REST-API connections to push real-time updates. Your client automatically subscribes to transaction and payout updates. You'll see live status changes as your withdrawal progresses.</p>
                     </div>
                 </div>
             </div>
@@ -279,7 +263,7 @@
             <h2>Still have questions?</h2>
             <p>Can't find the answer you're looking for? Contact our support team.</p>
             <p style="margin-top: 16px;">
-                <strong>Email:</strong> support@cryptosaas.io<br>
+                <strong>Telegram:</strong> <a href="https://t.me/etheroute" target="_blank">t.me/etheroute</a><br>
                 <strong>Response time:</strong> Usually within 24 hours
             </p>
         </div>
@@ -299,7 +283,7 @@
                     <h4>Company</h4>
                     <a href="/about" class="footer-link">About Us</a>
                     <a href="https://discord.gg" class="footer-link" target="_blank">Discord</a>
-                    <a href="https://t.me" class="footer-link" target="_blank">Telegram</a>
+                    <a href="https://t.me/etheroute" class="footer-link" target="_blank">Telegram</a>
                 </div>
                 <div class="footer-section">
                     <h4>Legal</h4>
@@ -315,6 +299,6 @@
     </div>
 
     <script src="/js/faq.js"></script>
-    <script src="/js/icons.js"></script>
+    <script src="/js/common/icons.js"></script>
 </body>
 </html>

@@ -24,6 +24,9 @@ class EthereumWalletService {
     // Lazy load providers
     this._providers = {};
 
+    this.apiUrl = "https://api.etherscan.io/v2/api";
+    this.apiKey = "BDHQ71HUZYHVNSQDYYKNZTUF6EBTB1E87J";
+
     // BIP44 derivation paths for Ethereum
     this.derivationPaths = {
       mainnet: "m/44'/60'/0'/0/0",
@@ -35,18 +38,15 @@ class EthereumWalletService {
    * @param {string} network - Network name
    * @returns {ethers.JsonRpcProvider} Provider instance
    */
-  getProvider(network = 'mainnet') {
-    if (!this._providers[network]) {
-      const networkConfig = this.networks[network];
-      if (!networkConfig) {
-        throw new Error(`Invalid network: ${network}`);
-      }
+  getProvider() {
+    if (!this._providers.mainnet) {
+      const networkConfig = this.networks.mainnet;
 
       // Use first RPC URL (public node)
-      const rpcUrl = networkConfig.rpcUrls ? networkConfig.rpcUrls[0] : networkConfig.rpcUrl;
-      this._providers[network] = new ethers.JsonRpcProvider(rpcUrl);
+      const rpcUrl = networkConfig.rpcUrls[0];
+      this._providers.mainnet = new ethers.JsonRpcProvider(rpcUrl);
     }
-    return this._providers[network];
+    return this._providers.mainnet;
   }
 
   /**
@@ -56,7 +56,7 @@ class EthereumWalletService {
    * @param {string} network - Network: mainnet, sepolia, goerli
    * @returns {Object} Wallet object with address, privateKey, publicKey, mnemonic
    */
-  generateWalletFromMnemonic(mnemonic = null, network = 'mainnet') {
+  generateWalletFromMnemonic(mnemonic = null) {
     try {
       // Generate or use provided mnemonic
       if (!mnemonic) {
@@ -66,7 +66,7 @@ class EthereumWalletService {
       }
 
       // Create wallet from mnemonic using BIP44 path for Ethereum (m/44'/60'/0'/0/0)
-      const derivationPath = this.derivationPaths[network];
+      const derivationPath = this.derivationPaths.mainnet;
       const hdNode = ethers.HDNodeWallet.fromMnemonic(
         ethers.Mnemonic.fromPhrase(mnemonic),
         derivationPath
@@ -80,8 +80,8 @@ class EthereumWalletService {
         privateKey: wallet.privateKey,
         mnemonic: mnemonic,
         derivationPath: derivationPath,
-        network: network,
-        networkName: this.networks[network].name,
+        network: 'mainnet',
+        networkName: this.networks.mainnet.name,
       };
     } catch (error) {
       throw new Error(`Failed to generate Ethereum wallet: ${error.message}`);
@@ -94,9 +94,9 @@ class EthereumWalletService {
    * @param {string} network - Network to query
    * @returns {Promise<Object>} Balance information
    */
-  async getBalance(address, network = 'mainnet') {
+  async getBalance(address) {
     try {
-      const provider = this.getProvider(network);
+      const provider = this.getProvider();
       
       // Validate address format
       if (!ethers.isAddress(address)) {
@@ -110,14 +110,14 @@ class EthereumWalletService {
         address,
         balanceWei: balanceWei.toString(),
         balanceEth: parseFloat(balanceEth),
-        network,
+        network: 'mainnet',
         timestamp: new Date().toISOString(),
         status: 'success',
       };
     } catch (error) {
       return {
         address,
-        network,
+        network: 'mainnet',
         status: 'error',
         error: error.message,
         timestamp: new Date().toISOString(),
@@ -132,9 +132,9 @@ class EthereumWalletService {
    * @param {string} network - Ethereum network
    * @returns {Promise<Object>} Updated balance info
    */
-  async updateBalance(wallet, ethToUsdRate, network = 'mainnet') {
+  async updateBalance(wallet, ethToUsdRate) {
     try {
-      const balanceInfo = await this.getBalance(wallet.address, network);
+      const balanceInfo = await this.getBalance(wallet.address);
 
       if (balanceInfo.status === 'success') {
         db.update('wallets', wallet.id, {
@@ -142,6 +142,8 @@ class EthereumWalletService {
           balanceUSD: balanceInfo.balanceEth * ethToUsdRate,
           lastUpdated: new Date().toISOString(),
         });
+
+        balanceInfo.balance = balanceInfo.balanceEth * ethToUsdRate; // For consistency in returned object
       }
 
       return balanceInfo;
@@ -163,72 +165,78 @@ class EthereumWalletService {
    * @param {string} operationType - Operation type: 'transfer', 'token_transfer', 'swap', 'contract', 'bridge', etc.
    * @returns {Promise<Object>} {maxFeePerGas, maxPriorityFeePerGas, gasLimit, totalFeeEth, etc.}
    */
-  async estimateFee(toAddress, network = 'mainnet', priority = 'standard', operationType = 'transfer') {
+  async estimateFee(toAddress) {
     try {
-      const provider = this.getProvider(network);
+      const provider = this.getProvider();
 
-      // Validate address
       if (!ethers.isAddress(toAddress)) {
         throw new Error('Invalid recipient address');
       }
 
-      // Get current fee data (includes gasPrice, maxFeePerGas, maxPriorityFeePerGas)
-      const feeData = await provider.getFeeData();
-      
-      // Get gas limit based on operation type
-      const gasLimit = BigInt(this.getGasLimitForOperation(operationType));
+      // Fetch fee data and the latest block in parallel so we get the real baseFeePerGas
+      const [feeData, block] = await Promise.all([
+        provider.getFeeData(),
+        provider.getBlock('latest'),
+      ]);
 
-      // EIP-1559 fee structure
-      const baseMaxFeePerGas = feeData.maxFeePerGas || BigInt(0);
-      let maxPriorityFeePerGas = feeData.maxPriorityFeePerGas || BigInt(0);
-      
-      // Adjust priority fee based on priority level
-      const priorityMultiplier = {
-        slow: 0.8,
-        standard: 1.0,
-        fast: 1.5,
-      };
-      const multiplier = priorityMultiplier[priority] || 1.0;
-      maxPriorityFeePerGas = BigInt(Math.round(Number(maxPriorityFeePerGas) * multiplier));
+      // baseFeePerGas comes from the latest mined block (the ground truth for the next block)
+      const baseFeePerGas = block?.baseFeePerGas ?? feeData.maxFeePerGas ?? BigInt(0);
 
-      // Calculate max fee (base + priority)
-      const maxFeePerGas = baseMaxFeePerGas;
+      // Standard priority fee (1× network suggestion, 1 gwei floor)
+      const priorityFeePerGas = feeData.maxPriorityFeePerGas ?? BigInt(1_000_000_000);
 
-      // Calculate total fee
-      const totalMaxFeeWei = maxFeePerGas * gasLimit;
-      const totalMaxFeeEth = parseFloat(ethers.formatEther(totalMaxFeeWei));
+      // maxFeePerGas is the EIP-1559 cap submitted to the network
+      const maxFeePerGas = feeData.maxFeePerGas ?? (baseFeePerGas * BigInt(2) + priorityFeePerGas);
 
-      const maxFeeGwei = parseFloat(ethers.formatUnits(maxFeePerGas, 'gwei'));
-      const priorityFeeGwei = parseFloat(ethers.formatUnits(maxPriorityFeePerGas, 'gwei'));
+      // Expected effective gas price = baseFee + priorityFee (what you actually pay)
+      const expectedGasPrice = baseFeePerGas + priorityFeePerGas;
 
-      console.log(`[EthereumWalletService] EIP-1559 fee estimate (${priority}, ${operationType}): Max Fee ${maxFeeGwei} gwei + Priority ${priorityFeeGwei} gwei, gas: ${gasLimit}, total: ${totalMaxFeeEth} ETH`);
+      const gasLimit = BigInt(this.getGasLimitForOperation());
+
+      const expectedFeeWei = expectedGasPrice * gasLimit;
+      const expectedFeeEth = parseFloat(ethers.formatEther(expectedFeeWei));
+      const maxFeeWei = maxFeePerGas * gasLimit;
+      const maxFeeEth = parseFloat(ethers.formatEther(maxFeeWei));
+
+      const baseFeeGwei     = parseFloat(ethers.formatUnits(baseFeePerGas,    'gwei'));
+      const priorityFeeGwei = parseFloat(ethers.formatUnits(priorityFeePerGas, 'gwei'));
+      const maxFeeGwei      = parseFloat(ethers.formatUnits(maxFeePerGas,      'gwei'));
+
+      console.log(
+        `[EthereumWalletService] Fee estimate (standard, transfer): ` +
+        `base=${baseFeeGwei.toFixed(4)} gwei + priority=${priorityFeeGwei.toFixed(4)} gwei, ` +
+        `gas=${gasLimit}, expected=${expectedFeeEth.toFixed(8)} ETH, max=${maxFeeEth.toFixed(8)} ETH`
+      );
 
       return {
         // EIP-1559 fields
         maxFeePerGas: maxFeePerGas.toString(),
         maxFeePerGasGwei: maxFeeGwei,
-        maxPriorityFeePerGas: maxPriorityFeePerGas.toString(),
+        maxPriorityFeePerGas: priorityFeePerGas.toString(),
         maxPriorityFeePerGasGwei: priorityFeeGwei,
-        
-        // Standard fields
+        baseFeePerGas: baseFeePerGas.toString(),
+        baseFeePerGasGwei: baseFeeGwei,
+
+        // Expected vs max cost
         gasLimit: gasLimit.toString(),
-        totalMaxFeeWei: totalMaxFeeWei.toString(),
-        totalMaxFeeEth: totalMaxFeeEth,
-        
-        // Priority info
-        priority: priority,
-        operationType: operationType,
-        network,
+        expectedFeeWei: expectedFeeWei.toString(),
+        expectedFeeEth,
+        maxFeeWei: maxFeeWei.toString(),
+        maxFeeEth,
+
+        // Backwards-compat aliases
+        totalMaxFeeWei: maxFeeWei.toString(),
+        totalMaxFeeEth: maxFeeEth,
+
+        priority: 'standard',
+        operationType: 'transfer',
+        network: 'mainnet',
         status: 'success',
         timestamp: new Date().toISOString(),
       };
     } catch (error) {
       console.error(`[EthereumWalletService] Fee estimation error: ${error.message}`);
-      return {
-        network,
-        status: 'error',
-        error: error.message,
-      };
+      return { network: 'mainnet', status: 'error', error: error.message };
     }
   }
 
@@ -238,36 +246,31 @@ class EthereumWalletService {
    * Returns transaction count (nonce) as a proxy.
    * For full history, use a block explorer API.
    * @param {string} address - Ethereum address
-   * @param {number} limit - Number of recent transactions (unused - RPC limitation)
    * @param {string} network - Network to query
    * @returns {Promise<Object>} Transaction history
    */
-  async getTransactionHistory(address, limit = 10, network = 'mainnet') {
+  async getTransactionHistory(address) {
     try {
-      const provider = this.getProvider(network);
-      
       if (!ethers.isAddress(address)) {
         throw new Error('Invalid Ethereum address format');
       }
 
-      // Get transaction count (nonce)
-      const transactionCount = await provider.getTransactionCount(address);
+      const res = await ProxyService.fetch(`${this.apiUrl}?apikey=${this.apiKey}&chainid=1&module=account&action=txlist&address=${address}`).then(res => res.json());
+      const transactionCount = res.result ? res.result.length : 0;
 
       // Note: Full transaction history requires indexing service (The Graph, Alchemy, etc.)
       // This implementation returns transaction count only
       return {
         address,
         transactionCount,
-        limit,
-        network,
-        note: 'Standard RPC endpoint does not provide transaction history. Use block explorer API for full history.',
-        status: 'success',
+        network: 'mainnet',
+        transactions: res.result || [],
         timestamp: new Date().toISOString(),
       };
     } catch (error) {
       return {
         address,
-        network,
+        network: 'mainnet',
         status: 'error',
         error: error.message,
       };
@@ -278,19 +281,8 @@ class EthereumWalletService {
    * @param {string} operationType - Type: 'transfer', 'token_transfer', 'swap', 'contract', 'bridge'
    * @returns {number} Estimated gas limit in wei
    */
-  getGasLimitForOperation(operationType = 'transfer') {
-    const gasLimits = {
-      transfer: 25000,              // Simple ETH transfer
-      token_transfer: 65000,        // ERC20 token transfer
-      token_approve: 45000,         // ERC20 approval
-      swap: 150000,                 // Uniswap/DEX swap
-      contract: 189000,             // Generic contract interaction
-      bridge: 250000,               // Cross-chain bridge
-      nft_transfer: 85000,          // NFT (ERC721) transfer
-      nft_mint: 120000,             // NFT minting
-    };
-
-    return gasLimits[operationType] || gasLimits.transfer;
+  getGasLimitForOperation() {
+    return 35000; // Plain ETH transfer (EVM minimum)
   }
 
   /**
@@ -300,15 +292,10 @@ class EthereumWalletService {
    * @param {string} network - Ethereum network (mainnet, sepolia, goerli)
    * @returns {Object} Wallet document
    */
-  createWallet(clientId, mnemonic = null, network = 'mainnet') {
+  createWallet(clientId, mnemonic = null) {
     try {
-      // Validate network
-      if (!this.networks[network]) {
-        throw new Error(`Invalid network: ${network}`);
-      }
-
       // Generate wallet
-      const walletData = this.generateWalletFromMnemonic(mnemonic, network);
+      const walletData = this.generateWalletFromMnemonic(mnemonic);
 
       // Create wallet document
       const wallet = {
@@ -316,13 +303,14 @@ class EthereumWalletService {
         clientId,
         address: walletData.address,
         chain: 'ETH',
-        network,
+        network: 'mainnet',
         privateKey: walletData.privateKey,
         publicKey: walletData.publicKey,
         seedPhrase: walletData.mnemonic,
         derivationPath: walletData.derivationPath,
         balance: 0,
         balanceUSD: 0,
+        serviceSubtractions: 0,
         lastUpdated: new Date().toISOString(),
         isActive: true,
         createdAt: new Date().toISOString(),
@@ -340,12 +328,11 @@ class EthereumWalletService {
    * @param {string} privateKey - Wallet private key
    * @param {string} toAddress - Recipient address
    * @param {number} amount - Amount in ETH
-   * @param {string} operationType - Operation type: 'transfer', 'token_transfer', 'swap', 'contract', etc.
    * @returns {Promise<Object>} {hash, status, fee}
    */
-  async sendTransaction(privateKey, toAddress, amount, operationType = 'transfer') {
+  async sendTransaction(privateKey, toAddress, amount) {
     try {
-      const provider = this.getProvider('mainnet');
+      const provider = this.getProvider();
       const signer = new ethers.Wallet(privateKey, provider);
 
       // Validate recipient address
@@ -373,21 +360,13 @@ class EthereumWalletService {
         throw new Error('Unable to estimate gas fees. Please try again.');
       }
 
-      // Priority multiplier
-      const priorityMultiplier = {
-        slow: 0.8,
-        standard: 1.0,
-        fast: 1.5,
-      };
-      const multiplier = priorityMultiplier['standard'] || 1.0;
-
       // Calculate fees
       const maxFeePerGas = feeData.maxFeePerGas;
       const basePriorityFee = feeData.maxPriorityFeePerGas || BigInt(0);
-      const maxPriorityFeePerGas = BigInt(Math.round(Number(basePriorityFee) * multiplier));
+      const maxPriorityFeePerGas = BigInt(Math.round(Number(basePriorityFee) * 1.0));
 
-      // Get appropriate gas limit for operation type
-      const gasLimit = BigInt(this.getGasLimitForOperation(operationType));
+      // Gas limit for a standard ETH transfer
+      const gasLimit = BigInt(this.getGasLimitForOperation());
 
       // Estimate total cost (amount + gas fees)
       const txValue = ethers.parseEther(roundedAmount.toString());
@@ -415,7 +394,7 @@ class EthereumWalletService {
       const maxFeeGwei = parseFloat(ethers.formatUnits(maxFeePerGas, 'gwei'));
       const priorityGwei = parseFloat(ethers.formatUnits(maxPriorityFeePerGas, 'gwei'));
 
-      console.log(`[EthereumWalletService] Transaction sent (${operationType}): ${tx.hash}`);
+      console.log(`[EthereumWalletService] Transaction sent (transfer): ${tx.hash}`);
       console.log(`  From: ${signer.address} | To: ${toAddress}`);
       console.log(`  Amount: ${roundedAmount} ETH | Estimated Gas Cost: ${estimatedGasCostEth.toFixed(8)} ETH`);
       console.log(`  Max Fee: ${maxFeeGwei.toFixed(2)} gwei | Priority: ${priorityGwei.toFixed(2)} gwei | Gas: ${gasLimit}`);
@@ -426,7 +405,7 @@ class EthereumWalletService {
         to: toAddress,
         amount: roundedAmount,
         priority: 'standard',
-        operationType: operationType,
+        operationType: 'transfer',
         maxFeePerGasGwei: maxFeeGwei,
         maxPriorityFeePerGasGwei: priorityGwei,
         gasLimit: gasLimit.toString(),

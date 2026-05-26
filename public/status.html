@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Etheroute status page showing chain health, uptime, and recent incidents.">
+    <title>System Status - Etheroute</title>
+    <link rel="icon" type="image/svg+xml" href="/svg/favicon.svg">
+    <link rel="stylesheet" href="/css/status.css">
+</head>
+<body>
+    <script src="/js/common/navbar.js"></script>
+    <div class="shell">
+        <main class="content">
+            <section class="hero-card">
+                <div class="hero-status" id="heroStatusPill">Loading status...</div>
+                <h1 id="heroTitle">Checking service health</h1>
+                <p id="heroCopy">We’re pulling the latest chain and platform status from the Etheroute status API.</p>
+                <div class="hero-meta">
+                    <div><span class="meta-label">Uptime</span><strong id="overallUptime">--</strong></div>
+                    <div><span class="meta-label">Operational</span><strong id="operationalCount">--</strong></div>
+                    <div><span class="meta-label">Updated</span><strong id="generatedAt">--</strong></div>
+                </div>
+            </section>
+
+            <section class="panel">
+                <div class="panel-header">
+                    <div>
+                        <h2>Service Status</h2>
+                        <p>Current health across chains and core platform services.</p>
+                    </div>
+                    <div class="window-chip">Last 30 days</div>
+                </div>
+                <div class="service-grid" id="serviceGrid"></div>
+            </section>
+
+            <section class="panel split" data-dev-only="true">
+                <div>
+                    <div class="panel-header compact">
+                        <div>
+                            <h2>Active Incidents</h2>
+                            <p>Open events that are still affecting services.</p>
+                        </div>
+                    </div>
+                    <div class="incident-list" id="activeIncidents"></div>
+                </div>
+                <div>
+                    <div class="panel-header compact">
+                        <div>
+                            <h2>Recent History</h2>
+                            <p>Recent incidents and recoveries.</p>
+                        </div>
+                    </div>
+                    <div class="incident-list history" id="incidentHistory"></div>
+                </div>
+            </section>
+
+            <section class="panel admin-panel" data-dev-only="true">
+                <div class="panel-header compact">
+                    <div>
+                        <h2>Record Downtime</h2>
+                        <p>Internal control for tracking an outage or recovery event.</p>
+                    </div>
+                </div>
+                <form id="incidentForm" class="incident-form">
+                    <div class="form-row">
+                        <label>
+                            Scope
+                            <select id="incidentScope">
+                                <option value="chain">Chain</option>
+                                <option value="platform">Platform</option>
+                            </select>
+                        </label>
+                        <label>
+                            Target
+                            <select id="incidentKey"></select>
+                        </label>
+                        <label>
+                            Severity
+                            <select id="incidentSeverity">
+                                <option value="minor">Minor</option>
+                                <option value="major" selected>Major</option>
+                                <option value="critical">Critical</option>
+                            </select>
+                        </label>
+                    </div>
+                    <label>
+                        Title
+                        <input id="incidentTitle" type="text" placeholder="Chain outage detected" />
+                    </label>
+                    <label>
+                        Message
+                        <textarea id="incidentMessage" rows="4" placeholder="Short summary of what happened"></textarea>
+                    </label>
+                    <div class="form-row">
+                        <label>
+                            Started At (optional)
+                            <input id="incidentStartedAt" type="datetime-local" />
+                        </label>
+                        <label>
+                            Resolved At (optional)
+                            <input id="incidentResolvedAt" type="datetime-local" />
+                        </label>
+                    </div>
+                    <div class="button-row">
+                        <button type="submit" class="primary-btn">Record Incident</button>
+                        <button type="button" class="secondary-btn" id="refreshStatusBtn">Refresh</button>
+                    </div>
+                    <div class="form-message" id="formMessage"></div>
+                </form>
+            </section>
+        </main>
+    </div>
+
+    <div class="modal" id="incidentDeleteModal">
+        <div class="modal-content status-modal-content">
+            <div class="modal-header" style="position: relative; display: flex; align-items: center; justify-content: space-between;">
+                <h2 class="modal-title">Remove Incident</h2>
+                <button class="close-btn" type="button" id="closeIncidentDeleteModal" style="position: relative; top: 0; right: 0; padding: 8px; margin: 0;">
+                    <span data-icon="close"></span>
+                </button>
+            </div>
+
+            <div class="info-box status-info-box">
+                <strong>Developer Action</strong>
+                This will permanently remove the incident from the public status history.
+            </div>
+
+            <div class="confirmation-message" id="incidentDeleteMessage">
+                Are you sure you want to remove this incident?
+            </div>
+
+            <div class="confirmation-buttons">
+                <button class="btn-confirm" type="button" id="confirmIncidentDeleteBtn">Confirm</button>
+                <button class="btn-deny" type="button" id="denyIncidentDeleteBtn">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/common/icons.js"></script>
+    <script src="/js/status.js"></script>
+</body>
+</html>

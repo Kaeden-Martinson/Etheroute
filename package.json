@@ -1,5 +1,5 @@
 {
-  "name": "crypto-saas-api",
+  "name": "etheroute-api",
   "version": "1.0.0",
   "description": "Cryptocurrency SaaS platform for accepting invoices and processing payouts",
   "main": "dist/app.js",
@@ -11,7 +11,7 @@
   },
   "keywords": [
     "crypto",
-    "saas",
+    "etheroute",
     "blockchain",
     "ethereum",
     "bitcoin",

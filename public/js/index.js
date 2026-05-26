@@ -4,10 +4,6 @@ window.addEventListener('load', () => {
     const clientId = localStorage.getItem('clientId');
     
     if (authToken && clientId) {
-        // User is authenticated, show dashboard button
-        document.getElementById('authButtons').style.display = 'none';
-        document.getElementById('dashboardBtn').style.display = 'block';
-        
         // Hide Get Started button and show Dashboard button in hero
         document.getElementById('heroGetStartedBtn').style.display = 'none';
         document.getElementById('heroDashboardBtn').style.display = 'block';

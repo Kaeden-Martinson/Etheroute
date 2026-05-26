@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>API Reference - Etheroute</title>
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="icon" type="image/svg+xml" href="/svg/favicon.svg">
     <link rel="stylesheet" href="/css/api-reference.css">
     <link rel="stylesheet"
         href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
@@ -13,22 +13,7 @@
 </head>
 
 <body>
-    <div class="header">
-        <div class="header-left" onclick="window.location.href='/'">
-            <div class="logo-mini" data-icon="logo"></div>
-            <div class="brand">Etheroute</div>
-        </div>
-        <div class="nav-links">
-            <a href="/docs" class="nav-link">Docs</a>
-            <a href="/api-reference" class="nav-link active">API Reference</a>
-            <a href="/help" class="nav-link">Help Center</a>
-            <div class="auth-buttons" id="authButtons">
-                <a href="/auth" class="nav-link login-btn">Sign In</a>
-                <a href="/auth" class="nav-link signup-btn">Get Started</a>
-            </div>
-            <a href="/dashboard" class="nav-link signup-btn" id="dashboardBtn" style="display: none;">Dashboard</a>
-        </div>
-    </div>
+    <script src="/js/common/navbar.js"></script>
 
     <div class="container">
         <!-- Sidebar -->
@@ -220,14 +205,30 @@ print(response.json())</code></pre>
                         <div class="endpoint-section">
                             <div class="endpoint-section-title">Example Response</div>
                             <pre><code class="language-json">[
-  {
-    "id": "wallet_id",
-    "address": "0x742d35Cc6634C0532925a3b844Bc122e5d6F0fA6",
-    "chain": "ETH",
-    "balance": 5.25,
-    "balanceUSD": 10500,
-    "createdAt": "2026-05-23T10:30:00Z"
-  }
+    {
+        "id": "b9cce974-cac6-4bf1-ab25-3162ac2e759d",
+        "address": "0x8462Dc02DCCBD5de5483BE59717E948a3250df6E",
+        "chain": "ETH",
+        "balance": 0.003327959835621435,
+        "balanceUSD": 7.059135284926763,
+        "createdAt": "2026-05-20T21:05:15.566Z"
+    },
+    {
+        "id": "2af44678-fb5a-4756-b2be-57de577dd21b",
+        "address": "LfrqNk5h8c2JFt3wqM9Vm57d8ftrRZAUad",
+        "chain": "LTC",
+        "balance": 0.01351317,
+        "balanceUSD": 0.7207924878,
+        "createdAt": "2026-05-22T03:05:46.846Z"
+    },
+    {
+        "id": "694d8c66-5ff9-4bd5-87ea-8b82ad1e3b69",
+        "address": "0x64e4CAB10E2501681972DA31b902C73C5dFe7C31",
+        "chain": "ETH",
+        "balance": 0,
+        "balanceUSD": 0,
+        "createdAt": "2026-05-23T21:30:38.435Z"
+    }
 ]</code></pre>
                         </div>
                         <div class="auth-required">Requires Authentication</div>
@@ -295,11 +296,12 @@ print(response.json())</code></pre>
                         <div class="endpoint-section">
                             <div class="endpoint-section-title">Example Response</div>
                             <pre><code class="language-json">{
-  "id": "wallet_456",
-  "address": "0xnewaddress123...",
-  "chain": "ETH",
-  "balance": 0,
-  "createdAt": "2026-05-23T11:00:00Z"
+    "id": "31e4b9c6-2d4e-45fe-8be3-ab0708434c3f",
+    "address": "0x60aeF11Ba4C4EFD44d4CB09248c10bBDCAfE5DCf",
+    "chain": "ETH",
+    "clientId": "0921623d-8f05-4bc6-a154-f37830341dc6",
+    "balance": 0,
+    "createdAt": "2026-05-25T15:42:25.190Z"
 }</code></pre>
                         </div>
                         <div class="auth-required">Requires Authentication</div>
@@ -448,7 +450,7 @@ print(response.json())</code></pre>
                     <button class="endpoint-header">
                         <div style="display: flex; align-items: center; flex: 1;">
                             <span class="endpoint-method get">GET</span>
-                            <span class="endpoint-path">/wallets/transactions</span>
+                            <span class="endpoint-path">/transactions/wallet</span>
                         </div>
                         <span class="endpoint-chevron" data-icon="endpointChevron"></span>
                     </button>
@@ -456,6 +458,9 @@ print(response.json())</code></pre>
                         <p class="endpoint-description">Get transaction history for a specific wallet.</p>
                         <div class="endpoint-section">
                             <div class="endpoint-section-title">Request Body</div>
+                              <pre><code class="language-json">{
+    "walletId": "wallet_id"
+}</code></pre>
                             <dl class="endpoint-params">
                                 <dt>walletId</dt>
                                 <dd>The unique wallet identifier. Required.</dd>
@@ -470,11 +475,11 @@ print(response.json())</code></pre>
                                     <option value="python">Python</option>
                                 </select>
                             </div>
-                            <pre id="wallet-transactions-curl"><code class="language-bash">curl -X GET https://api.etheroute.io/api/wallets/transactions \
+                            <pre id="wallet-transactions-curl"><code class="language-bash">curl -X GET https://api.etheroute.io/api/transactions/wallet \
   -H "Authorization: Bearer YOUR_API_KEY"</code></pre>
                             <pre id="wallet-transactions-nodejs" style="display: none;"><code class="language-javascript">const fetch = require('node-fetch');
 
-const response = await fetch('https://api.etheroute.io/api/wallets/transactions', {
+const response = await fetch('https://api.etheroute.io/api/transactions/wallet', {
   method: 'GET',
   headers: {'Authorization': 'Bearer YOUR_API_KEY'}
 });
@@ -483,7 +488,7 @@ console.log(data);</code></pre>
                             <pre id="wallet-transactions-python" style="display: none;"><code class="language-python">import requests
 
 response = requests.get(
-    'https://api.etheroute.io/api/wallets/transactions',
+    'https://api.etheroute.io/api/transactions/wallet',
     headers={'Authorization': 'Bearer YOUR_API_KEY'}
 )
 print(response.json())</code></pre>
@@ -505,6 +510,9 @@ print(response.json())</code></pre>
                         <p class="endpoint-description">Get details for a specific transaction by ID.</p>
                         <div class="endpoint-section">
                             <div class="endpoint-section-title">Request Body</div>
+                              <pre><code class="language-json">{
+    "transactionId": "transaction_id"
+}</code></pre>
                             <dl class="endpoint-params">
                                 <dt>transactionId</dt>
                                 <dd>The unique transaction identifier. Required.</dd>
@@ -609,6 +617,9 @@ print(response.json())</code></pre>
                         <p class="endpoint-description">Get details for a specific payout by ID.</p>
                         <div class="endpoint-section">
                             <div class="endpoint-section-title">Request Body</div>
+                              <pre><code class="language-json">{
+    "payoutId": "payout_id"
+}</code></pre>
                             <dl class="endpoint-params">
                                 <dt>payoutId</dt>
                                 <dd>The unique payout identifier. Required.</dd>
@@ -669,13 +680,13 @@ print(response.json())</code></pre>
                             <div class="endpoint-section-title">Request Body</div>
                             <pre><code class="language-json">{
     "recipientAddress": "0x742d35Cc6634C0532925a3b844Bc122e5d6F0fA6",
-    "selectedChains": ["ETH", "BTC"]
+    "selectedWallets": ["0xAbc123...", "bc1qxyz..."] // Optional - if omitted, withdrawal will be processed from all active wallets with available balance
 }</code></pre>
                             <dl class="endpoint-params">
                                 <dt>recipientAddress</dt>
                                 <dd>Destination wallet address. Required.</dd>
-                                <dt>selectedChains</dt>
-                                <dd>Array of chains to withdraw from. Optional (auto-selects active chains if omitted).
+                                <dt>selectedWallets</dt>
+                                <dd>Array of wallet addresses to withdraw from. Optional (auto-selects all active wallets if omitted).
                                 </dd>
                             </dl>
                         </div>
@@ -693,7 +704,7 @@ print(response.json())</code></pre>
   -H "Content-Type: application/json" \
   -d '{
     "recipientAddress":"0x742d35...",
-        "selectedChains":["ETH","BTC"]
+        "selectedWallets":["0xAbc123...","bc1qxyz..."]
   }'</code></pre>
                             <pre id="process-withdrawal-nodejs" style="display: none;"><code class="language-javascript">const fetch = require('node-fetch');
 
@@ -705,7 +716,7 @@ const response = await fetch('https://api.etheroute.io/api/withdrawal', {
   },
   body: JSON.stringify({
     recipientAddress: '0x742d35...',
-        selectedChains: ['ETH', 'BTC']
+        selectedWallets: ['0xAbc123...', 'bc1qxyz...']
   })
 });
 const data = await response.json();
@@ -717,7 +728,7 @@ response = requests.post(
     headers={'Authorization': 'Bearer YOUR_API_KEY'},
     json={
         'recipientAddress': '0x742d35...',
-        'selectedChains': ['ETH', 'BTC']
+        'selectedWallets': ['0xAbc123...', 'bc1qxyz...']
     }
 )
 print(response.json())</code></pre>
@@ -738,7 +749,7 @@ print(response.json())</code></pre>
                 <div class="endpoint-item">
                     <button class="endpoint-header">
                         <div style="display: flex; align-items: center; flex: 1;">
-                            <span class="endpoint-method get">GET</span>
+                            <span class="endpoint-method get">POST</span>
                             <span class="endpoint-path">/withdrawal/preview</span>
                         </div>
                         <span class="endpoint-chevron" data-icon="endpointChevron"></span>
@@ -748,11 +759,15 @@ print(response.json())</code></pre>
                             and amount calculations.</p>
                         <div class="endpoint-section">
                             <div class="endpoint-section-title">Request Parameters</div>
+                            <pre><code class="language-json">{
+    "recipientAddress": "0x742d35Cc6634C0532925a3b844Bc122e5d6F0fA6",
+    "selectedWallets": ["0xAbc123...", "bc1qxyz..."] // Optional - if omitted, preview will show all active wallets with available balance
+}</code></pre>
                             <dl class="endpoint-params">
                                 <dt>recipientAddress (body)</dt>
                                 <dd>Destination wallet address. Required.</dd>
-                                <dt>selectedChains (body)</dt>
-                                <dd>Comma-separated list of chains (ETH,BTC,SOL,LTC). Optional.</dd>
+                                <dt>selectedWallets (body)</dt>
+                                <dd>Comma-separated list of wallet addresses. Optional.</dd>
                             </dl>
                         </div>
                         <div class="endpoint-section">
@@ -764,23 +779,31 @@ print(response.json())</code></pre>
                                     <option value="python">Python</option>
                                 </select>
                             </div>
-                            <pre id="preview-withdrawal-curl"><code class="language-bash">curl -X GET https://api.etheroute.io/api/withdrawal/preview \
+                            <pre id="preview-withdrawal-curl"><code class="language-bash">curl -X POST https://api.etheroute.io/api/withdrawal/preview \
   -H "Authorization: Bearer YOUR_API_KEY" \
   -H "Content-Type: application/json" \
-  -d '{"recipientAddress":"0x742d35...","selectedChains":"ETH,BTC"}'</code></pre>
+  -d '{"recipientAddress":"0x742d35...","selectedWallets":"0xAbc123...,bc1qxyz..."}'</code></pre>
                             <pre id="preview-withdrawal-nodejs" style="display: none;"><code class="language-javascript">const fetch = require('node-fetch');
 
 const response = await fetch('https://api.etheroute.io/api/withdrawal/preview', {
-  method: 'GET',
-  headers: {'Authorization': 'Bearer YOUR_API_KEY'}
+  method: 'POST',
+  headers: {
+    'Authorization': 'Bearer YOUR_API_KEY',
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+      recipientAddress: '0x742d35...',
+      selectedWallets: ['0xAbc123...', 'bc1qxyz...']
+  })
 });
 const data = await response.json();
 console.log(data);</code></pre>
                             <pre id="preview-withdrawal-python" style="display: none;"><code class="language-python">import requests
 
-response = requests.get(
+response = requests.post(
     'https://api.etheroute.io/api/withdrawal/preview',
-    headers={'Authorization': 'Bearer YOUR_API_KEY'}
+    headers={'Authorization': 'Bearer YOUR_API_KEY'},
+    json={"recipientAddress":"0x742d35...","selectedWallets":["0xAbc123...", "bc1qxyz..."]}
 )
 print(response.json())</code></pre>
                         </div>
@@ -842,7 +865,7 @@ print(response.json())</code></pre>
                     <h4>Company</h4>
                     <a href="/about" class="footer-link">About Us</a>
                     <a href="https://discord.gg" class="footer-link" target="_blank">Discord</a>
-                    <a href="https://t.me" class="footer-link" target="_blank">Telegram</a>
+                    <a href="https://t.me/etheroute" class="footer-link" target="_blank">Telegram</a>
                 </div>
                 <div class="footer-section">
                     <h4>Legal</h4>
@@ -858,7 +881,7 @@ print(response.json())</code></pre>
     </div>
 
     <script src="/js/config.js"></script>
-    <script src="/js/icons.js"></script>
+    <script src="/js/common/icons.js"></script>
     <script src="/js/api-reference.js"></script>
 </body>
 

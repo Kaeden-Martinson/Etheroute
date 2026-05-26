@@ -54,15 +54,22 @@ class PayoutService {
     return chains;
   }
 
+  getClientActiveWalletAddresses(clientId) {
+    const wallets = db.findBy('wallets', { clientId, isActive: true });
+    const addresses = wallets.map(w => w.address);
+    console.log(`[PayoutService] Client ${clientId} active wallet addresses: ${addresses.join(', ')}`);
+    return addresses;
+  }
+
   /**
    * Get withdrawal preview: Calculate withdrawal amounts without creating the payout
    * Used for showing user accurate data before they confirm
    * @param {string} clientId - Client ID
    * @param {string} recipientAddress - Ethereum address to receive funds
-   * @param {Array} selectedChains - Chains to withdraw from
+   * @param {Array} selectedWalletAddresses - Wallet addresses to withdraw from (optional, defaults to all active)
    * @returns {Promise<Object>} Preview data with eligible/ineligible wallets and gas fee calculations
    */
-  async getWithdrawalPreview(clientId, recipientAddress, selectedChains) {
+  async getWithdrawalPreview(clientId, recipientAddress, selectedWalletAddresses) {
     console.log(`\n[PayoutService] Getting withdrawal preview for client: ${clientId}`);
 
     const client = db.findOneBy('users', { id: clientId });
@@ -108,22 +115,34 @@ class PayoutService {
     });
 
     // Separate eligible and ineligible wallets
+    // A wallet is eligible if its net payout (after 5% service fee + estimated gas) covers SideShift's $5 minimum
+    // AND it has no currently-processing transactions
+    const GAS_BUFFER_USD = { ETH: .50, BTC: 1.00, SOL: 0.20, LTC: 0.50 };
     const eligibleWallets = [];
     const ineligibleWallets = [];
 
     allWallets.forEach(w => {
-      if (w.balanceUSD >= 5) {
+      // Reject wallets with an active (PENDING or PROCESSING) transaction
+      const walletTxs = db.findBy('transactions', { fromAddress: w.address });
+      const hasActiveTx = walletTxs.some(t => t.status === 'PENDING' || t.status === 'PROCESSING');
+      if (hasActiveTx) {
+        ineligibleWallets.push({ ...w, ineligibilityReason: 'Transaction currently processing' });
+        return;
+      }
+
+      const gasBudget = GAS_BUFFER_USD[w.chain.toUpperCase()] ?? 2;
+      const minBalanceUSD = (5 + gasBudget) / 0.95; // net after 5% fee must be >= $5 + gas
+      if (w.balanceUSD >= minBalanceUSD) {
         eligibleWallets.push(w);
       } else {
-        ineligibleWallets.push(w);
+        ineligibleWallets.push({ ...w, ineligibilityReason: 'Net payout below $5 minimum after 5% service fee and estimated gas' });
       }
     });
 
-    // Filter by selected chains if provided
+    // Filter by selected wallet addresses if provided
     let selectedWallets = eligibleWallets;
-    if (selectedChains && Array.isArray(selectedChains) && selectedChains.length > 0) {
-      const selectedChainsUpper = selectedChains.map(c => c.toUpperCase());
-      selectedWallets = eligibleWallets.filter(w => selectedChainsUpper.includes(w.chain.toUpperCase()));
+    if (selectedWalletAddresses && Array.isArray(selectedWalletAddresses) && selectedWalletAddresses.length > 0) {
+      selectedWallets = eligibleWallets.filter(w => selectedWalletAddresses.includes(w.address));
     }
 
     if (selectedWallets.length === 0) {
@@ -171,7 +190,7 @@ class PayoutService {
         chain: w.chain,
         address: w.address,
         balance: w.balance,
-        reason: 'Below $5 USD minimum (gas fees)'
+        reason: w.ineligibilityReason || 'Net payout below $5 minimum after 5% service fee and estimated gas',
       })),
       message: `You are withdrawing from ${selectedWallets.length} chain(s). Total: $${totalAmountUsd.toFixed(2)} USD`
     };
@@ -182,10 +201,10 @@ class PayoutService {
    * Only processes wallets >= $5 USD minimum
    * @param {string} clientId - Client ID
    * @param {string} recipientAddress - Ethereum address to receive funds
-   * @param {Array} selectedChains - Chains to withdraw from (optional, defaults to all eligible)
+   * @param {Array} selectedWalletAddresses - Wallet addresses to withdraw from (optional, defaults to all eligible)
    * @returns {Promise<Object>} Withdrawal payout with swap details
    */
-  async processWithdrawal(clientId, recipientAddress, selectedChains) {
+  async processWithdrawal(clientId, recipientAddress, selectedWalletAddresses) {
     console.log(`\n[PayoutService] Starting withdrawal process for client: ${clientId}`);
 
     const client = db.findOneBy('users', { id: clientId });
@@ -208,16 +227,14 @@ class PayoutService {
       throw new Error('No active wallets found for this client');
     }
 
-    // Filter by selected chains if provided
-    if (selectedChains && Array.isArray(selectedChains) && selectedChains.length > 0) {
-      const validChains = ['ETH', 'BTC', 'SOL', 'LTC'];
-      const selectedChainsUpper = selectedChains.map(c => c.toUpperCase()).filter(c => validChains.includes(c));
-      wallets = wallets.filter(w => selectedChainsUpper.includes(w.chain.toUpperCase()));
+    // Filter by selected wallet addresses if provided
+    if (selectedWalletAddresses && Array.isArray(selectedWalletAddresses) && selectedWalletAddresses.length > 0) {
+      wallets = wallets.filter(w => selectedWalletAddresses.includes(w.address));
     }
 
     if (wallets.length === 0) {
-      console.error(`[PayoutService] No wallets found for selected chains`);
-      throw new Error('No wallets found for selected chains');
+      console.error(`[PayoutService] No wallets found for selected wallet addresses`);
+      throw new Error('No wallets found for selected wallet addresses');
     }
 
     // Fetch current balances from blockchain
@@ -248,17 +265,30 @@ class PayoutService {
       w.balanceUSD = (parseFloat(w.balance) || 0) * rate;
     });
 
-    // Filter wallets with >= $5 USD value
+    // Per-chain gas buffer used to determine eligibility
+    const GAS_BUFFER_USD = { ETH: .50, BTC: 1.00, SOL: 0.20, LTC: 0.50 };
+    // Filter wallets where net payout (after 5% service fee + gas) >= $5 (SideShift minimum)
+    // Also skip wallets that have an active (PENDING or PROCESSING) transaction
     const eligibleWallets = wallets.filter(w => {
+      // Check for active transactions first
+      const walletTxs = db.findBy('transactions', { fromAddress: w.address });
+      const hasActiveTx = walletTxs.some(t => t.status === 'PENDING' || t.status === 'PROCESSING');
+      if (hasActiveTx) {
+        console.log(`  - ${w.chain}: ${w.address} SKIP (transaction currently processing)`);
+        return false;
+      }
+
       const balanceUSD = w.balanceUSD || 0;
-      const isEligible = balanceUSD >= 5;
-      console.log(`  - ${w.chain}: ${w.balance} (${w.address}) = $${balanceUSD.toFixed(2)} USD ${isEligible ? '✓' : 'SKIP (< $5)'}`);
+      const gasBudget = GAS_BUFFER_USD[w.chain.toUpperCase()] ?? 2;
+      const minBalanceUSD = (5 + gasBudget) / 0.95;
+      const isEligible = balanceUSD >= minBalanceUSD;
+      console.log(`  - ${w.chain}: ${w.balance} (${w.address}) = $${balanceUSD.toFixed(2)} USD ${isEligible ? '✓' : `SKIP (need $${minBalanceUSD.toFixed(2)} for net $5 after fee+gas)`}`);
       return isEligible;
     });
 
     if (eligibleWallets.length === 0) {
-      console.error(`[PayoutService] No wallets with >= $5 USD value`);
-      throw new Error('No eligible wallets for withdrawal - all wallets must have at least $5 USD value');
+      console.error(`[PayoutService] No wallets with sufficient balance for net $5 after fee and gas`);
+      throw new Error('No eligible wallets for withdrawal — all wallets need sufficient balance to yield at least $5 after the 5% service fee and gas');
     }
 
     eligibleWallets.forEach(w => console.log(`  - ${w.chain}: $${(w.balanceUSD || 0).toFixed(2)}`))
@@ -311,6 +341,10 @@ class PayoutService {
 
     const createdPayout = db.create('payouts', payout);
     console.log(`[PayoutService] Payout created: ${createdPayout.id}`);
+
+    // Record the platform fee against each wallet so the service-retained amount
+    // is hidden from the client's displayed balance going forward
+    this._recordServiceFeeSubtractions(eligibleWallets, platformFee, totalAmountUsd);
 
     // NOTE: Transactions are created in executeAndMonitorTransfers() when actually broadcasting
     // This avoids duplicate transaction records and ensures we track the actual broadcast time
@@ -420,7 +454,13 @@ class PayoutService {
               'INSUFFICIENT_FUNDS',
               `Not enough ${transfer.chain} to cover transfer amount + network fees`
             );
-            
+
+            this._updatePayoutTransfer(payoutId, transfer.fromAddress, {
+              transactionId: transaction.id,
+              status: 'FAILED',
+              failureReason: 'INSUFFICIENT_FUNDS',
+            });
+
             // Still track it as a failed transaction
             transactionIds.push(transaction.id);
             console.log(`[PayoutService] Transaction marked FAILED: ${transaction.id} - Reason: INSUFFICIENT_FUNDS`);
@@ -452,6 +492,12 @@ class PayoutService {
         // Immediately mark as PROCESSING (broadcast confirmed)
         TransactionService.markTransactionProcessing(transaction.id, txHash);
 
+        this._updatePayoutTransfer(payoutId, transfer.fromAddress, {
+          transactionId: transaction.id,
+          status: 'PROCESSING',
+          txHash,
+        });
+
         transactionIds.push(transaction.id);
         broadcastedTransfers.push({ ...transfer, txHash, transactionId: transaction.id });
         console.log(`[PayoutService] Transaction broadcasted: ${txHash} (${transaction.id}) - Status: PROCESSING`);
@@ -461,7 +507,7 @@ class PayoutService {
     }
 
     // Step 2: Monitor transactions until confirmed
-    const { confirmedCount, failedCount } = await this.monitorTransactionConfirmation(transactionIds, broadcastedTransfers);
+    const { confirmedCount, failedCount } = await this.monitorTransactionConfirmation(payoutId, transactionIds, broadcastedTransfers);
 
     // Step 3: Determine payout final status based on transaction results
     let finalStatus = 'COMPLETED';
@@ -553,7 +599,7 @@ class PayoutService {
    * Instead of polling RPC endpoints, we check if the Sideshift order is completed
    * @returns {Object} { confirmedCount, failedCount } - Number of confirmed and failed transactions
    */
-  async monitorTransactionConfirmation(transactionIds, transfers) {
+  async monitorTransactionConfirmation(payoutId, transactionIds, transfers) {
     console.log(`\n[PayoutService] Monitoring ${transactionIds.length} transaction(s) via Sideshift...`);
 
     const maxAttempts = 120; // 10 minutes with 5 second intervals
@@ -623,10 +669,17 @@ class PayoutService {
               failureReason || 'UNKNOWN_ERROR',
               `Sideshift order ${orderId} failed or expired`
             );
+            this._updatePayoutTransfer(payoutId, transfer.fromAddress, {
+              status: 'FAILED',
+              failureReason: failureReason || 'UNKNOWN_ERROR',
+            });
             failedTxs.add(transfer.transactionId);
             console.log(`[PayoutService] ✗ FAILED: Order ${orderId} (${failureReason})`);
           } else if (isConfirmed) {
             TransactionService.updateTransactionStatus(transfer.transactionId, 'CONFIRMED', null);
+            this._updatePayoutTransfer(payoutId, transfer.fromAddress, {
+              status: 'CONFIRMED',
+            });
             confirmedTxs.add(transfer.transactionId);
             console.log(`[PayoutService] ✓ CONFIRMED: Order ${orderId} completed`);
           }
@@ -654,6 +707,10 @@ class PayoutService {
             'TIMEOUT',
             `Order not confirmed within ${maxAttempts * 5} seconds`
           );
+          this._updatePayoutTransfer(payoutId, transfer.fromAddress, {
+            status: 'FAILED',
+            failureReason: 'TIMEOUT',
+          });
           console.warn(`[PayoutService] ✗ TIMEOUT: Order ${transfer.swapDetails?.orderId}`);
         }
       }
@@ -710,6 +767,60 @@ class PayoutService {
     console.log(`[PayoutService] Updated payout ${payoutId}: status=${status}, completedAt=${updates.completedAt || 'null'}`);
     
     return payout;
+  }
+
+  /**
+   * Update a single transfer entry inside payout.withdrawalPlan.transfers.
+   * Matched by fromAddress (unique per transfer within a payout).
+   * @param {string} payoutId
+   * @param {string} fromAddress
+   * @param {Object} updates - fields to merge into the matching transfer
+   */
+  /**
+   * Record the 5% platform fee for each wallet as serviceSubtractions.
+   * The fee stays on-chain in the wallet, so we track it here so the client's
+   * displayed balance reflects only what they can actually withdraw next time.
+   * @param {Array} eligibleWallets
+   * @param {number} platformFee - Total platform fee in USD
+   * @param {number} totalAmountUsd - Total USD across all eligible wallets
+   */
+  _recordServiceFeeSubtractions(eligibleWallets, platformFee, totalAmountUsd) {
+    if (!totalAmountUsd || totalAmountUsd <= 0) return;
+
+    const priceService = PriceService;
+    const nativePrices = {
+      ETH: priceService.ethToUsdRate,
+      BTC: priceService.btcToUsdRate,
+      SOL: priceService.solToUsdRate,
+      LTC: priceService.ltcToUsdRate,
+    };
+
+    for (const w of eligibleWallets) {
+      const walletFeeUSD = (w.balanceUSD / totalAmountUsd) * platformFee;
+      const nativePrice = nativePrices[w.chain.toUpperCase()] || 1;
+      const walletFeeNative = nativePrice > 0 ? walletFeeUSD / nativePrice : 0;
+
+      const current = db.getById('wallets', w.id);
+      if (current) {
+        db.update('wallets', w.id, {
+          serviceSubtractions: (current.serviceSubtractions || 0) + walletFeeNative,
+        });
+        console.log(`[PayoutService] Service fee recorded for wallet ${w.id} (${w.chain}): ${walletFeeNative.toFixed(8)} ${w.chain} ($${walletFeeUSD.toFixed(4)})`);
+      }
+    }
+  }
+
+  _updatePayoutTransfer(payoutId, fromAddress, updates) {
+    const payout = db.getById('payouts', payoutId);
+    if (!payout?.withdrawalPlan?.transfers) return;
+
+    const transfers = payout.withdrawalPlan.transfers.map(t =>
+      t.fromAddress === fromAddress ? { ...t, ...updates } : t
+    );
+
+    db.update('payouts', payoutId, {
+      withdrawalPlan: { ...payout.withdrawalPlan, transfers },
+    });
   }
 }
 

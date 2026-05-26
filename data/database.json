@@ -5,28 +5,10 @@
       "username": "Logic",
       "passwordHash": "fe2b7b6f89356a3b45a54c3b97dff9ef1c9aefd77acdce6a5df380d1400ab0b3",
       "createdAt": "2026-05-23T03:24:47.730Z",
-      "lastLogin": "2026-05-23T20:38:29.527Z",
+      "lastLogin": "2026-05-26T16:26:16.154Z",
       "apiKey": "Jq06EDriPmZfUgIv9J2tvSeiEoq2cnPB",
-      "apiKeyGeneratedAt": "2026-05-23T19:21:58.458Z"
-    },
-    {
-      "id": "0def2dc1-87b5-41e4-aa8b-a985a1964dee",
-      "username": "Logic1",
-      "passwordHash": "fe2b7b6f89356a3b45a54c3b97dff9ef1c9aefd77acdce6a5df380d1400ab0b3",
-      "createdAt": "2026-05-23T04:43:20.239Z",
-      "lastLogin": "2026-05-23T05:49:11.720Z"
-    },
-    {
-      "id": "ad89eaf3-c84d-477c-a62c-a98cf6acc530",
-      "username": "Logic2",
-      "passwordHash": "626aa60100e38a2b0a8c9b3512116bfb3ff9db5b986b21b27c2989e011629435",
-      "createdAt": "2026-05-23T05:49:04.687Z"
-    },
-    {
-      "id": "b59d116b-509c-477c-88bc-c7e36805dfd1",
-      "username": "testuser",
-      "passwordHash": "d519397a4e89a7a66d28a266ed00a679bdee93fddec9ebba7d01ff27c39c1a99",
-      "createdAt": "2026-05-23T05:53:43.307Z"
+      "apiKeyGeneratedAt": "2026-05-23T19:21:58.458Z",
+      "developer": true
     }
   ],
   "wallets": [
@@ -37,11 +19,12 @@
       "chain": "ETH",
       "privateKey": "0x1bd715526a0febd3175376553c1a477762ee68dc4573651bc704ce81a8365815",
       "seedPhrase": "time topic autumn inside tortoise rib desert renew hero enter million skill",
-      "balance": 0.003327959835621435,
-      "balanceUSD": 7.059135284926763,
-      "lastUpdated": "2026-05-24T03:32:29.486Z",
+      "balance": 0.000331541380586635,
+      "balanceUSD": 0.6894734550679661,
+      "lastUpdated": "2026-05-26T17:07:07.693Z",
       "isActive": true,
-      "createdAt": "2026-05-20T21:05:15.566Z"
+      "createdAt": "2026-05-20T21:05:15.566Z",
+      "serviceSubtractions": 0.6900503370701869
     },
     {
       "id": "2af44678-fb5a-4756-b2be-57de577dd21b",
@@ -54,76 +37,242 @@
       "wif": "T5ab2rw3ZdgGBZvVyMGPbQ3KnG3VtwuPTdopHcAu52kQJ8SXtwM4",
       "seedPhrase": "drop island region enrich blanket coil float comic patrol chimney cheap mobile",
       "derivationPath": "m/44'/2'/0'/0/0",
-      "balance": 0.01351317,
-      "balanceUSD": 0.7207924878,
-      "lastUpdated": "2026-05-24T03:32:29.655Z",
+      "balance": 0.01310671,
+      "balanceUSD": 0.6833838594,
+      "lastUpdated": "2026-05-26T17:07:07.790Z",
       "isActive": true,
-      "createdAt": "2026-05-22T03:05:46.846Z"
+      "createdAt": "2026-05-22T03:05:46.846Z",
+      "serviceSubtractions": 0.6849566646
     },
     {
-      "id": "1bbe38ba-bf5c-49c9-98ec-10e86fa02ef9",
-      "clientId": "0def2dc1-87b5-41e4-aa8b-a985a1964dee",
-      "address": "0x83bbEb9CE8E7321371421E62A0A0dFAdE2CD1B94",
-      "chain": "ETH",
+      "id": "464525f9-d40d-43f0-82a2-b0cbe993a6c7",
+      "clientId": "0921623d-8f05-4bc6-a154-f37830341dc6",
+      "address": "8Hd1f2kykXgNdZmY8ZdZhh3VdtHYpoRYRdfapwWqCmwt",
+      "chain": "SOL",
       "network": "mainnet",
-      "privateKey": "0x0414a0a0782b506bf63d04b64c1b72f0d67f973d30f8e5f5d87a815eba3b8316",
-      "seedPhrase": "steel cycle meadow trip narrow aunt fun butter bacon keen swear fiscal",
-      "derivationPath": "m/44'/60'/0'/0/0",
-      "balance": 0,
-      "balanceUSD": 0,
-      "lastUpdated": "2026-05-23T05:49:13.781Z",
+      "privateKey": "a2e07d409c08d8fc40410934a9899b0e3a3319454897d73368c17b6ee2302b036c43d1cd838687279839b19cf5c13d2b2c52f63d68f4107b85e2225274819077",
+      "publicKey": "8Hd1f2kykXgNdZmY8ZdZhh3VdtHYpoRYRdfapwWqCmwt",
+      "seedPhrase": "student turkey rescue visual wedding ice gadget piano prepare woman element joke",
+      "derivationPath": "m/44'/501'/0'/0'",
+      "balance": 0.007303646,
+      "balanceUSD": 0.6150400296599999,
+      "serviceSubtractions": 0.6149669932,
+      "lastUpdated": "2026-05-26T17:07:07.736Z",
       "isActive": true,
-      "createdAt": "2026-05-23T05:43:39.990Z"
+      "createdAt": "2026-05-26T04:41:44.974Z"
     },
     {
-      "id": "9775ff44-317c-475a-89bb-9112a2adf8b7",
-      "clientId": "b59d116b-509c-477c-88bc-c7e36805dfd1",
-      "address": "0xc67510A24e059a6716f579594B54f2064810006C",
-      "chain": "ETH",
-      "network": "mainnet",
-      "privateKey": "0x4de19ec3aa33739f261c59c50f91c710facc2ca823c64720bb5d92ac0e96e40b",
-      "seedPhrase": "promote forget double olive marriage eagle riot rate tourist problem void oblige",
-      "derivationPath": "m/44'/60'/0'/0/0",
-      "balance": 0,
-      "balanceUSD": 0,
-      "lastUpdated": "2026-05-23T06:11:55.197Z",
-      "isActive": true,
-      "createdAt": "2026-05-23T05:55:26.965Z"
-    },
-    {
-      "id": "3fc45fef-663d-40fc-ab9f-d30cf429b3ba",
-      "clientId": "b59d116b-509c-477c-88bc-c7e36805dfd1",
-      "address": "bc1q6gs427s9k8ddfwslcd5vv8lycdxxj46vgdd8lr",
+      "id": "e48bffb2-9a7d-4f3b-a0f4-4598556b44c6",
+      "clientId": "0921623d-8f05-4bc6-a154-f37830341dc6",
+      "address": "bc1qshw69ddj08e4e0ndz4qdlfjatqmuwu9uya6h8h",
       "chain": "BTC",
       "network": "mainnet",
-      "privateKey": "8cd487fe515f365208014c2beeef772d6f14f9cf601ce69a9d0438709e053faf",
-      "publicKey": "3,28,75,48,26,44,73,31,113,117,222,13,249,113,60,122,85,152,176,195,34,129,32,22,161,184,99,22,20,87,104,203,32",
-      "wif": "L1wU1BRsaGLRkYb9FDLKDrSpEYxuZ4QvrNPygMKUw46N1cL1RFGE",
-      "seedPhrase": "long wasp lift photo choose knock magic fragile butter thank security pear",
+      "privateKey": "78c2b0224dad202231ca678d4a7c36360858b24775725c7a0357e6d509371961",
+      "publicKey": "3,62,86,111,246,37,109,153,34,121,130,140,166,253,64,106,122,180,151,236,216,8,83,58,245,68,160,70,231,147,27,38,71",
+      "wif": "L1GTFsWtoeTaR6wK9HwS8875opRMhY6MuNXzTnHWqpCEoP6UbWdd",
+      "seedPhrase": "that all involve wedding salad wash two debris orphan shadow little diary",
       "derivationPath": "m/44'/0'/0'/0/0",
-      "balance": 0,
-      "balanceUSD": 0,
-      "lastUpdated": "2026-05-23T06:11:55.200Z",
+      "balance": 0.00001285,
+      "balanceUSD": 0.9831535,
+      "serviceSubtractions": 0.9797611,
+      "lastUpdated": "2026-05-26T17:07:07.696Z",
       "isActive": true,
-      "createdAt": "2026-05-23T06:03:15.785Z"
-    },
-    {
-      "id": "694d8c66-5ff9-4bd5-87ea-8b82ad1e3b69",
-      "clientId": "0921623d-8f05-4bc6-a154-f37830341dc6",
-      "address": "0x64e4CAB10E2501681972DA31b902C73C5dFe7C31",
-      "chain": "ETH",
-      "network": "mainnet",
-      "privateKey": "0xf2541332e58f8e67370e048d6d8943b04331ecf1404736b5b24dfca4539a5cc7",
-      "seedPhrase": "spatial coconut grow lamp enlist device resemble accident demand raven drill gate",
-      "derivationPath": "m/44'/60'/0'/0/0",
-      "balance": 0,
-      "balanceUSD": 0,
-      "lastUpdated": "2026-05-24T03:32:29.487Z",
-      "isActive": true,
-      "createdAt": "2026-05-23T21:30:38.435Z"
+      "createdAt": "2026-05-26T04:41:48.804Z"
     }
   ],
-  "payouts": [],
+  "payouts": [
+    {
+      "id": "3f7b4615-69fc-4d45-9943-073dfe6dec1d",
+      "clientId": "0921623d-8f05-4bc6-a154-f37830341dc6",
+      "recipientAddress": "0xa8c00bd4ee3DF25010984692AACCDfc4c0e57469",
+      "netAmountUsd": 6.520516103081906,
+      "platformFee": 0.3510797948990477,
+      "totalAmountUsd": 7.021595897980954,
+      "chain": "ETH",
+      "status": "COMPLETED",
+      "type": "WITHDRAWAL",
+      "withdrawalPlan": {
+        "transfers": [
+          {
+            "type": "DIRECT_TRANSFER",
+            "chain": "ETH",
+            "fromAddress": "0x8462Dc02DCCBD5de5483BE59717E948a3250df6E",
+            "nativeAmount": 0.0029951638520592915,
+            "expectedEthAmount": 0.002924069761400107,
+            "walletValueUSD": 6.319436308182858,
+            "transactionValueUSD": 6.169436308182858,
+            "estimatedGas": 0.15,
+            "status": "COMPLETED",
+            "swapDetails": {
+              "status": "order_created",
+              "orderId": "direct_transfer_p2al7aaf8",
+              "sideshiftOrder": {
+                "depositAddress": "0xa8c00bd4ee3DF25010984692AACCDfc4c0e57469",
+                "expiresAt": "2026-05-25T21:32:05.094Z",
+                "extraId": null
+              }
+            }
+          }
+        ]
+      },
+      "transactionHashes": [],
+      "createdAt": "2026-05-25T21:32:05.094Z",
+      "completedAt": "2026-05-25T21:32:15.980Z",
+      "estimatedTotalGas": 0.15,
+      "updatedAt": "2026-05-25T21:32:15.980Z"
+    },
+    {
+      "id": "bfac1a79-08a6-4e5d-aac4-402edb221270",
+      "clientId": "0921623d-8f05-4bc6-a154-f37830341dc6",
+      "recipientAddress": "0xa8c00bd4ee3DF25010984692AACCDfc4c0e57469",
+      "netAmountUsd": 24.94647218455034,
+      "platformFee": 1.3385036416331761,
+      "totalAmountUsd": 26.77007283266352,
+      "chain": "ETH",
+      "status": "PARTIAL",
+      "type": "WITHDRAWAL",
+      "withdrawalPlan": {
+        "transfers": [
+          {
+            "type": "DIRECT_TRANSFER",
+            "chain": "ETH",
+            "fromAddress": "0x8462Dc02DCCBD5de5483BE59717E948a3250df6E",
+            "nativeAmount": 0.0029973548911701375,
+            "expectedEthAmount": 0.002925625054427246,
+            "walletValueUSD": 6.268008601317168,
+            "transactionValueUSD": 6.118008601317168,
+            "estimatedGas": 0.15,
+            "status": "FAILED",
+            "swapDetails": {
+              "status": "order_created",
+              "orderId": "direct_transfer_ilsg752qu",
+              "sideshiftOrder": {
+                "depositAddress": "0xa8c00bd4ee3DF25010984692AACCDfc4c0e57469",
+                "expiresAt": "2026-05-26T05:03:14.728Z",
+                "extraId": null
+              }
+            },
+            "transactionId": "0b987e7e-6d3b-41f1-a337-a047c05950f8",
+            "txHash": "0x80bc0bc17d96714bc575fde3abab569963e62b7fda2f5b6fea7e849dab576bd5",
+            "failureReason": "ORDER_FAILED"
+          },
+          {
+            "type": "SWAP",
+            "chain": "LTC",
+            "fromAddress": "LfrqNk5h8c2JFt3wqM9Vm57d8ftrRZAUad",
+            "nativeAmount": 0.11791531799999999,
+            "expectedEthAmount": "0.00289609",
+            "walletValueUSD": 6.182771992739999,
+            "transactionValueUSD": 6.0562454862,
+            "estimatedGas": 0.1260546365399992,
+            "status": "CONFIRMED",
+            "swapDetails": {
+              "status": "order_created",
+              "orderId": "a5a7eed1d1fc321ec62d",
+              "sideshiftOrder": {
+                "depositAddress": "MEHMvSmur3yLeYT9hg9bHdRBpT47Q4VzCP",
+                "expiresAt": "2026-06-02T05:03:20.098Z",
+                "extraId": null
+              }
+            },
+            "transactionId": "8c64f393-f4c6-4466-bcc8-902f70f30ac9",
+            "txHash": "0217163b89d7978087d5f704f28cbcc01101830daab6cf96b61250400f930c34"
+          },
+          {
+            "type": "SWAP",
+            "chain": "SOL",
+            "fromAddress": "8Hd1f2kykXgNdZmY8ZdZhh3VdtHYpoRYRdfapwWqCmwt",
+            "nativeAmount": 0.065732814,
+            "expectedEthAmount": "0.00259893",
+            "walletValueUSD": 5.54231294334,
+            "transactionValueUSD": 5.4348304374,
+            "estimatedGas": 0.10710311094000025,
+            "status": "CONFIRMED",
+            "swapDetails": {
+              "status": "order_created",
+              "orderId": "8d29cbf59a936e9daba7",
+              "sideshiftOrder": {
+                "depositAddress": "9BimVvU1KaNwWcfteh377vnp5k643dQYrTNn91syNmnL",
+                "expiresAt": "2026-06-02T05:03:18.858Z",
+                "extraId": null
+              }
+            },
+            "transactionId": "851683cc-0aae-443a-b082-15b1d7dc6112",
+            "txHash": "2PXoSS7f2wJWASipFJw9fQTfG5kHv2MEnk3yKWJpvwWFmQirsWn39XMQZksvLhL6YnmtZPyaBwdhRbTzdXTaxhP8"
+          },
+          {
+            "type": "SWAP",
+            "chain": "BTC",
+            "fromAddress": "bc1qshw69ddj08e4e0ndz4qdlfjatqmuwu9uya6h8h",
+            "nativeAmount": 0.000070578,
+            "expectedEthAmount": "0.00253835",
+            "walletValueUSD": 6.099972012,
+            "transactionValueUSD": 5.308146753,
+            "estimatedGas": 0.10193925900000016,
+            "status": "CONFIRMED",
+            "swapDetails": {
+              "status": "order_created",
+              "orderId": "daa131091571316955d2",
+              "sideshiftOrder": {
+                "depositAddress": "38HPDuiS1dbwPEy7MJZJcD5vkdeD9Vm85v",
+                "expiresAt": "2026-06-02T05:03:18.096Z",
+                "extraId": null
+              }
+            },
+            "transactionId": "95302c85-2b3a-4712-a502-8324b4c2bbc1",
+            "txHash": "e670a2571d50256989359f8a479ec9324125c62ce724c9a858f0fef2b99489f9"
+          }
+        ]
+      },
+      "transactionHashes": [],
+      "createdAt": "2026-05-26T05:03:14.728Z",
+      "completedAt": "2026-05-26T05:11:41.748Z",
+      "estimatedTotalGas": 0.4850970064799996,
+      "updatedAt": "2026-05-26T05:11:41.748Z"
+    },
+    {
+      "id": "413f8535-9381-4908-9040-0f6576a42eb8",
+      "clientId": "0921623d-8f05-4bc6-a154-f37830341dc6",
+      "recipientAddress": "0xa8c00bd4ee3DF25010984692AACCDfc4c0e57469",
+      "netAmountUsd": 6.466648565090128,
+      "platformFee": 0.34824466132053306,
+      "totalAmountUsd": 6.964893226410661,
+      "chain": "ETH",
+      "status": "COMPLETED",
+      "type": "WITHDRAWAL",
+      "withdrawalPlan": {
+        "transfers": [
+          {
+            "type": "DIRECT_TRANSFER",
+            "chain": "ETH",
+            "fromAddress": "0x8462Dc02DCCBD5de5483BE59717E948a3250df6E",
+            "nativeAmount": 0.0029961541494489376,
+            "expectedEthAmount": 0.002924457569375807,
+            "walletValueUSD": 6.268403903769595,
+            "transactionValueUSD": 6.118403903769595,
+            "estimatedGas": 0.15,
+            "status": "CONFIRMED",
+            "swapDetails": {
+              "status": "order_created",
+              "orderId": "direct_transfer_89zw4y36y",
+              "sideshiftOrder": {
+                "depositAddress": "0xa8c00bd4ee3DF25010984692AACCDfc4c0e57469",
+                "expiresAt": "2026-05-26T05:13:00.353Z",
+                "extraId": null
+              }
+            },
+            "transactionId": "0a13d15b-f531-42cb-9181-11acf8098225",
+            "txHash": "0xc648d37ed0878fa1588ddd0f68cdc8f8d0ffd8b649170c788be879e7d1bed507"
+          }
+        ]
+      },
+      "transactionHashes": [],
+      "createdAt": "2026-05-26T05:13:00.353Z",
+      "completedAt": "2026-05-26T05:13:17.014Z",
+      "estimatedTotalGas": 0.15,
+      "updatedAt": "2026-05-26T05:13:17.014Z"
+    }
+  ],
   "transactions": [
     {
       "id": "a220348b-5be0-4d1a-938d-227ad6ae4081",
@@ -142,7 +291,320 @@
       "createdAt": "2026-05-22T18:39:30.841Z",
       "completedAt": "2026-05-22T18:39:51.411Z",
       "broadcastedAt": "2026-05-22T18:39:30.841Z"
+    },
+    {
+      "id": "e11baffc-3244-493c-9f7a-45329fd191b5",
+      "clientId": "0921623d-8f05-4bc6-a154-f37830341dc6",
+      "transactionHash": "0xb1afff0dd2f3c9d10b31b0c14005e37bb8fbd5825da5001b2916239ae0fdaf32",
+      "orderId": "direct_transfer_p2al7aaf8",
+      "type": "DIRECT_TRANSFER",
+      "chain": "ETH",
+      "nativeAmount": 0.0029951638520592915,
+      "usdAmount": 6.169436308182858,
+      "status": "CONFIRMED",
+      "fromAddress": "0x8462Dc02DCCBD5de5483BE59717E948a3250df6E",
+      "toAddress": "0xa8c00bd4ee3DF25010984692AACCDfc4c0e57469",
+      "finalAddress": "0xa8c00bd4ee3DF25010984692AACCDfc4c0e57469",
+      "blockNumber": null,
+      "createdAt": "2026-05-25T21:32:05.625Z",
+      "completedAt": "2026-05-25T21:32:15.979Z",
+      "broadcastedAt": "2026-05-25T21:32:05.626Z"
+    },
+    {
+      "id": "0b987e7e-6d3b-41f1-a337-a047c05950f8",
+      "clientId": "0921623d-8f05-4bc6-a154-f37830341dc6",
+      "transactionHash": "0x80bc0bc17d96714bc575fde3abab569963e62b7fda2f5b6fea7e849dab576bd5",
+      "orderId": "direct_transfer_ilsg752qu",
+      "type": "DIRECT_TRANSFER",
+      "chain": "ETH",
+      "nativeAmount": 0.0029973548911701375,
+      "usdAmount": 6.118008601317168,
+      "status": "FAILED",
+      "fromAddress": "0x8462Dc02DCCBD5de5483BE59717E948a3250df6E",
+      "toAddress": "0xa8c00bd4ee3DF25010984692AACCDfc4c0e57469",
+      "finalAddress": "0xa8c00bd4ee3DF25010984692AACCDfc4c0e57469",
+      "blockNumber": null,
+      "createdAt": "2026-05-26T05:03:20.651Z",
+      "completedAt": null,
+      "broadcastedAt": "2026-05-26T05:03:20.652Z",
+      "failureReason": "ORDER_FAILED",
+      "failureMessage": "Sideshift order direct_transfer_ilsg752qu failed or expired",
+      "failedAt": "2026-05-26T05:04:05.191Z"
+    },
+    {
+      "id": "8c64f393-f4c6-4466-bcc8-902f70f30ac9",
+      "clientId": "0921623d-8f05-4bc6-a154-f37830341dc6",
+      "transactionHash": "0217163b89d7978087d5f704f28cbcc01101830daab6cf96b61250400f930c34",
+      "orderId": "a5a7eed1d1fc321ec62d",
+      "type": "SWAP",
+      "chain": "LTC",
+      "nativeAmount": 0.11791531799999999,
+      "usdAmount": 6.0562454862,
+      "status": "CONFIRMED",
+      "fromAddress": "LfrqNk5h8c2JFt3wqM9Vm57d8ftrRZAUad",
+      "toAddress": "MEHMvSmur3yLeYT9hg9bHdRBpT47Q4VzCP",
+      "finalAddress": "0xa8c00bd4ee3DF25010984692AACCDfc4c0e57469",
+      "blockNumber": null,
+      "createdAt": "2026-05-26T05:03:22.373Z",
+      "completedAt": "2026-05-26T05:10:30.034Z",
+      "broadcastedAt": "2026-05-26T05:03:22.374Z"
+    },
+    {
+      "id": "851683cc-0aae-443a-b082-15b1d7dc6112",
+      "clientId": "0921623d-8f05-4bc6-a154-f37830341dc6",
+      "transactionHash": "2PXoSS7f2wJWASipFJw9fQTfG5kHv2MEnk3yKWJpvwWFmQirsWn39XMQZksvLhL6YnmtZPyaBwdhRbTzdXTaxhP8",
+      "orderId": "8d29cbf59a936e9daba7",
+      "type": "SWAP",
+      "chain": "SOL",
+      "nativeAmount": 0.065732814,
+      "usdAmount": 5.4348304374,
+      "status": "CONFIRMED",
+      "fromAddress": "8Hd1f2kykXgNdZmY8ZdZhh3VdtHYpoRYRdfapwWqCmwt",
+      "toAddress": "9BimVvU1KaNwWcfteh377vnp5k643dQYrTNn91syNmnL",
+      "finalAddress": "0xa8c00bd4ee3DF25010984692AACCDfc4c0e57469",
+      "blockNumber": null,
+      "createdAt": "2026-05-26T05:03:22.852Z",
+      "completedAt": "2026-05-26T05:04:54.672Z",
+      "broadcastedAt": "2026-05-26T05:03:22.852Z"
+    },
+    {
+      "id": "95302c85-2b3a-4712-a502-8324b4c2bbc1",
+      "clientId": "0921623d-8f05-4bc6-a154-f37830341dc6",
+      "transactionHash": "e670a2571d50256989359f8a479ec9324125c62ce724c9a858f0fef2b99489f9",
+      "orderId": "daa131091571316955d2",
+      "type": "SWAP",
+      "chain": "BTC",
+      "nativeAmount": 0.000070578,
+      "usdAmount": 5.308146753,
+      "status": "CONFIRMED",
+      "fromAddress": "bc1qshw69ddj08e4e0ndz4qdlfjatqmuwu9uya6h8h",
+      "toAddress": "38HPDuiS1dbwPEy7MJZJcD5vkdeD9Vm85v",
+      "finalAddress": "0xa8c00bd4ee3DF25010984692AACCDfc4c0e57469",
+      "blockNumber": null,
+      "createdAt": "2026-05-26T05:03:23.817Z",
+      "completedAt": "2026-05-26T05:11:41.746Z",
+      "broadcastedAt": "2026-05-26T05:03:23.818Z"
+    },
+    {
+      "id": "0a13d15b-f531-42cb-9181-11acf8098225",
+      "clientId": "0921623d-8f05-4bc6-a154-f37830341dc6",
+      "transactionHash": "0xc648d37ed0878fa1588ddd0f68cdc8f8d0ffd8b649170c788be879e7d1bed507",
+      "orderId": "direct_transfer_89zw4y36y",
+      "type": "DIRECT_TRANSFER",
+      "chain": "ETH",
+      "nativeAmount": 0.0029961541494489376,
+      "usdAmount": 6.118403903769595,
+      "status": "CONFIRMED",
+      "fromAddress": "0x8462Dc02DCCBD5de5483BE59717E948a3250df6E",
+      "toAddress": "0xa8c00bd4ee3DF25010984692AACCDfc4c0e57469",
+      "finalAddress": "0xa8c00bd4ee3DF25010984692AACCDfc4c0e57469",
+      "blockNumber": null,
+      "createdAt": "2026-05-26T05:13:01.555Z",
+      "completedAt": "2026-05-26T05:13:17.013Z",
+      "broadcastedAt": "2026-05-26T05:13:01.555Z"
     }
   ],
-  "apiCalls": []
+  "apiCalls": [
+    {
+      "id": "118b3bfd-4029-4a61-9f5f-5a203c52194d",
+      "clientId": "0921623d-8f05-4bc6-a154-f37830341dc6",
+      "endpoint": "/me",
+      "method": "GET",
+      "statusCode": 304,
+      "timestamp": "2026-05-25T16:19:41.746Z"
+    },
+    {
+      "id": "521d70f2-779e-466b-9101-e56379132170",
+      "clientId": "0921623d-8f05-4bc6-a154-f37830341dc6",
+      "endpoint": "/list",
+      "method": "GET",
+      "statusCode": 304,
+      "timestamp": "2026-05-25T16:19:41.778Z"
+    },
+    {
+      "id": "411b71a8-8a82-48dd-8cd2-380cc8dc97b2",
+      "clientId": "0921623d-8f05-4bc6-a154-f37830341dc6",
+      "endpoint": "/list",
+      "method": "GET",
+      "statusCode": 304,
+      "timestamp": "2026-05-25T16:19:41.798Z"
+    },
+    {
+      "id": "f561cc85-c816-4bb5-9da0-bb235c2b7f70",
+      "clientId": "0921623d-8f05-4bc6-a154-f37830341dc6",
+      "endpoint": "/list",
+      "method": "GET",
+      "statusCode": 304,
+      "timestamp": "2026-05-25T16:19:41.817Z"
+    },
+    {
+      "id": "edfd25b4-75e6-478c-bf6e-3c2b6ef4dcb0",
+      "clientId": "0921623d-8f05-4bc6-a154-f37830341dc6",
+      "endpoint": "/me",
+      "method": "GET",
+      "statusCode": 304,
+      "timestamp": "2026-05-25T16:19:50.398Z"
+    },
+    {
+      "id": "0b2e987d-15d8-41e5-9f01-7f986a4c18a3",
+      "clientId": "0921623d-8f05-4bc6-a154-f37830341dc6",
+      "endpoint": "/list",
+      "method": "GET",
+      "statusCode": 304,
+      "timestamp": "2026-05-25T16:19:50.440Z"
+    },
+    {
+      "id": "a934ecec-3e0d-470e-a043-ae8f241fc7cc",
+      "clientId": "0921623d-8f05-4bc6-a154-f37830341dc6",
+      "endpoint": "/list",
+      "method": "GET",
+      "statusCode": 304,
+      "timestamp": "2026-05-25T16:19:50.458Z"
+    },
+    {
+      "id": "2504a446-c3cd-449f-a7a2-ff96fa361c1e",
+      "clientId": "0921623d-8f05-4bc6-a154-f37830341dc6",
+      "endpoint": "/list",
+      "method": "GET",
+      "statusCode": 304,
+      "timestamp": "2026-05-25T16:19:50.491Z"
+    },
+    {
+      "id": "3cc16f71-5540-49a3-9caf-3c9317fc5b5f",
+      "clientId": "0921623d-8f05-4bc6-a154-f37830341dc6",
+      "endpoint": "/list",
+      "method": "GET",
+      "statusCode": 304,
+      "timestamp": "2026-05-25T16:20:00.402Z"
+    },
+    {
+      "id": "c1a654ac-4f79-4cba-bf0d-56dc616f5d81",
+      "clientId": "0921623d-8f05-4bc6-a154-f37830341dc6",
+      "endpoint": "/list",
+      "method": "GET",
+      "statusCode": 304,
+      "timestamp": "2026-05-25T16:20:00.411Z"
+    },
+    {
+      "id": "9f5ce713-ccfd-485b-886b-74bb88018a53",
+      "clientId": "0921623d-8f05-4bc6-a154-f37830341dc6",
+      "endpoint": "/list",
+      "method": "GET",
+      "statusCode": 304,
+      "timestamp": "2026-05-25T16:20:00.420Z"
+    },
+    {
+      "id": "12d586c0-fc58-4f41-8584-06d827cae8f7",
+      "clientId": "0921623d-8f05-4bc6-a154-f37830341dc6",
+      "endpoint": "/me",
+      "method": "GET",
+      "statusCode": 304,
+      "timestamp": "2026-05-25T16:20:10.270Z"
+    },
+    {
+      "id": "84d85580-5742-47b8-852a-32942d459d33",
+      "clientId": "0921623d-8f05-4bc6-a154-f37830341dc6",
+      "endpoint": "/list",
+      "method": "GET",
+      "statusCode": 304,
+      "timestamp": "2026-05-25T16:20:10.308Z"
+    },
+    {
+      "id": "11d443e0-7145-4738-8fa3-9696f8bd8ba2",
+      "clientId": "0921623d-8f05-4bc6-a154-f37830341dc6",
+      "endpoint": "/list",
+      "method": "GET",
+      "statusCode": 304,
+      "timestamp": "2026-05-25T16:20:10.326Z"
+    },
+    {
+      "id": "0bba96f5-84db-4743-bc5f-8a0796bb35af",
+      "clientId": "0921623d-8f05-4bc6-a154-f37830341dc6",
+      "endpoint": "/list",
+      "method": "GET",
+      "statusCode": 304,
+      "timestamp": "2026-05-25T16:20:10.351Z"
+    },
+    {
+      "id": "39314348-3749-4ce0-a2c2-51348f976eb0",
+      "clientId": "0921623d-8f05-4bc6-a154-f37830341dc6",
+      "endpoint": "/list",
+      "method": "GET",
+      "statusCode": 304,
+      "timestamp": "2026-05-25T16:20:20.280Z"
+    },
+    {
+      "id": "18e21114-e941-4963-a92a-ffe15e768331",
+      "clientId": "0921623d-8f05-4bc6-a154-f37830341dc6",
+      "endpoint": "/list",
+      "method": "GET",
+      "statusCode": 304,
+      "timestamp": "2026-05-25T16:20:20.289Z"
+    },
+    {
+      "id": "dd1f6a72-7937-4c69-825a-26f7130eda2b",
+      "clientId": "0921623d-8f05-4bc6-a154-f37830341dc6",
+      "endpoint": "/list",
+      "method": "GET",
+      "statusCode": 304,
+      "timestamp": "2026-05-25T16:20:20.298Z"
+    },
+    {
+      "id": "707a8949-f507-45b7-a072-eb05c6b09a18",
+      "clientId": "0921623d-8f05-4bc6-a154-f37830341dc6",
+      "endpoint": "/list",
+      "method": "GET",
+      "statusCode": 304,
+      "timestamp": "2026-05-25T16:20:30.278Z"
+    },
+    {
+      "id": "d5100d71-5276-41c1-8425-53de33b47218",
+      "clientId": "0921623d-8f05-4bc6-a154-f37830341dc6",
+      "endpoint": "/list",
+      "method": "GET",
+      "statusCode": 304,
+      "timestamp": "2026-05-25T16:20:30.284Z"
+    },
+    {
+      "id": "d2ae094d-894a-4ff0-9c4e-dc1eeee73069",
+      "clientId": "0921623d-8f05-4bc6-a154-f37830341dc6",
+      "endpoint": "/list",
+      "method": "GET",
+      "statusCode": 304,
+      "timestamp": "2026-05-25T16:20:30.289Z"
+    },
+    {
+      "id": "209aff86-bcde-4ed8-a0e2-5c179ee0a544",
+      "clientId": "0921623d-8f05-4bc6-a154-f37830341dc6",
+      "endpoint": "/list",
+      "method": "GET",
+      "statusCode": 200,
+      "timestamp": "2026-05-25T16:20:50.299Z"
+    },
+    {
+      "id": "a40e9871-8419-460b-b093-3f5e848ee422",
+      "clientId": "0921623d-8f05-4bc6-a154-f37830341dc6",
+      "endpoint": "/list",
+      "method": "GET",
+      "statusCode": 304,
+      "timestamp": "2026-05-25T16:20:50.323Z"
+    },
+    {
+      "id": "90050de4-8b66-444a-892a-47b689a918c5",
+      "clientId": "0921623d-8f05-4bc6-a154-f37830341dc6",
+      "endpoint": "/list",
+      "method": "GET",
+      "statusCode": 304,
+      "timestamp": "2026-05-25T16:20:50.333Z"
+    },
+    {
+      "id": "88b35c35-c64f-4e3e-a989-69221a9e57b7",
+      "clientId": "0921623d-8f05-4bc6-a154-f37830341dc6",
+      "endpoint": "/list",
+      "method": "GET",
+      "statusCode": 304,
+      "timestamp": "2026-05-25T16:22:10.660Z"
+    }
+  ],
+  "statusIncidents": []
 }

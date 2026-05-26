@@ -27,6 +27,7 @@ router.get('/me', (req, res, next) => {
       username: user.username,
       createdAt: user.createdAt,
       lastLogin: user.lastLogin,
+      developer: !!user.developer,
     });
   } catch (error) {
     next(error);
@@ -47,6 +48,7 @@ router.get('/', (req, res, next) => {
         username: user.username,
         createdAt: user.createdAt,
         lastLogin: user.lastLogin,
+        developer: !!user.developer,
       }))
     );
   } catch (error) {
@@ -69,6 +71,7 @@ router.get('/:id', (req, res, next) => {
       username: user.username,
       createdAt: user.createdAt,
       lastLogin: user.lastLogin,
+      developer: !!user.developer,
     });
   } catch (error) {
     next(error);

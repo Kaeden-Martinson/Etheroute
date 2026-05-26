@@ -18,19 +18,19 @@ class WalletService {
 
     // Delegate to specialized services
     if (chain === 'ETH') {
-      return EthereumWalletService.createWallet(clientId, null, 'mainnet');
+      return EthereumWalletService.createWallet(clientId, null);
     }
 
     if (chain === 'SOL') {
-      return SolanaWalletService.createWallet(clientId, null, 'mainnet');
+      return SolanaWalletService.createWallet(clientId, null);
     }
 
     if (chain === 'BTC') {
-      return BitcoinWalletService.createWallet(clientId, null, 'mainnet');
+      return BitcoinWalletService.createWallet(clientId, null);
     }
 
     if (chain === 'LTC') {
-      return LitecoinWalletService.createWallet(clientId, null, 'mainnet');
+      return LitecoinWalletService.createWallet(clientId, null);
     }
   }
 

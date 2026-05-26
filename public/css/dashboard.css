@@ -327,8 +327,7 @@ button {
 .info-tooltip {
     position: absolute;
     bottom: 100%;
-    left: 50%;
-    transform: translateX(3.5%);
+    right: -20.25%;
     background: #1a1a1a;
     color: #ffffff;
     padding: 8px 12px;

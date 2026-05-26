@@ -1,7 +1,7 @@
 const API_URL = `${window.location.origin}/api`;
 let totalBalanceUSD = 0;
 let currentDashboardPage = 'overview';  // Track current page to prevent auto-refresh during withdrawal
-window.wallets = [];  // Make wallets globally accessible for withdrawal.js
+let wallets = [];  // Make wallets globally accessible for withdrawal.js
 
 // Withdrawal module variables
 let currentStep = 1;
@@ -80,7 +80,6 @@ async function loadDashboardData() {
         await loadPayouts();
         await loadTransactions();
     } catch (error) {
-        console.error('Error loading dashboard:', error);
     }
 }
 
@@ -90,29 +89,26 @@ async function loadWallets() {
             headers: { 'Authorization': `Bearer ${localStorage.getItem('authToken')}` }
         });
 
-        console.log(`Wallets API response status: ${response.status}`);
-
         if (!response.ok) throw new Error('Failed to load wallets');
 
-        window.wallets = await response.json();
+        wallets = await response.json();
         displayWallets();
         calculateTotalBalance();
     } catch (error) {
-        console.error('Error loading wallets:', error);
     }
 }
 
 function displayWallets() {
     const container = document.getElementById('walletsContainer');
 
-    if (window.wallets.length === 0) {
+    if (wallets.length === 0) {
         container.innerHTML = '<div style="padding: 24px; text-align: center; color: #999;">No wallets created yet. Add one to start receiving payments.</div>';
         return;
     }
 
     // Group wallets by chain
     const byChain = {};
-    window.wallets.forEach(w => {
+    wallets.forEach(w => {
         if (!byChain[w.chain]) byChain[w.chain] = [];
         byChain[w.chain].push(w);
     });
@@ -123,14 +119,13 @@ function displayWallets() {
             <div style="font-size: 12px; font-weight: 600; color: #999; margin-bottom: 8px; text-transform: uppercase;">${chain}</div>
         `;
 
-        console.log(chainWallets)
-
         chainWallets.forEach(w => {
             html += `<div class="wallet-item">
                 <div class="wallet-info">
                     <div class="chain-badge">${chain}</div>
                     <div class="wallet-details">
                         <div class="wallet-address">${w.address.substring(0, 10)}...${w.address.substring(w.address.length - 8)}</div>
+                        ${w.isProcessing ? '<div style="font-size: 11px; color: #e67e00; margin-top: 2px;">⏳ Transaction Processing</div>' : ''}
                     </div>
                 </div>
                 <div>
@@ -149,13 +144,13 @@ function displayWallets() {
     });
 
     container.innerHTML = html;
-    document.getElementById('walletCount').textContent = window.wallets.length;
+    document.getElementById('walletCount').textContent = wallets.length;
     loadSVGIcons();
 }
 
 function calculateTotalBalance() {
     totalBalanceUSD = 0;
-    window.wallets.forEach(w => { totalBalanceUSD += w.balanceUSD; });
+    wallets.forEach(w => { totalBalanceUSD += w.balanceUSD; });
 
     document.getElementById('totalBalanceUSD').textContent = `$${totalBalanceUSD.toFixed(2)}`;
     document.getElementById('availableBalance').textContent = `$${totalBalanceUSD.toFixed(2)}`;
@@ -168,8 +163,30 @@ function updateWithdrawalStatus() {
     const statusText = statusEl.querySelector('.status-text');
     const statusBadge = statusEl.querySelector('.status-badge');
     const tooltip = statusEl.querySelector('.info-tooltip');
+
+    const processingWallets = wallets.filter(w => w.isProcessing);
     
-    if (totalBalanceUSD >= 5) {
+    if (processingWallets.length > 0 && totalBalanceUSD < 5) {
+        // Processing transactions and insufficient balance
+        statusText.textContent = 'Transaction Processing';
+        statusBadge.className = 'status-badge unavailable';
+        statusBadge.setAttribute('data-icon', 'alert');
+        statusBadge.textContent = '';
+        tooltip.style.display = 'block';
+        tooltip.textContent = `${processingWallets.length} wallet(s) have transactions in progress. Minimum $5 required.`;
+        statusEl.style.cursor = 'default';
+        statusEl.onclick = null;
+    } else if (processingWallets.length > 0) {
+        // Processing transactions but may have other eligible wallets
+        statusText.textContent = 'Able to Withdraw';
+        statusBadge.className = 'status-badge available';
+        statusBadge.setAttribute('data-icon', 'check');
+        statusBadge.textContent = '';
+        tooltip.style.display = 'block';
+        tooltip.textContent = `${processingWallets.map(w => w.chain).join(', ')} wallet(s) locked — transaction in progress`;
+        statusEl.style.cursor = 'pointer';
+        statusEl.onclick = () => switchDashboardPage('withdrawal');
+    } else if (totalBalanceUSD >= 5) {
         // Able to withdraw
         statusText.textContent = 'Able to Withdraw';
         statusBadge.className = 'status-badge available';
@@ -191,6 +208,7 @@ function updateWithdrawalStatus() {
         statusEl.onclick = null;
         loadSVGIcons();
     }
+    loadSVGIcons();
 }
 
 async function loadPayouts() {
@@ -221,7 +239,6 @@ async function loadPayouts() {
             if (container) container.style.display = 'none';
         }
     } catch (error) {
-        console.error('Error loading payouts:', error);
         const noPayouts = document.getElementById('noPayouts');
         const container = document.getElementById('payoutsContainer');
         if (noPayouts) noPayouts.style.display = 'block';
@@ -237,6 +254,7 @@ function displayPayouts(payouts) {
         const statusClass = `status-${payout.status.toLowerCase()}`;
         const createdDate = new Date(payout.createdAt).toLocaleString();
         const transfers = payout.withdrawalPlan?.transfers || [];
+        const gasUsd = payout.estimatedTotalGas || 0;
 
         html += `
             <div class="payout-item">
@@ -248,7 +266,8 @@ function displayPayouts(payouts) {
                     <div class="payout-details">
                         <div><strong>Total:</strong> $${payout.totalAmountUsd.toFixed(2)}</div>
                         <div><strong>Net:</strong> $${payout.netAmountUsd.toFixed(2)}</div>
-                        <div><strong>Fee:</strong> $${payout.platformFee.toFixed(2)}</div>
+                        <div><strong>Service Fee (5%):</strong> $${payout.platformFee.toFixed(2)}</div>
+                        <div><strong>Gas:</strong> $${gasUsd.toFixed(2)}</div>
                         <div><strong>Created:</strong> ${createdDate}</div>
                     </div>
                     <div class="payout-chains">
@@ -285,6 +304,7 @@ function displayPayoutsList(payouts) {
         const statusClass = `status-${payout.status.toLowerCase()}`;
         const createdDate = new Date(payout.createdAt).toLocaleString();
         const transfers = payout.withdrawalPlan?.transfers || [];
+        const gasUsd = payout.estimatedTotalGas || 0;
 
         html += `
             <div class="payout-item">
@@ -296,7 +316,8 @@ function displayPayoutsList(payouts) {
                     <div class="payout-details">
                         <div><strong>Total:</strong> $${payout.totalAmountUsd.toFixed(2)}</div>
                         <div><strong>Net:</strong> $${payout.netAmountUsd.toFixed(2)}</div>
-                        <div><strong>Fee:</strong> $${payout.platformFee.toFixed(2)}</div>
+                        <div><strong>Service Fee (5%):</strong> $${payout.platformFee.toFixed(2)}</div>
+                        <div><strong>Gas:</strong> $${gasUsd.toFixed(2)}</div>
                         <div><strong>Created:</strong> ${createdDate}</div>
                     </div>
                     <div class="payout-chains">
@@ -384,7 +405,6 @@ async function loadTransactions() {
             displayTransactions(transactions);
         }
     } catch (error) {
-        console.error('Error loading transactions:', error);
     }
 }
 
@@ -510,8 +530,7 @@ async function submitWithdrawal(e) {
             },
             body: JSON.stringify({
                 clientId: localStorage.getItem('clientId'),
-                recipientAddress: document.getElementById('withdrawalAddress').value,
-                selectedChains: ['ETH']
+                recipientAddress: document.getElementById('withdrawalAddress').value
             })
         });
 
@@ -765,8 +784,15 @@ async function loadAPICallsChart() {
                 }
             }
         });
+
+        // Update subtitle with live counts
+        const periodLabel = { hour: 'last hour', day: 'last 24h', week: 'last 7 days' }[currentChartPeriod] || '';
+        const periodTotal = data.periodTotal || 0;
+        const subtitleEl = document.getElementById('apiCallsSubtitle');
+        if (subtitleEl) {
+            subtitleEl.textContent = `${periodTotal} call${periodTotal !== 1 ? 's' : ''} in the ${periodLabel} · ${data.totalCalls} total`;
+        }
     } catch (error) {
-        console.error('Error loading API calls chart:', error);
     }
 }
 
@@ -796,21 +822,20 @@ async function loadTransactionsList() {
             document.getElementById('allTransactionsList').innerHTML = '<div style="padding: 24px; text-align: center; color: #999;">No transactions found.</div>';
         }
     } catch (error) {
-        console.error('Error loading transactions list:', error);
         document.getElementById('allTransactionsList').innerHTML = '<div style="padding: 24px; text-align: center; color: #999;">Error loading transactions.</div>';
     }
 }
 
 function loadWalletsList() {
     // Display all wallets for the wallets page, grouped by chain
-    if (!window.wallets || window.wallets.length === 0) {
+    if (!wallets || wallets.length === 0) {
         document.getElementById('allWalletsList').innerHTML = '<div style="padding: 24px; text-align: center; color: #999;">No wallets created yet. Click "Add Wallet" to create one.</div>';
         return;
     }
 
     // Group wallets by chain
     const byChain = {};
-    window.wallets.forEach(w => {
+    wallets.forEach(w => {
         if (!byChain[w.chain]) byChain[w.chain] = [];
         byChain[w.chain].push(w);
     });
@@ -827,6 +852,7 @@ function loadWalletsList() {
                     <div class="chain-badge">${chain}</div>
                     <div class="wallet-details">
                         <div class="wallet-address">${w.address.substring(0, 10)}...${w.address.substring(w.address.length - 8)}</div>
+                        ${w.isProcessing ? '<div style="font-size: 11px; color: #e67e00; margin-top: 2px;">⏳ Transaction Processing</div>' : ''}
                     </div>
                 </div>
                 <div>
@@ -930,7 +956,7 @@ async function loadPayoutsList() {
         
         // Show all pending, processing, and completed payouts
         const allPayouts = Array.isArray(payouts) ? payouts.filter(p => 
-            p.status === 'PENDING' || p.status === 'PROCESSING' || p.status === 'COMPLETED' || p.status === 'FAILED'
+            p.status === 'PENDING' || p.status === 'PROCESSING' || p.status === 'COMPLETED' || p.status === 'FAILED' || p.status === 'PARTIAL'
         ) : [];
 
         if (allPayouts && allPayouts.length > 0) {
@@ -939,7 +965,6 @@ async function loadPayoutsList() {
             document.getElementById('allPayoutsList').innerHTML = '<div style="padding: 24px; text-align: center; color: #999;">No payouts found.</div>';
         }
     } catch (error) {
-        console.error('Error loading payouts list:', error);
         document.getElementById('allPayoutsList').innerHTML = '<div style="padding: 24px; text-align: center; color: #999;">Error loading payouts.</div>';
     }
 }
@@ -954,6 +979,9 @@ window.addEventListener('DOMContentLoaded', () => {
     document.getElementById('weekBtn').classList.add('btn-secondary');
     document.getElementById('weekBtn').classList.remove('btn-primary');
     loadAPICallsChart();
+
+    // Auto-refresh the API calls chart every 30 seconds
+    setInterval(loadAPICallsChart, 30000);
 });
 
 // ========== WITHDRAWAL SECTION (from withdrawal.js) ==========
@@ -994,8 +1022,9 @@ async function loadWithdrawalWallets() {
 
     try {
         // If wallets are already loaded (from dashboard context), use them
-        if (window.wallets && Array.isArray(window.wallets) && window.wallets.length > 0) {
-            displayWalletSelection(window.wallets);
+        if (wallets && Array.isArray(wallets) && wallets.length > 0) {
+            displayWalletSelection(wallets);
+            msg.innerHTML = '';
             goToStep(2);
             return;
         }
@@ -1005,12 +1034,13 @@ async function loadWithdrawalWallets() {
             method: 'GET',
             headers: { 'Authorization': `Bearer ${localStorage.getItem('authToken')}` }
         });
-        window.wallets = await response.json();
-        if (!response.ok || !Array.isArray(window.wallets) || window.wallets.length === 0) {
+        wallets = await response.json();
+        if (!response.ok || !Array.isArray(wallets) || wallets.length === 0) {
             msg.innerHTML = '<div class="alert alert-error">No wallets found</div>';
             return;
         }
-        displayWalletSelection(window.wallets);
+        displayWalletSelection(wallets);
+        msg.innerHTML = '';
         goToStep(2);
     } catch (error) {
         msg.innerHTML = `<div class="alert alert-error">Error: ${error.message}</div>`;
@@ -1023,11 +1053,13 @@ function displayWalletSelection(wallets) {
     let html = '';
     wallets.forEach(wallet => {
         const balanceUSD = wallet.balanceUSD || 0;
-        const isEligible = balanceUSD >= 5;
+        const isEligible = balanceUSD >= 5 && !wallet.isProcessing;
         if (isEligible) eligible++;
-        const status = isEligible ? '✓ Ready' : '✗ Below $5 USD';
+        const status = wallet.isProcessing
+            ? '⏳ Transaction processing'
+            : (isEligible ? '✓ Ready' : '✗ Below $5 USD');
         const classes = isEligible ? '' : 'disabled';
-        html += `<div class="wallet-card ${classes}"><div class="wallet-info"><div class="wallet-chain">${wallet.chain}</div><div class="wallet-balance">${wallet.balance} ${wallet.chain} = $${balanceUSD.toFixed(2)} USD - ${status}</div></div><input type="checkbox" name="withdrawChain" value="${wallet.chain}" class="wallet-checkbox" ${isEligible ? '' : 'disabled'} /></div>`;
+        html += `<div class="wallet-card ${classes}"><div class="wallet-info"><div class="wallet-chain">${wallet.chain}</div><div class="wallet-balance">${wallet.balance} ${wallet.chain} = $${balanceUSD.toFixed(2)} USD - ${status}</div></div><input type="checkbox" name="withdrawChain" value="${wallet.address}" class="wallet-checkbox" ${isEligible ? '' : 'disabled'} /></div>`;
     });
     container.innerHTML = html;
     document.getElementById('step2-message').innerHTML = `<div class="alert alert-success">✓ Found ${eligible} wallet(s) ready</div>`;
@@ -1035,15 +1067,23 @@ function displayWalletSelection(wallets) {
 
 async function getPreview() {
     const recipientAddress = document.getElementById('recipientAddress').value.trim();
-    const selectedChains = Array.from(document.querySelectorAll('input[name="withdrawChain"]:checked')).map(cb => cb.value);
-    if (selectedChains.length === 0) {
-        document.getElementById('step2-message').innerHTML = '<div class="alert alert-error">Please select at least one chain</div>';
+    const selectedWallets = Array.from(document.querySelectorAll('input[name="withdrawChain"]:checked')).map(cb => cb.value);
+    if (selectedWallets.length === 0) {
+        document.getElementById('step2-message').innerHTML = '<div class="alert alert-error">Please select at least one wallet</div>';
         return;
     }
     document.getElementById('step2-message').innerHTML = '<div class="alert alert-info"><span class="loading-spinner"></span>Loading preview...</div>';
     try {
-        const response = await fetch(`${API_URL}/withdrawal/preview?recipientAddress=${encodeURIComponent(recipientAddress)}&selectedChains=${selectedChains.join(',')}`, {
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('authToken')}` }
+        const response = await fetch(`${API_URL}/withdrawal/preview`, {
+            method: 'POST',
+            headers: { 
+                'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                recipientAddress,
+                selectedWallets
+            })
         });
         const result = await response.json();
         if (!response.ok) {
@@ -1051,11 +1091,9 @@ async function getPreview() {
             return;
         }
         previewData = result.data;
-        console.log('Preview data:', previewData);
         displayPreview();
         goToStep(3);
     } catch (error) {
-        console.error('Preview error:', error);
         document.getElementById('step2-message').innerHTML = `<div class="alert alert-error">Error: ${error.message}</div>`;
     }
 }
@@ -1064,22 +1102,22 @@ function displayPreview() {
     let html = '<div class="summary-box"><div class="summary-title">Withdrawal Summary</div>';
     const data = previewData;
     
-    // Get the selected chains and calculate per-chain breakdown
-    const selectedChains = Array.from(document.querySelectorAll('input[name="withdrawChain"]:checked')).map(cb => cb.value);
+    // Get the selected wallets and calculate per-wallet breakdown
+    const selectedWallets = Array.from(document.querySelectorAll('input[name="withdrawChain"]:checked')).map(cb => cb.value);
     
-    if (selectedChains.length > 0 && window.wallets) {
+    if (selectedWallets.length > 0 && wallets) {
         let chainHtml = '';
         let totalUsd = 0;
         let totalPlatformFee = 0;
         let totalNetUsd = 0;
         
         // First pass: calculate totals
-        selectedChains.forEach(chainName => {
-            const wallet = window.wallets.find(w => w.chain === chainName);
+        selectedWallets.forEach(walletAddress => {
+            const wallet = wallets.find(w => w.address === walletAddress);
             if (wallet) {
                 const chainUsd = (wallet.balanceUSD || 0);
                 const platformFee = chainUsd * 0.05;
-                const gasUsd = data.gasPerChain && data.gasPerChain[chainName] ? data.gasPerChain[chainName] : 0.15;
+                const gasUsd = data.gasPerChain && data.gasPerChain[wallet.chain] ? data.gasPerChain[wallet.chain] : 0.15;
                 
                 totalUsd += chainUsd;
                 totalPlatformFee += platformFee;
@@ -1088,13 +1126,13 @@ function displayPreview() {
         
         totalNetUsd = totalUsd - totalPlatformFee - data.totalGasUsd;
         
-        // Second pass: render per-chain items
-        selectedChains.forEach(chainName => {
-            const wallet = window.wallets.find(w => w.chain === chainName);
+        // Second pass: render per-wallet items
+        selectedWallets.forEach(walletAddress => {
+            const wallet = wallets.find(w => w.address === walletAddress);
             if (wallet) {
                 const chainUsd = (wallet.balanceUSD || 0);
                 const chainPlatformFee = chainUsd * 0.05;
-                const chainGasUsd = data.gasPerChain && data.gasPerChain[chainName] ? data.gasPerChain[chainName] : 0.15;
+                const chainGasUsd = data.gasPerChain && data.gasPerChain[wallet.chain] ? data.gasPerChain[wallet.chain] : 0.15;
                 const chainNetUsd = chainUsd - chainPlatformFee - chainGasUsd;
                 
                 chainHtml += `<div class="preview-item" style="margin-bottom: 16px; padding: 12px; background: #f9f9f9; border-radius: 6px;">
@@ -1130,17 +1168,17 @@ function displayFinalSummary() {
     
     let html = '<div class="summary-box"><div class="summary-title">Final Summary</div>';
     
-    // Get the selected chains and calculate per-chain breakdown
-    const selectedChains = Array.from(document.querySelectorAll('input[name="withdrawChain"]:checked')).map(cb => cb.value);
+    // Get the selected wallets and calculate per-wallet breakdown
+    const selectedWallets = Array.from(document.querySelectorAll('input[name="withdrawChain"]:checked')).map(cb => cb.value);
     
-    if (selectedChains.length > 0 && window.wallets) {
+    if (selectedWallets.length > 0 && wallets) {
         let totalUsd = 0;
         let totalPlatformFee = 0;
         let totalNetUsd = 0;
         
         // First pass: calculate totals
-        selectedChains.forEach(chainName => {
-            const wallet = window.wallets.find(w => w.chain === chainName);
+        selectedWallets.forEach(walletAddress => {
+            const wallet = wallets.find(w => w.address === walletAddress);
             if (wallet) {
                 const chainUsd = (wallet.balanceUSD || 0);
                 const platformFee = chainUsd * 0.05;
@@ -1166,7 +1204,7 @@ function displayFinalSummary() {
 
 async function processWithdrawal() {
     const recipientAddress = document.getElementById('recipientAddress').value.trim();
-    const selectedChains = Array.from(document.querySelectorAll('input[name="withdrawChain"]:checked')).map(cb => cb.value);
+    const selectedWallets = Array.from(document.querySelectorAll('input[name="withdrawChain"]:checked')).map(cb => cb.value);
     const confirmBtn = document.getElementById('confirmBtn');
     confirmBtn.disabled = true;
     confirmBtn.innerHTML = '<span class="loading-spinner"></span>Processing...';
@@ -1182,7 +1220,7 @@ async function processWithdrawal() {
             body: JSON.stringify({
                 clientId: localStorage.getItem('clientId'),
                 recipientAddress,
-                selectedChains
+                selectedWallets
             })
         });
         const result = await response.json();

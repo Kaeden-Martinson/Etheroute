@@ -38,7 +38,7 @@ class BitcoinWalletService {
    * @param {string} network - Network: mainnet, testnet, regtest
    * @returns {Object} Wallet object with address, privateKey, publicKey, mnemonic
    */
-  generateWalletFromMnemonic(mnemonic = null, network = 'mainnet') {
+  generateWalletFromMnemonic(mnemonic = null) {
     try {
       // Generate or use provided mnemonic
       if (!mnemonic) {
@@ -51,16 +51,16 @@ class BitcoinWalletService {
       const seed = bip39.mnemonicToSeedSync(mnemonic);
 
       // Create root key
-      const root = bip32.fromSeed(seed, this.networks[network]);
+      const root = bip32.fromSeed(seed, this.networks.mainnet);
 
-      // Bitcoin uses BIP44 path: m/44'/0'/0'/0/0 for mainnet, m/44'/1'/0'/0/0 for testnet
-      const derivationPath = this.networkConfig[network].derivation;
+      // Bitcoin uses BIP44 path: m/44'/0'/0'/0/0 for mainnet
+      const derivationPath = this.networkConfig.mainnet.derivation;
       const derived = root.derivePath(derivationPath);
 
       // Generate P2WPKH address (SegWit/Bech32 format: bc1...)
       const { address } = bitcoin.payments.p2wpkh({
         pubkey: derived.publicKey,
-        network: this.networks[network],
+        network: this.networks.mainnet,
       });
 
       return {
@@ -70,8 +70,8 @@ class BitcoinWalletService {
         wif: derived.toWIF(), // Wallet Import Format
         mnemonic: mnemonic,
         derivationPath: derivationPath,
-        network: network,
-        networkName: this.networkConfig[network].name,
+        network: 'mainnet',
+        networkName: this.networkConfig.mainnet.name,
       };
     } catch (error) {
       throw new Error(`Failed to generate Bitcoin wallet: ${error.message}`);
@@ -84,12 +84,9 @@ class BitcoinWalletService {
    * @param {string} network - Network to query
    * @returns {Promise<Object>} Balance information
    */
-  async getBalance(address, network = 'mainnet') {
+  async getBalance(address) {
     try {
-      const endpoint = this.apiEndpoints[network];
-      if (!endpoint) {
-        throw new Error('Invalid network for balance query');
-      }
+      const endpoint = this.apiEndpoints.mainnet;
 
       const response = await ProxyService.fetch(`${endpoint}/address/${address}`);
 
@@ -102,7 +99,7 @@ class BitcoinWalletService {
           address,
           balanceSatoshis: 0,
           balanceBTC: 0,
-          network,
+          network: 'mainnet',
           nTransactions: 0,
           timestamp: new Date().toISOString(),
           status: 'rate_limited',
@@ -123,7 +120,7 @@ class BitcoinWalletService {
         address,
         balanceSatoshis,
         balanceBTC,
-        network,
+        network: 'mainnet',
         nTransactions: data.chain_stats?.tx_count || 0,
         timestamp: new Date().toISOString(),
         status: 'success',
@@ -132,7 +129,7 @@ class BitcoinWalletService {
       console.error(`[BitcoinWalletService] Error getting balance: ${error.message}`);
       return {
         address,
-        network,
+        network: 'mainnet',
         status: 'error',
         error: error.message,
         timestamp: new Date().toISOString(),
@@ -146,9 +143,9 @@ class BitcoinWalletService {
    * @param {string} network - Bitcoin network
    * @returns {Promise<Object>} Updated balance info
    */
-  async updateBalance(wallet, bitcoinToUsdRate, network = 'mainnet') {
+  async updateBalance(wallet, bitcoinToUsdRate) {
     try {
-      const balanceInfo = await this.getBalance(wallet.address, network);
+      const balanceInfo = await this.getBalance(wallet.address);
 
       if (balanceInfo.status === 'success') {
         // Update in database
@@ -157,6 +154,8 @@ class BitcoinWalletService {
           balanceUSD: balanceInfo.balanceBTC * bitcoinToUsdRate,
           lastUpdated: new Date().toISOString(),
         });
+
+        balanceInfo.balance = balanceInfo.balanceBTC * bitcoinToUsdRate; // For consistency in returned object
       }
 
       return balanceInfo;
@@ -177,12 +176,9 @@ class BitcoinWalletService {
    * @param {string} network - Network to query
    * @returns {Promise<Array>} Recent transactions
    */
-  async getTransactionHistory(address, limit = 10, network = 'mainnet') {
+  async getTransactionHistory(address, limit = 10) {
     try {
-      const endpoint = this.apiEndpoints[network];
-      if (!endpoint) {
-        throw new Error('Invalid network for transaction query');
-      }
+      const endpoint = this.apiEndpoints.mainnet;
 
       const response = await ProxyService.fetch(`${endpoint}/address/${address}/txs`);
       
@@ -209,7 +205,7 @@ class BitcoinWalletService {
 
       return {
         address,
-        network,
+        network: 'mainnet',
         transactions,
         status: 'success',
         timestamp: new Date().toISOString(),
@@ -217,7 +213,7 @@ class BitcoinWalletService {
     } catch (error) {
       return {
         address,
-        network,
+        network: 'mainnet',
         status: 'error',
         error: error.message,
       };
@@ -228,18 +224,12 @@ class BitcoinWalletService {
    * Create a wallet in database
    * @param {string} clientId - Client ID
    * @param {string} mnemonic - Optional mnemonic
-   * @param {string} network - Bitcoin network (mainnet, testnet, regtest)
    * @returns {Object} Wallet document
    */
-  createWallet(clientId, mnemonic = null, network = 'mainnet') {
+  createWallet(clientId, mnemonic = null) {
     try {
-      // Validate network
-      if (!this.networks[network]) {
-        throw new Error(`Invalid network: ${network}`);
-      }
-
       // Generate wallet
-      const walletData = this.generateWalletFromMnemonic(mnemonic, network);
+      const walletData = this.generateWalletFromMnemonic(mnemonic);
 
       // Create wallet document
       const wallet = {
@@ -247,7 +237,7 @@ class BitcoinWalletService {
         clientId,
         address: walletData.address,
         chain: 'BTC',
-        network,
+        network: 'mainnet',
         privateKey: walletData.privateKey,
         publicKey: walletData.publicKey,
         wif: walletData.wif, // Wallet Import Format
@@ -255,6 +245,7 @@ class BitcoinWalletService {
         derivationPath: walletData.derivationPath,
         balance: 0,
         balanceUSD: 0,
+        serviceSubtractions: 0,
         lastUpdated: new Date().toISOString(),
         isActive: true,
         createdAt: new Date().toISOString(),
@@ -275,36 +266,23 @@ class BitcoinWalletService {
    */
   async estimateFee(targetConfirmations = 6) {
     try {
-      const response = await fetch(this.rpcEndpoints.mainnet, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          jsonrpc: '2.0',
-          id: 1,
-          method: 'estimatesmartfee',
-          params: [targetConfirmations],
-        }),
-      });
+      // mempool.space returns real-time fee rates in sat/vB
+      const res = await fetch(`${this.apiEndpoints.mainnet}/v1/fees/recommended`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
-      if (!response.ok) {
-        console.warn('[BitcoinWalletService] Fee estimation failed, using fallback');
-        return 2000; // Fallback: 2000 sats
-      }
+      const fees = await res.json();
+      // fastestFee ≈ next block, halfHourFee ≈ 3 blocks, hourFee ≈ 6 blocks
+      let feeRateSatPerVb;
+      if (targetConfirmations <= 1)      feeRateSatPerVb = fees.fastestFee;
+      else if (targetConfirmations <= 3) feeRateSatPerVb = fees.halfHourFee;
+      else                               feeRateSatPerVb = fees.hourFee;
 
-      const data = await response.json();
+      // P2WPKH SegWit 1-in 2-out transaction: overhead=10 + input=68 + output=31×2 = 140 vB
+      const txSizeVBytes = 141;
+      const feeSatoshis = Math.ceil(feeRateSatPerVb * txSizeVBytes);
 
-      if (data.error || !data.result?.feerate) {
-        console.warn('[BitcoinWalletService] Could not estimate fee, using fallback');
-        return 2000;
-      }
-
-      // feerate is in BTC/kB, convert to satoshis for typical tx size (~200 bytes)
-      const feeRateBtcPerKb = data.result.feerate;
-      const txSizeBytes = 200; // Typical SegWit transfer
-      const feeSatoshis = Math.ceil((feeRateBtcPerKb * 100000000 * txSizeBytes) / 1000);
-
-      console.log(`[BitcoinWalletService] Estimated fee: ${feeSatoshis} sats (rate: ${feeRateBtcPerKb} BTC/kB)`);
-      return Math.max(feeSatoshis, 500); // Minimum 500 sats
+      console.log(`[BitcoinWalletService] Fee rate: ${feeRateSatPerVb} sat/vB → ${feeSatoshis} sats (${txSizeVBytes} vB)`);
+      return Math.max(feeSatoshis, 500);
     } catch (error) {
       console.error(`[BitcoinWalletService] Fee estimation error: ${error.message}`);
       return 2000; // Fallback

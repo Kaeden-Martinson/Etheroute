@@ -4,18 +4,13 @@
  */
 
 const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
-const { HttpsProxyAgent } = require('https-proxy-agent');
 const { ethers } = require('ethers');
+const sideshiftAccountService = require('./SideshiftAccountService');
 
 class SideshiftService {
   constructor(priceService) {
     this.priceService = priceService;
     this.apiUrl = 'https://sideshift.ai/api/v2';
-    this.affiliateId = "XTesK2Df1D";
-    this.sideshiftSecret = "ba6dbfe866dba62151574fedb0f85f68";
-
-    this.proxyUrl = "http://voidhacksdatacenter:webshare@107.181.142.233:5826";
-    this.httpAgent = new HttpsProxyAgent(this.proxyUrl);
 
     // Chain to Sideshift asset mappings
     this.assetMap = {
@@ -44,6 +39,8 @@ class SideshiftService {
       }
     };
 
+    const { account, agent, affiliateId, secret } = sideshiftAccountService.getAccount('quote');
+
     const requestData = {
       depositCoin: this.assetMap[fromChain] || fromChain.toLowerCase(),
       depositNetwork: 'mainnet',
@@ -51,19 +48,21 @@ class SideshiftService {
       settleNetwork: 'mainnet',
       depositAmount: amount.toFixed(8).toString(), // Sideshift expects string amounts with up to 8 decimals
       settleAmount: null,
-      affiliateId: this.affiliateId,
+      affiliateId,
     }
 
     try {
       const response = await fetch(`${this.apiUrl}/quotes`, {
         method: 'POST',
-        agent: this.httpAgent,
+        agent,
         headers: {
           'Content-Type': 'application/json',
-          'x-sideshift-secret': this.sideshiftSecret
+          'x-sideshift-secret': secret
         },
         body: JSON.stringify(requestData)
       });
+
+      sideshiftAccountService.recordUsage(account.id, 'quote');
 
       if (!response.ok) {
         console.log(response)
@@ -105,6 +104,8 @@ class SideshiftService {
         refundAddress,
       } = params;
 
+      const { account, agent, affiliateId, secret } = sideshiftAccountService.getAccount('shift');
+
       const from = this.assetMap[fromChain] || fromChain.toLowerCase();
       const to = this.assetMap[toChain] || toChain.toLowerCase();
 
@@ -115,18 +116,20 @@ class SideshiftService {
         settleCoin: to,
         settleAddress: destinationAddress,
         refundAddress: refundAddress,
-        affiliateId: this.affiliateId,
+        affiliateId,
       };
 
       const response = await fetch(`${this.apiUrl}/shifts/variable`, {
         method: 'POST',
-        agent: this.httpAgent,
+        agent,
         headers: {
-          'x-sideshift-secret': this.sideshiftSecret,
+          'x-sideshift-secret': secret,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(requestBody),
       });
+
+      sideshiftAccountService.recordUsage(account.id, 'shift');
 
       if (!response.ok) {
         const error = await response.text();
@@ -207,10 +210,11 @@ class SideshiftService {
       }
       
       // Handle Sideshift order
+      const { agent, secret } = sideshiftAccountService.getAccount('quote');
       const response = await fetch(`${this.apiUrl}/shifts?ids=${orderId}`, {
-        agent: this.httpAgent,
+        agent,
         headers: {
-          'x-sideshift-secret': this.sideshiftSecret,
+          'x-sideshift-secret': secret,
         },
       });
 

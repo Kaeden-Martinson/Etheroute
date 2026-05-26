@@ -17,6 +17,7 @@ const defaultDB = {
   invoices: [],
   transactions: [],
   payouts: [],
+  statusIncidents: [],
 };
 
 // Load database from JSON file

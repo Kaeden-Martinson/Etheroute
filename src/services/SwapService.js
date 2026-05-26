@@ -170,9 +170,14 @@ class SwapService {
         // Get USD rates from PriceService, with fallback to wallet's balanceUSD
         const priceRates = this.priceService.getAllRates();
 
+        // Per-chain gas buffer (USD) — mirrors PayoutService eligibility criteria
+        const GAS_BUFFER_USD = { ETH: .50, BTC: 1.00, SOL: 0.20, LTC: 0.50 };
+
         for (const wallet of wallets) {
-            if (wallet.balanceUSD <= 5) {
-                console.log(`[SwapService] Skipping ${wallet.chain} - balance below $5`);
+            const gasBudget = GAS_BUFFER_USD[wallet.chain.toUpperCase()] ?? 2;
+            const minBalanceUSD = (5 + gasBudget) / 0.95;
+            if (wallet.balanceUSD < minBalanceUSD) {
+                console.log(`[SwapService] Skipping ${wallet.chain} - balance $${(wallet.balanceUSD||0).toFixed(2)} below $${minBalanceUSD.toFixed(2)} minimum`);
                 continue;
             }
 
@@ -208,6 +213,7 @@ class SwapService {
                     walletValueUSD: wallet.balanceUSD * shareOfTotal,
                     transactionValueUSD: quote.outputEth * this.priceService.ethToUsdRate,
                     estimatedGas: quote.estimatedGasUsd,
+                    status: "PENDING"
                 };
 
                 plan.transfers.push(transfer);
@@ -224,6 +230,7 @@ class SwapService {
                     walletValueUSD: wallet.balanceUSD * shareOfTotal,
                     transactionValueUSD: quote.outputEth * this.priceService.ethToUsdRate,
                     estimatedGas: quote.estimatedGasUsd,
+                    status: "PENDING"
                 };
 
                 plan.transfers.push(swap);

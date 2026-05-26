@@ -113,15 +113,3 @@ if (searchInput) {
     });
 }
 
-// Check if user is already authenticated
-window.addEventListener('load', () => {
-    const authToken = localStorage.getItem('authToken');
-    const clientId = localStorage.getItem('clientId');
-    
-    if (authToken && clientId) {
-        const authButtons = document.getElementById('authButtons');
-        const dashboardBtn = document.getElementById('dashboardBtn');
-        if (authButtons) authButtons.style.display = 'none';
-        if (dashboardBtn) dashboardBtn.style.display = 'block';
-    }
-});

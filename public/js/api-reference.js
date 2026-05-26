@@ -389,9 +389,9 @@ function updateCodeExamplesForEndpoint(endpoint, param, value) {
                     // Replace recipient address
                     content = content.replace(/0x[a-fA-F0-9]{20,}/g, value || '0x742d35Cc6634C0532925a3b844Bc122e5d6F0fA6');
                     content = content.replace(/["']recipient[Aa]ddress["']:\s*["'][^"']*["']/g, `"recipientAddress": "${value || '0x742d35...'}"`);
-                } else if (param === 'selectedChains') {
-                    // Replace selected chains
-                    content = content.replace(/selectedChains=[^&\s"]*/g, `selectedChains=${value || 'ETH,BTC'}`);
+                } else if (param === 'selectedWallets') {
+                    // Replace selected wallets
+                    content = content.replace(/selectedWallets=[^&\s"]*/g, `selectedWallets=${value || '0xAbc123...'}`);
                 } else if (param === 'clientId') {
                     // Replace client ID placeholder where present
                     content = content.replace(/your-client-id/g, value || 'your-client-id');
@@ -611,14 +611,3 @@ document.querySelectorAll('.test-button').forEach(button => {
     });
 });
 
-// Check if user is already authenticated
-window.addEventListener('load', () => {
-    const authToken = localStorage.getItem('authToken');
-
-    if (authToken) {
-        const authButtons = document.getElementById('authButtons');
-        const dashboardBtn = document.getElementById('dashboardBtn');
-        if (authButtons) authButtons.style.display = 'none';
-        if (dashboardBtn) dashboardBtn.style.display = 'block';
-    }
-});

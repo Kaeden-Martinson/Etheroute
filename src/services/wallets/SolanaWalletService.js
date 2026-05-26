@@ -70,7 +70,7 @@ class SolanaWalletService {
    * @param {string} network - Network to query
    * @returns {Promise<Object>} Balance information
    */
-  async getBalance(address, network = 'mainnet') {
+  async getBalance(address) {
     try {
       // Use public endpoint (not Tatum) to avoid paid-tier restrictions
       const publicRpcUrl = this.endpoints.publicEndpoint;
@@ -94,7 +94,7 @@ class SolanaWalletService {
         console.warn(`[SolanaWalletService] Balance fetch rate limited (429). Retry after ${retryAfterSec}s. Using proxy: ${ProxyService.getCurrentProxyInfo()}`);
         return {
           address,
-          network,
+          network: 'mainnet',
           status: 'rate_limited',
           retryAfter: retryAfterSec,
           timestamp: new Date().toISOString(),
@@ -106,7 +106,7 @@ class SolanaWalletService {
         console.warn(`[SolanaWalletService] Balance fetch failed (${response.status}): ${text.substring(0, 100)}`);
         return {
           address,
-          network,
+          network: 'mainnet',
           status: 'error',
           error: `HTTP ${response.status}`,
           timestamp: new Date().toISOString(),
@@ -119,7 +119,7 @@ class SolanaWalletService {
         console.warn(`[SolanaWalletService] RPC error: ${data.error.message}`);
         return {
           address,
-          network,
+          network: 'mainnet',
           status: 'error',
           error: data.error.message,
           timestamp: new Date().toISOString(),
@@ -138,7 +138,7 @@ class SolanaWalletService {
         address,
         balanceLamports,
         balanceSOL,
-        network,
+        network: 'mainnet',
         timestamp: new Date().toISOString(),
         status: 'success',
       };
@@ -146,7 +146,7 @@ class SolanaWalletService {
       console.error(`[SolanaWalletService] Error fetching balance: ${error.message}`);
       return {
         address,
-        network,
+        network: 'mainnet',
         status: 'error',
         error: error.message,
         timestamp: new Date().toISOString(),
@@ -160,20 +160,20 @@ class SolanaWalletService {
    * @param {string} network - Solana network
    * @returns {Promise<Object>} Updated balance info
    */
-  async updateBalance(wallet, solanaToUsdRate, network = 'mainnet') {
+  async updateBalance(wallet, solanaToUsdRate) {
     try {
-      const balanceInfo = await this.getBalance(wallet.address, network);
+      const balanceInfo = await this.getBalance(wallet.address);
 
       if (balanceInfo.status === 'success') {
         // Update in database
         db.update('wallets', wallet.id, {
           balance: balanceInfo.balanceSOL,
           balanceUSD: balanceInfo.balanceSOL * solanaToUsdRate,
-          lastUpdated: new Date().toISOString(),
+          lastUpdated: new Date().toISOString()
         });
-      } else if (balanceInfo.status === 'rate_limited') {
-        console.warn(`[SolanaWalletService] Balance update rate limited for ${wallet.address}. Retry after ${balanceInfo.retryAfter}s`);
-      }
+
+         balanceInfo.balance = balanceInfo.balanceSOL * solanaToUsdRate; // For consistency in returned object
+      };
 
       return balanceInfo;
     } catch (error) {
@@ -193,7 +193,7 @@ class SolanaWalletService {
    * @param {string} network - Solana network
    * @returns {Object} Wallet document
    */
-  createWallet(clientId, mnemonic = null, network = 'mainnet') {
+  createWallet(clientId, mnemonic = null) {
     try {
       // Generate wallet
       const walletData = this.generateWalletFromMnemonic(mnemonic);
@@ -204,13 +204,14 @@ class SolanaWalletService {
         clientId,
         address: walletData.address,
         chain: 'SOL',
-        network,
+        network: 'mainnet',
         privateKey: walletData.privateKey,
         publicKey: walletData.publicKey,
         seedPhrase: walletData.mnemonic,
         derivationPath: walletData.derivationPath,
         balance: 0,
         balanceUSD: 0,
+        serviceSubtractions: 0,
         lastUpdated: new Date().toISOString(),
         isActive: true,
         createdAt: new Date().toISOString(),
@@ -231,7 +232,7 @@ class SolanaWalletService {
    * @param {string} network - Network to query
    * @returns {Promise<Array>} Recent transactions
    */
-  async getTransactionHistory(address, limit = 10, network = 'mainnet') {
+  async getTransactionHistory(address, limit = 10) {
     try {
       // Use public endpoint to avoid restrictions
       const publicRpcUrl = this.endpoints.publicEndpoint;
@@ -255,7 +256,7 @@ class SolanaWalletService {
         console.warn(`[SolanaWalletService] getTransactionHistory rate limited. Retry after ${retryAfterSec}s`);
         return {
           address,
-          network,
+          network: 'mainnet',
           status: 'rate_limited',
           retryAfter: retryAfterSec,
         };
@@ -264,7 +265,7 @@ class SolanaWalletService {
       if (!sigResponse.ok) {
         return {
           address,
-          network,
+          network: 'mainnet',
           status: 'error',
           error: `HTTP ${sigResponse.status}`,
         };
@@ -274,7 +275,7 @@ class SolanaWalletService {
       if (sigData.error) {
         return {
           address,
-          network,
+          network: 'mainnet',
           status: 'error',
           error: sigData.error.message,
         };
@@ -316,7 +317,7 @@ class SolanaWalletService {
 
       return {
         address,
-        network,
+        network: 'mainnet',
         transactions,
         status: 'success',
         timestamp: new Date().toISOString(),
@@ -324,7 +325,7 @@ class SolanaWalletService {
     } catch (error) {
       return {
         address,
-        network,
+        network: 'mainnet',
         status: 'error',
         error: error.message,
       };
@@ -338,18 +339,42 @@ class SolanaWalletService {
    * @param {number} numSignatures - Number of signatures in transaction (default 1)
    * @returns {Promise<number>} Fee in lamports
    */
-  async estimateFee(numSignatures = 1, network = 'mainnet') {
+  async estimateFee(numSignatures = 1) {
     try {
-      // Solana's fee is fixed at 5000 lamports per signature
-      // This never changes and doesn't require an RPC call
-      const baseFeePerSignature = 5000;
-      const estimatedFee = baseFeePerSignature * numSignatures;
+      const rpcUrl = this.endpoints.publicEndpoint;
 
-      console.log(`[SolanaWalletService] Estimated fee: ${estimatedFee} lamports (${numSignatures} signatures @ 5000/sig)`);
-      return estimatedFee;
+      // Fetch recent network-wide prioritization fees (micro-lamports per compute unit)
+      let priorityFeeLamports = 0;
+      try {
+        const res = await fetch(rpcUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            jsonrpc: '2.0', id: 1,
+            method: 'getRecentPrioritizationFees',
+            params: [[]], // empty = network-wide sample
+          }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          const samples = (data.result || []).map(f => f.prioritizationFee).filter(f => f > 0);
+          if (samples.length > 0) {
+            samples.sort((a, b) => a - b);
+            const median = samples[Math.floor(samples.length / 2)];
+            // micro-lamports/CU × 200 CU (typical SOL transfer) ÷ 1,000,000 = lamports
+            priorityFeeLamports = Math.ceil((median * 200) / 1_000_000);
+          }
+        }
+      } catch (_) { /* use 0 priority fee */ }
+
+      const baseFee  = 5000 * numSignatures; // 5000 lamports per signature (fixed)
+      const totalFee = baseFee + priorityFeeLamports;
+
+      console.log(`[SolanaWalletService] Fee: ${baseFee} base + ${priorityFeeLamports} priority = ${totalFee} lamports`);
+      return totalFee;
     } catch (error) {
       console.error(`[SolanaWalletService] Fee estimation error: ${error.message}`);
-      return 5000 * numSignatures; // Fallback
+      return 5000 * numSignatures;
     }
   }
 
@@ -360,10 +385,10 @@ class SolanaWalletService {
    * @param {number} amount - Amount in SOL
    * @returns {Promise<string>} Transaction hash
    */
-  async sendTransaction(privateKey, toAddress, amount, network = 'mainnet') {
+  async sendTransaction(privateKey, toAddress, amount) {
     try {
       const { Connection, PublicKey, Keypair, SystemProgram, Transaction, LAMPORTS_PER_SOL } = require('@solana/web3.js');
-      const rpcUrl = this.endpoints[network];
+      const rpcUrl = this.endpoints.mainnet;
       const connection = new Connection(rpcUrl, 'confirmed');
       
       // Convert hex private key to Buffer if needed

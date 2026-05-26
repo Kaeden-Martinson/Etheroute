@@ -23,18 +23,6 @@ build/
 *~
 .DS_Store
 
-# Testing
-coverage/
-.nyc_output/
-
 # Logs
 logs/
 *.log
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Temporary files
-tmp/
-temp/
