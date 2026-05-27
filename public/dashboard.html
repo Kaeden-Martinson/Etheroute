@@ -17,7 +17,7 @@
             <div class="brand">Etheroute</div>
         </div>
         
-        <div class="nav-links">
+        <div class="nav-links" id="dashNavLinks">
             <a class="nav-link active" onclick="switchDashboardPage('overview')">Overview</a>
             <a class="nav-link" onclick="switchDashboardPage('transactions')">Transactions</a>
             <a class="nav-link" onclick="switchDashboardPage('wallets')">Wallets</a>
@@ -25,7 +25,15 @@
             <a class="nav-link" onclick="switchDashboardPage('withdrawal')">Withdrawal</a>
             <a class="nav-link" onclick="openAPIModal()">API</a>
         </div>
-        
+
+        <button class="dash-nav-toggle" id="dashNavToggle" aria-label="Toggle navigation" aria-expanded="false">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="3" y1="6" x2="21" y2="6"/>
+                <line x1="3" y1="12" x2="21" y2="12"/>
+                <line x1="3" y1="18" x2="21" y2="18"/>
+            </svg>
+        </button>
+
         <div class="header-right">
             <div class="user-menu" onclick="toggleUserMenu()">
                 <div class="user-avatar" id="userAvatar">U</div>

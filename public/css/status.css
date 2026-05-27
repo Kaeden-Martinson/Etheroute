@@ -536,3 +536,32 @@ a {
     border: 1px solid rgba(18, 33, 29, 0.08);
     box-shadow: 0 22px 60px rgba(10, 18, 15, 0.24);
 }
+
+@media (max-width: 1024px) {
+    .split { grid-template-columns: 1fr; }
+    .content { width: calc(100% - 40px); }
+}
+
+@media (max-width: 768px) {
+    .content { width: calc(100% - 32px); margin: 16px auto 48px; gap: 16px; }
+    .hero-meta { grid-template-columns: repeat(2, 1fr); }
+    .service-grid { grid-template-columns: 1fr; }
+    .form-row { grid-template-columns: 1fr 1fr; gap: 10px; }
+    .hero-card { padding: 20px; }
+    .panel { padding: 16px; }
+    .panel-header h2 { font-size: 18px; }
+    .hero-meta strong { font-size: 18px; }
+}
+
+@media (max-width: 480px) {
+    .content { width: calc(100% - 24px); margin: 12px auto 40px; }
+    .hero-meta { grid-template-columns: 1fr; }
+    .form-row { grid-template-columns: 1fr; }
+    .metric-row { grid-template-columns: 1fr; }
+    .panel-header { flex-direction: column; gap: 8px; align-items: flex-start; }
+    .incident-card-header { flex-direction: column; gap: 8px; }
+    .incident-actions { flex-wrap: wrap; }
+    .button-row { flex-direction: column; }
+    .service-head { flex-direction: column; align-items: flex-start; gap: 8px; }
+    .modal#incidentDeleteModal .modal-content { padding: 16px; border-radius: 12px; }
+}

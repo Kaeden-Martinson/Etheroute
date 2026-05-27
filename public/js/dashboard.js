@@ -349,7 +349,10 @@ function displayTransactionsList(transactions) {
     transactions.forEach(tx => {
         const statusClass = `status-${tx.status.toLowerCase()}`;
         const createdDate = new Date(tx.createdAt).toLocaleString();
-        const hash = tx.transactionHash ? tx.transactionHash : 'Pending';
+        const hashFull = tx.transactionHash || '';
+        const hash = tx.transactionHash
+            ? tx.transactionHash.substring(0, 12) + '...' + tx.transactionHash.substring(tx.transactionHash.length - 8)
+            : 'Pending';
         const broadcastedAt = tx.broadcastedAt ? new Date(tx.broadcastedAt).toLocaleString() : '-';
 
         let statusDetails = '';
@@ -370,7 +373,7 @@ function displayTransactionsList(transactions) {
                     </div>
                     <div class="transaction-details">
                         <div><strong>Amount:</strong><br>${tx.nativeAmount} ${tx.chain} ($${tx.usdAmount?.toFixed(2) || '0.00'})</div>
-                        <div><strong>TX Hash:</strong><br>${hash}</div>
+                        <div title="${hashFull}"><strong>TX Hash:</strong><br><span style="font-family:monospace;font-size:11px;">${hash}</span></div>
                         <div><strong>Created:</strong><br>${createdDate}</div>
                         <div><strong>Completion Date:</strong><br>${tx.completedAt ? new Date(tx.completedAt).toLocaleString() : '-'}</div>
                     </div>
@@ -874,6 +877,7 @@ function loadWalletsList() {
     });
 
     document.getElementById('allWalletsList').innerHTML = html;
+    loadSVGIcons();
 }
 
 async function deleteWallet(walletId, chain) {
@@ -1245,3 +1249,28 @@ function logout() {
     localStorage.removeItem('username');
     window.location.href = '/auth';
 }
+
+
+// Dashboard mobile nav toggle
+(function () {
+    var toggle = document.getElementById('dashNavToggle');
+    var navLinks = document.getElementById('dashNavLinks');
+    if (!toggle || !navLinks) return;
+    toggle.addEventListener('click', function (e) {
+        e.stopPropagation();
+        var isOpen = navLinks.classList.toggle('open');
+        toggle.setAttribute('aria-expanded', String(isOpen));
+    });
+    navLinks.addEventListener('click', function (e) {
+        if (e.target.classList.contains('nav-link')) {
+            navLinks.classList.remove('open');
+            toggle.setAttribute('aria-expanded', 'false');
+        }
+    });
+    document.addEventListener('click', function (e) {
+        if (!navLinks.contains(e.target) && !toggle.contains(e.target)) {
+            navLinks.classList.remove('open');
+            toggle.setAttribute('aria-expanded', 'false');
+        }
+    });
+}());

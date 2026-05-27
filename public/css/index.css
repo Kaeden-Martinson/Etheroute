@@ -635,3 +635,21 @@ body {
         padding: 12px 24px;
     }
 }
+
+@media (max-width: 1024px) {
+    .hero h1 { font-size: 38px; }
+    .cards-grid { grid-template-columns: repeat(2, 1fr); }
+    .container { padding: 60px 32px; }
+}
+
+@media (max-width: 480px) {
+    .hero { padding: 48px 16px; }
+    .hero h1 { font-size: 22px; }
+    .container { padding: 48px 16px; }
+    .stats { grid-template-columns: 1fr; }
+    .footer-grid { grid-template-columns: 1fr; gap: 24px; }
+    .feature-card { padding: 24px 20px; }
+    .stat-number { font-size: 28px; }
+    .cta-section { padding: 48px 16px; }
+    .cta-content h2 { font-size: 24px; }
+}

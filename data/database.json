@@ -20,8 +20,8 @@
       "privateKey": "0x1bd715526a0febd3175376553c1a477762ee68dc4573651bc704ce81a8365815",
       "seedPhrase": "time topic autumn inside tortoise rib desert renew hero enter million skill",
       "balance": 0.000331541380586635,
-      "balanceUSD": 0.6894734550679661,
-      "lastUpdated": "2026-05-26T17:07:07.693Z",
+      "balanceUSD": 0.6873250669217646,
+      "lastUpdated": "2026-05-27T01:58:05.158Z",
       "isActive": true,
       "createdAt": "2026-05-20T21:05:15.566Z",
       "serviceSubtractions": 0.6900503370701869
@@ -38,8 +38,8 @@
       "seedPhrase": "drop island region enrich blanket coil float comic patrol chimney cheap mobile",
       "derivationPath": "m/44'/2'/0'/0/0",
       "balance": 0.01310671,
-      "balanceUSD": 0.6833838594,
-      "lastUpdated": "2026-05-26T17:07:07.790Z",
+      "balanceUSD": 0.6822042555,
+      "lastUpdated": "2026-05-27T01:58:05.233Z",
       "isActive": true,
       "createdAt": "2026-05-22T03:05:46.846Z",
       "serviceSubtractions": 0.6849566646
@@ -55,9 +55,9 @@
       "seedPhrase": "student turkey rescue visual wedding ice gadget piano prepare woman element joke",
       "derivationPath": "m/44'/501'/0'/0'",
       "balance": 0.007303646,
-      "balanceUSD": 0.6150400296599999,
+      "balanceUSD": 0.61255679002,
       "serviceSubtractions": 0.6149669932,
-      "lastUpdated": "2026-05-26T17:07:07.736Z",
+      "lastUpdated": "2026-05-27T01:58:05.197Z",
       "isActive": true,
       "createdAt": "2026-05-26T04:41:44.974Z"
     },
@@ -73,9 +73,9 @@
       "seedPhrase": "that all involve wedding salad wash two debris orphan shadow little diary",
       "derivationPath": "m/44'/0'/0'/0/0",
       "balance": 0.00001285,
-      "balanceUSD": 0.9831535,
-      "serviceSubtractions": 0.9797611,
-      "lastUpdated": "2026-05-26T17:07:07.696Z",
+      "balanceUSD": 0.9744926,
+      "serviceSubtractions": 0.9746082500000001,
+      "lastUpdated": "2026-05-27T01:58:05.235Z",
       "isActive": true,
       "createdAt": "2026-05-26T04:41:48.804Z"
     }

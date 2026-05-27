@@ -445,43 +445,39 @@ body {
     color: #1a1a1a;
 }
 
-/* Responsive */
-@media (max-width: 1024px) {
-    .docs-main {
-        padding: 40px;
-    }
+/* Mobile sidebar toggle button */
+.mobile-nav-bar {
+    display: none;
 }
 
-@media (max-width: 768px) {
-    .docs-container {
-        grid-template-columns: 1fr;
-    }
+.mobile-sidebar-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    background: #f5f5f5;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    padding: 9px 14px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #1a1a1a;
+    cursor: pointer;
+    width: 100%;
+    transition: background 0.2s;
+}
 
-    .docs-sidebar {
-        max-height: auto;
-        position: relative;
-        top: 0;
-        border-right: none;
-        border-bottom: 1px solid #e5e5e5;
-        padding: 20px 0;
-        margin-bottom: 0;
-    }
+.mobile-sidebar-toggle:hover {
+    background: #ebebeb;
+}
 
-    .docs-main {
-        padding: 30px 20px;
-    }
+.mobile-sidebar-toggle .chevron {
+    transition: transform 0.2s;
+    flex-shrink: 0;
+}
 
-    .docs-main h1 {
-        font-size: 32px;
-    }
-
-    .docs-main h2 {
-        font-size: 24px;
-    }
-
-    .feature-list {
-        grid-template-columns: 1fr;
-    }
+.mobile-sidebar-toggle.open .chevron {
+    transform: rotate(180deg);
 }
 
 /* Scrollbar Styling */
@@ -500,4 +496,53 @@ body {
 
 .docs-sidebar::-webkit-scrollbar-thumb:hover {
     background: #999999;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+    .docs-container { grid-template-columns: 240px 1fr; }
+    .docs-main { padding: 40px 32px; }
+}
+
+@media (max-width: 768px) {
+    .mobile-nav-bar {
+        display: block;
+        padding: 10px 16px;
+        background: #fff;
+        border-bottom: 1px solid #f0f0f0;
+        position: sticky;
+        top: 73px;
+        z-index: 10;
+    }
+
+    .docs-container { grid-template-columns: 1fr; }
+
+    .docs-sidebar {
+        display: none;
+        border-right: none;
+        border-bottom: 1px solid #e5e5e5;
+        position: static;
+        max-height: 280px;
+        overflow-y: auto;
+        padding: 8px 0;
+    }
+
+    .docs-sidebar.mobile-open {
+        display: block;
+    }
+
+    .docs-main { padding: 32px 20px; }
+    .docs-main h1 { font-size: 32px; }
+    .docs-main h2 { font-size: 24px; }
+    .feature-list { grid-template-columns: 1fr; }
+    .page-header h1 { font-size: 24px; }
+    .section-title { font-size: 22px; margin-top: 36px; }
+    .footer-grid { grid-template-columns: repeat(2, 1fr); gap: 24px; }
+}
+
+@media (max-width: 480px) {
+    .docs-main { padding: 24px 16px; }
+    .page-header h1 { font-size: 20px; }
+    .section-title { font-size: 18px; }
+    .footer-grid { grid-template-columns: 1fr; }
 }

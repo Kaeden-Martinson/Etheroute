@@ -611,3 +611,20 @@ document.querySelectorAll('.test-button').forEach(button => {
     });
 });
 
+// Mobile sidebar toggle
+(function () {
+    var toggleBtn = document.getElementById('mobileSidebarToggle');
+    var sidebar = document.querySelector('.sidebar');
+    if (!toggleBtn || !sidebar) return;
+    toggleBtn.addEventListener('click', function () {
+        var isOpen = sidebar.classList.toggle('mobile-open');
+        toggleBtn.classList.toggle('open', isOpen);
+    });
+    sidebar.addEventListener('click', function (e) {
+        if (e.target.closest('a')) {
+            sidebar.classList.remove('mobile-open');
+            toggleBtn.classList.remove('open');
+        }
+    });
+}());
+
