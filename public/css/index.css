@@ -5,161 +5,17 @@
 }
 
 body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', sans-serif;
-    background: #f8f8f8;
-    color: #1a1a1a;
+    font-family: var(--font-sans);
+    background: var(--surface-sunken);
+    color: var(--ink);
     line-height: 1.6;
 }
 
-.header {
-    background: #ffffff;
-    border-bottom: 1px solid #e5e5e5;
-    padding: 16px 24px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    position: sticky;
-    top: 0;
-    z-index: 100;
-}
-
-.header-left {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    cursor: pointer;
-    transition: opacity 0.2s;
-}
-
-.logo-mini {
-    width: 32px;
-    height: 32px;
-    background: #1a1a1a;
-    border-radius: 6px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.header-left:hover {
-    opacity: 0.8;
-}
-
-.brand {
-    font-size: 16px;
-    font-weight: 600;
-    color: #1a1a1a;
-}
-
-.brand-name {
-    font-size: 18px;
-    font-weight: 600;
-    color: #1a1a1a;
-}
-
-.auth-buttons {
-    display: flex;
-    gap: 12px;
-    align-items: center;
-}
-
-.nav-link.login-btn {
-    padding: 8px 16px;
-    background: #ffffff;
-    border: 1px solid #e5e5e5;
-    border-radius: 4px;
-    text-decoration: none;
-    color: #1a1a1a;
-    font-size: 12px;
-    font-weight: 600;
-    transition: all 0.2s;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    display: inline-block;
-}
-
-.nav-link.login-btn:hover {
-    background: #f5f5f5;
-    border-color: #1a1a1a;
-}
-
-.nav-link.signup-btn {
-    padding: 8px 16px;
-    background: #1a1a1a;
-    border: 1px solid #1a1a1a;
-    border-radius: 4px;
-    text-decoration: none;
-    color: #ffffff;
-    font-size: 12px;
-    font-weight: 600;
-    transition: all 0.2s;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    display: inline-block;
-}
-
-.nav-link.signup-btn:hover {
-    color: #ffffff;
-    background: #333333;
-    border-color: #333333;
-}
-
-.nav-link.signup-btn.active {
-    background: #333333;
-    border-color: #333333;
-    box-shadow: 0 0 0 2px #1a1a1a;
-}
-
-.nav-links {
-    display: flex;
-    gap: 24px;
-    align-items: center;
-}
-
-.nav-link {
-    text-decoration: none;
-    color: #666666;
-    font-size: 13px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    position: relative;
-    padding-bottom: 4px;
-    transition: color 0.2s;
-}
-
-.nav-link::after {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    width: 0;
-    height: 2px;
-    background: #1a1a1a;
-    transition: width 0.3s ease;
-}
-
-.nav-link:hover {
-    color: #1a1a1a;
-}
-
-.nav-link:hover::after {
-    width: 100%;
-}
-
-.nav-link.active {
-    color: #1a1a1a;
-}
-
-.nav-link.active::after {
-    width: 100%;
-}
-
 .hero {
-    background: linear-gradient(135deg, #ffffff 0%, #f0f0f0 50%, #e8e8e8 100%);
+    background: linear-gradient(135deg, var(--surface) 0%, var(--line) 50%, var(--line) 100%);
     padding: 100px 24px;
     text-align: center;
-    border-bottom: 1px solid #e5e5e5;
+    border-bottom: 1px solid var(--line);
     position: relative;
     overflow: hidden;
 }
@@ -172,8 +28,8 @@ body {
     right: 0;
     bottom: 0;
     background: 
-        radial-gradient(circle at 20% 50%, rgba(26, 26, 26, 0.03) 0%, transparent 50%),
-        radial-gradient(circle at 80% 80%, rgba(26, 26, 26, 0.02) 0%, transparent 50%);
+        radial-gradient(circle at 20% 50%, var(--line) 0%, transparent 50%),
+        radial-gradient(circle at 80% 80%, var(--line) 0%, transparent 50%);
     pointer-events: none;
 }
 
@@ -184,16 +40,204 @@ body {
     z-index: 1;
 }
 
+/* ── Animated backdrop ─────────────────────────────────────────────────── */
+
+.hero-bg {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+}
+
+/* A fine grid that slides slowly, fading out towards the edges so it reads
+   as a surface rather than graph paper. */
+.hero-grid {
+    position: absolute;
+    inset: -60px;
+    background-image:
+        linear-gradient(to right, color-mix(in srgb, var(--ink) 7%, transparent) 1px, transparent 1px),
+        linear-gradient(to bottom, color-mix(in srgb, var(--ink) 7%, transparent) 1px, transparent 1px);
+    background-size: 48px 48px;
+    mask-image: radial-gradient(ellipse 70% 70% at 50% 45%, #000 20%, transparent 75%);
+    -webkit-mask-image: radial-gradient(ellipse 70% 70% at 50% 45%, #000 20%, transparent 75%);
+}
+
+/* Soft blurred orbs. Monochrome with a hint of the info blue, so they add
+   depth without introducing a brand colour the rest of the page lacks. */
+.hero-orb {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(60px);
+    opacity: 0.55;
+    will-change: transform;
+}
+
+.hero-orb--1 {
+    width: 420px; height: 420px;
+    left: -80px; top: -120px;
+    background: radial-gradient(circle, color-mix(in srgb, var(--info) 22%, transparent), transparent 70%);
+}
+
+.hero-orb--2 {
+    width: 520px; height: 520px;
+    right: -160px; top: -60px;
+    background: radial-gradient(circle, color-mix(in srgb, var(--ink) 14%, transparent), transparent 70%);
+}
+
+.hero-orb--3 {
+    width: 360px; height: 360px;
+    left: 35%; bottom: -200px;
+    background: radial-gradient(circle, color-mix(in srgb, var(--ok) 16%, transparent), transparent 70%);
+}
+
+/* ── Wordmark hero ─────────────────────────────────────────────────────── */
+
+.hero--wordmark {
+    min-height: min(88vh, 860px);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 96px 24px 72px;
+}
+
+.hero-canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+}
+
+/* `.hero h1` above sets a size for the old headline; this must outrank it. */
+.hero h1.wordmark {
+    position: relative;
+    display: block;
+    margin: 0 auto 18px;
+    font-size: clamp(56px, 11.5vw, 148px);
+    font-weight: 900;
+    line-height: 1;
+    letter-spacing: -0.03em;
+    color: var(--ink);
+    user-select: none;
+    /* Packets landing in the canvas nudge this. */
+    transform: scale(var(--pulse, 1));
+    transition: transform 160ms ease-out;
+}
+
+.wordmark__letters {
+    display: inline-block;
+    white-space: nowrap;
+}
+
+.wordmark .letter {
+    display: inline-block;
+    color: var(--ink);
+}
+
+/* A sheen that sweeps across the filled word. Clipped to the glyphs, so it
+   reads as light moving over metal rather than a bar over the text. */
+.wordmark__shine {
+    position: absolute;
+    inset: 0;
+    white-space: nowrap;
+    pointer-events: none;
+    color: transparent;
+    background: linear-gradient(
+        105deg,
+        transparent 38%,
+        color-mix(in srgb, var(--info) 55%, var(--surface)) 48%,
+        color-mix(in srgb, var(--surface) 85%, var(--info)) 52%,
+        transparent 62%
+    );
+    background-size: 240% 100%;
+    background-position: 120% 0;
+    -webkit-background-clip: text;
+    background-clip: text;
+    opacity: 0;
+}
+
+.hero-tagline {
+    font-size: clamp(18px, 2.4vw, 26px);
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    color: var(--ink);
+    margin-bottom: 10px;
+}
+
+.hero--wordmark .hero-content > p:not(.hero-tagline) {
+    max-width: 640px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* Scroll cue: a chevron that dips, sitting on the hero's bottom edge. */
+.hero-scroll {
+    position: absolute;
+    left: 50%;
+    bottom: 22px;
+    width: 34px;
+    height: 34px;
+    margin-left: -17px;
+    border-radius: 50%;
+    border: 1px solid var(--line-strong);
+    background: color-mix(in srgb, var(--surface) 70%, transparent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1;
+    text-decoration: none;
+}
+
+.hero-scroll__chev {
+    width: 9px;
+    height: 9px;
+    border-right: 2px solid var(--ink-2);
+    border-bottom: 2px solid var(--ink-2);
+    transform: translateY(-2px) rotate(45deg);
+}
+
+/* ── Typewriter kicker ─────────────────────────────────────────────────── */
+
+.hero--wordmark .hero-kicker {
+    margin-bottom: 26px;
+}
+
+.hero-kicker {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 2px;
+    min-height: 1.6em;
+    margin-bottom: 14px;
+    padding: 6px 14px;
+    border: 1px solid var(--line-strong);
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--surface) 70%, transparent);
+    backdrop-filter: blur(6px);
+    font-family: 'SFMono-Regular', Consolas, monospace;
+    font-size: 13px;
+    letter-spacing: 0.02em;
+    color: var(--ink-2);
+}
+
+.hero-kicker .typed::before {
+    content: '> ';
+    color: var(--ink-3);
+}
+
+.typed-cursor {
+    color: var(--ink);
+    font-weight: 700;
+}
+
 .hero h1 {
     font-size: 48px;
     font-weight: 700;
     margin-bottom: 16px;
-    color: #1a1a1a;
+    color: var(--ink);
 }
 
 .hero p {
     font-size: 18px;
-    color: #666666;
+    color: var(--ink-2);
     margin-bottom: 32px;
     line-height: 1.8;
 }
@@ -224,73 +268,49 @@ body {
     overflow: hidden;
 }
 
-.btn::before {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 0;
-    height: 0;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.3);
-    transform: translate(-50%, -50%);
-    transition: width 0.6s, height 0.6s;
-}
+/* No ripple. The old ::before grew a 300px disc in --surface-raised over the
+   whole button on hover - on top of the label - which in dark mode painted a
+   dark disc across a light button with dark text. Hover feedback is the lift
+   and shadow below, plus a colour shift that keeps the label's contrast. */
 
-.btn:hover::before {
-    width: 300px;
-    height: 300px;
-}
+/* Two variants, both inverted against the page: a solid one that is the
+   opposite of the ground, and an outline one that fills to the same shade on
+   hover. Hover moves the fill toward --surface (lighter on a light page,
+   darker on a dark one) instead of toward --ink-2, which only lightened in one
+   theme and dropped the label's contrast in the other. */
 
 .btn-primary {
-    background: #1a1a1a;
-    color: #ffffff;
+    background: var(--ink);
+    color: var(--surface);
+    border: 2px solid var(--ink);
 }
 
 .btn-primary:hover {
-    background: #333333;
+    background: var(--ink-hover);
+    border-color: var(--ink-hover);
+    color: var(--surface);
     transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+    box-shadow: var(--shadow-lg);
 }
 
 .btn-secondary {
-    background: #ffffff;
-    color: #1a1a1a;
-    border: 2px solid #1a1a1a;
+    background: transparent;
+    color: var(--ink);
+    border: 2px solid var(--ink);
 }
 
 .btn-secondary:hover {
-    background: #1a1a1a;
-    color: #ffffff;
+    background: var(--ink-hover);
+    border-color: var(--ink-hover);
+    color: var(--surface);
     transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+    box-shadow: var(--shadow-lg);
 }
 
 .container {
     max-width: 1200px;
     margin: 0 auto;
     padding: 80px 24px;
-}
-
-.section-title {
-    text-align: center;
-    margin-bottom: 60px;
-}
-
-.section-title h2 {
-    font-size: 36px;
-    font-weight: 700;
-    margin-bottom: 16px;
-    color: #1a1a1a;
-    letter-spacing: -0.5px;
-}
-
-.section-title p {
-    font-size: 17px;
-    color: #666666;
-    max-width: 600px;
-    margin: 0 auto;
-    line-height: 1.6;
 }
 
 .cards-grid {
@@ -301,8 +321,8 @@ body {
 }
 
 .feature-card {
-    background: #ffffff;
-    border: 1px solid #e5e5e5;
+    background: var(--surface);
+    border: 1px solid var(--line);
     border-radius: 12px;
     padding: 40px;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -318,14 +338,14 @@ body {
     left: 0;
     right: 0;
     height: 3px;
-    background: linear-gradient(90deg, #1a1a1a, transparent);
+    background: linear-gradient(90deg, var(--ink), transparent);
     transform: scaleX(0);
     transform-origin: left;
     transition: transform 0.3s ease;
 }
 
 .feature-card:hover {
-    border-color: #1a1a1a;
+    border-color: var(--ink);
     box-shadow: 0 12px 40px rgba(0, 0, 0, 0.08);
     transform: translateY(-6px);
 }
@@ -339,26 +359,26 @@ body {
     margin-bottom: 20px;
     display: flex;
     justify-content: center;
-    height: 56px;
+    height: 45px;
 }
 
 .feature-card h3 {
     font-size: 20px;
     font-weight: 600;
     margin-bottom: 12px;
-    color: #1a1a1a;
+    color: var(--ink);
     letter-spacing: -0.3px;
 }
 
 .feature-card p {
     font-size: 14px;
-    color: #666666;
+    color: var(--ink-2);
     line-height: 1.7;
 }
 
 .nav-card {
-    background: #ffffff;
-    border: 1px solid #e5e5e5;
+    background: var(--surface);
+    border: 1px solid var(--line);
     border-radius: 8px;
     padding: 40px;
     text-decoration: none;
@@ -371,7 +391,7 @@ body {
 }
 
 .nav-card:hover {
-    border-color: #1a1a1a;
+    border-color: var(--ink);
     box-shadow: 0 12px 32px rgba(0, 0, 0, 0.1);
     transform: translateY(-8px);
 }
@@ -385,19 +405,19 @@ body {
     font-size: 20px;
     font-weight: 600;
     margin-bottom: 12px;
-    color: #1a1a1a;
+    color: var(--ink);
 }
 
 .nav-card p {
     font-size: 14px;
-    color: #999999;
+    color: var(--ink-3);
     margin-bottom: 24px;
 }
 
 .nav-card-btn {
     padding: 10px 20px;
-    background: #1a1a1a;
-    color: #ffffff;
+    background: var(--ink);
+    color: var(--surface);
     border: none;
     border-radius: 6px;
     font-size: 12px;
@@ -409,54 +429,19 @@ body {
 }
 
 .nav-card-btn:hover {
-    background: #333333;
+    background: var(--ink-hover);
 }
 
-.stats {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 28px;
-    margin: 40px 0;
-    padding: 60px 0;
-}
-
-.stat-box {
-    background: linear-gradient(135deg, #ffffff 0%, #f9f9f9 100%);
-    border: 1px solid #e5e5e5;
-    border-radius: 12px;
-    padding: 32px 24px;
-    text-align: center;
-    transition: all 0.3s ease;
-    position: relative;
-}
-
-.stat-box:hover {
-    border-color: #1a1a1a;
-    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.08);
-    transform: translateY(-4px);
-}
-
-.stat-number {
-    font-size: 38px;
-    font-weight: 700;
-    color: #1a1a1a;
-    margin-bottom: 12px;
-}
-
-.stat-label {
-    font-size: 12px;
-    color: #666666;
-    text-transform: uppercase;
-    letter-spacing: 0.7px;
-    font-weight: 600;
-}
-
+/* The footer follows the active theme (it used the --inverse-* pair, which is
+   dark in BOTH themes, so it read as a black slab under a light page). */
 .footer {
-    background: #1a1a1a;
-    color: #ffffff;
-    padding: 40px 24px;
-    border-top: 1px solid #333333;
+    background: var(--surface-sunken);
+    color: var(--ink);
+    padding: 48px 24px 40px;
+    border-top: 1px solid var(--line);
 }
+
+.footer-section h4 { color: var(--ink); }
 
 .footer-content {
     max-width: 1200px;
@@ -465,9 +450,64 @@ body {
 
 .footer-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    grid-template-columns: 1.8fr 1fr 1fr 1fr;
     gap: 40px;
     margin-bottom: 32px;
+}
+
+.footer-brand { max-width: 340px; }
+
+.footer-logo {
+    display: flex;
+    align-items: center;
+    /* Same 16px the navbar puts between its mark and the wordmark. */
+    gap: 16px;
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--ink);
+    margin-bottom: 14px;
+}
+
+/* The same mark the header draws, at the same 45px. The hollow letter is a
+   0.65-unit rim on a 32-unit viewBox — a sub-pixel line below about 49px — so
+   at the old 26px it had to be logoSmall, whose letter is solid. Matching the
+   header means matching its size. */
+.footer-mark {
+    width: 45px;
+    height: 45px;
+    display: inline-flex;
+    flex: none;
+    color: var(--ink);
+}
+
+.footer-mark [data-icon],
+.footer-mark svg { width: 100%; height: 100%; }
+
+.footer-brand p {
+    color: var(--ink-2);
+    font-size: 13px;
+    line-height: 1.65;
+    margin: 0 0 16px;
+}
+
+.footer-chip {
+    display: inline-block;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--ink-2);
+    background: color-mix(in srgb, var(--ink) 6%, transparent);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 5px 12px;
+}
+
+@media (max-width: 860px) {
+    .footer-grid { grid-template-columns: 1fr 1fr; gap: 32px; }
+    .footer-brand { grid-column: 1 / -1; max-width: none; }
+}
+
+@media (max-width: 520px) {
+    .footer-grid { grid-template-columns: 1fr; }
 }
 
 .footer-section h4 {
@@ -479,7 +519,7 @@ body {
 }
 
 .footer-link {
-    color: #999999;
+    color: var(--ink-2);
     text-decoration: none;
     font-size: 13px;
     margin-bottom: 8px;
@@ -488,24 +528,45 @@ body {
 }
 
 .footer-link:hover {
-    color: #ffffff;
+    color: var(--ink);
 }
 
 .footer-bottom {
-    border-top: 1px solid #333333;
+    border-top: 1px solid var(--line);
     padding-top: 24px;
     text-align: center;
-    color: #999999;
+    color: var(--ink-3);
     font-size: 13px;
 }
 
-/* CTA Section */
+/* CTA Section — a gradient band that follows the theme. It used the --inverse-*
+   pair, which is dark in BOTH themes, so in light mode it dropped a black slab
+   between a white page and a white footer. The separation now comes from the
+   gradient and the tinted glow rather than from inverting the ground. */
 .cta-section {
-    background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
-    padding: 80px 24px;
+    position: relative;
+    overflow: hidden;
+    background:
+        radial-gradient(900px 340px at 50% -8%, color-mix(in srgb, var(--ink) 9%, transparent), transparent 68%),
+        linear-gradient(135deg, var(--surface) 0%, var(--surface-sunken) 100%);
+    padding: 92px 24px;
     text-align: center;
-    color: #ffffff;
+    color: var(--ink);
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
 }
+
+.cta-section::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(115deg, transparent 36%, color-mix(in srgb, var(--ink) 5%, transparent) 50%, transparent 64%);
+    background-size: 260% 100%;
+    animation: hero-sheen 11s ease-in-out infinite;
+    pointer-events: none;
+}
+
+.cta-content { position: relative; z-index: 1; }
 
 .cta-content {
     max-width: 700px;
@@ -516,12 +577,12 @@ body {
     font-size: 42px;
     font-weight: 700;
     margin-bottom: 16px;
-    color: #ffffff;
+    color: var(--ink);
 }
 
 .cta-content p {
     font-size: 18px;
-    color: #cccccc;
+    color: var(--ink-2);
     margin-bottom: 32px;
     line-height: 1.8;
 }
@@ -541,8 +602,8 @@ body {
 .btn-secondary-large {
     padding: 14px 36px;
     background: transparent;
-    color: #ffffff;
-    border: 2px solid #ffffff;
+    color: var(--ink);
+    border: 2px solid var(--ink);
     border-radius: 6px;
     font-size: 15px;
     font-weight: 600;
@@ -556,10 +617,14 @@ body {
     letter-spacing: 0.5px;
 }
 
+/* Fills to the same shade the solid buttons hover to, so the outline and solid
+   variants sitting side by side in the CTA land on one colour. */
 .btn-secondary-large:hover {
-    background: #ffffff;
-    color: #1a1a1a;
+    background: var(--ink-hover);
+    color: var(--surface);
+    border-color: var(--ink-hover);
     transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
 }
 
 @media (max-width: 768px) {
@@ -571,13 +636,26 @@ body {
         font-size: 28px;
     }
 
-    .hero p {
-        font-size: 16px;
+    .hero--wordmark {
+        min-height: 0;
+        padding: 72px 20px 64px;
     }
 
-    .nav-links {
-        gap: 12px;
-        flex-wrap: wrap;
+    .hero h1.wordmark {
+        font-size: clamp(40px, 12vw, 64px);
+    }
+
+    .hero-scroll {
+        display: none;
+    }
+
+    /* No room for the route network on a phone; nodes land on the copy. */
+    .hero-canvas {
+        display: none;
+    }
+
+    .hero p {
+        font-size: 16px;
     }
 
     .hero-buttons {
@@ -587,14 +665,6 @@ body {
     .btn {
         width: 100%;
         justify-content: center;
-    }
-
-    .section-title h2 {
-        font-size: 28px;
-    }
-
-    .section-title p {
-        font-size: 15px;
     }
 
     .cards-grid {
@@ -646,10 +716,787 @@ body {
     .hero { padding: 48px 16px; }
     .hero h1 { font-size: 22px; }
     .container { padding: 48px 16px; }
-    .stats { grid-template-columns: 1fr; }
     .footer-grid { grid-template-columns: 1fr; gap: 24px; }
     .feature-card { padding: 24px 20px; }
-    .stat-number { font-size: 28px; }
     .cta-section { padding: 48px 16px; }
     .cta-content h2 { font-size: 24px; }
+}
+
+/* ── Home page motion ─────────────────────────────────────────────────────
+   The hero runs on load rather than on scroll: it is already on screen, so
+   waiting for an observer would just mean a beat of emptiness. Everything
+   below the fold is handled by [data-reveal] in tokens.css. */
+
+@media (prefers-reduced-motion: no-preference) {
+    .hero-enter {
+        opacity: 0;
+        transform: translateY(16px);
+        animation: hero-rise var(--dur-slow) var(--ease-out) forwards;
+        animation-delay: var(--enter-delay, 0ms);
+    }
+
+    @keyframes hero-rise {
+        to { opacity: 1; transform: none; }
+    }
+
+    /* A slow, subtle wash behind the hero. Low contrast on purpose - it should
+       register as depth, not as a moving background. */
+    .hero::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        background:
+            radial-gradient(60% 80% at 15% 20%, color-mix(in srgb, var(--ink) 5%, transparent), transparent 70%),
+            radial-gradient(50% 70% at 85% 30%, color-mix(in srgb, var(--ink) 4%, transparent), transparent 70%);
+        animation: hero-drift 24s ease-in-out infinite alternate;
+    }
+
+    @keyframes hero-drift {
+        from { transform: translate3d(0, 0, 0) scale(1); }
+        to   { transform: translate3d(0, -12px, 0) scale(1.04); }
+    }
+
+    .hero-grid {
+        animation: grid-slide 18s linear infinite;
+    }
+
+    @keyframes grid-slide {
+        from { transform: translate3d(0, 0, 0); }
+        to   { transform: translate3d(48px, 48px, 0); }
+    }
+
+    .hero-orb--1 { animation: orb-drift-1 26s ease-in-out infinite alternate; }
+    .hero-orb--2 { animation: orb-drift-2 32s ease-in-out infinite alternate; }
+    .hero-orb--3 { animation: orb-drift-3 22s ease-in-out infinite alternate; }
+
+    @keyframes orb-drift-1 {
+        from { transform: translate3d(0, 0, 0) scale(1); }
+        to   { transform: translate3d(120px, 60px, 0) scale(1.15); }
+    }
+
+    @keyframes orb-drift-2 {
+        from { transform: translate3d(0, 0, 0) scale(1); }
+        to   { transform: translate3d(-140px, 90px, 0) scale(0.9); }
+    }
+
+    @keyframes orb-drift-3 {
+        from { transform: translate3d(0, 0, 0) scale(1); }
+        to   { transform: translate3d(-90px, -70px, 0) scale(1.2); }
+    }
+
+    /* Each letter arrives as an outline, rises, and fills - staggered left to
+       right, so the word is drawn rather than dropped in. */
+    .wordmark .letter {
+        color: transparent;
+        -webkit-text-stroke: 1.5px var(--ink);
+        opacity: 0;
+        transform: translateY(28px);
+        filter: blur(6px);
+        animation: letter-in 1.1s var(--ease-out) forwards;
+        animation-delay: calc(180ms + var(--i) * 70ms);
+    }
+
+    @keyframes letter-in {
+        0%   { opacity: 0; transform: translateY(28px); filter: blur(6px); color: transparent; }
+        45%  { opacity: 1; transform: translateY(0);    filter: blur(0);   color: transparent; }
+        100% { opacity: 1; transform: translateY(0);    filter: blur(0);   color: var(--ink); -webkit-text-stroke-color: transparent; }
+    }
+
+    .wordmark__shine {
+        animation: shine-sweep 5.5s ease-in-out 1.6s infinite;
+    }
+
+    @keyframes shine-sweep {
+        0%   { opacity: 0; background-position: 120% 0; }
+        8%   { opacity: 1; }
+        38%  { opacity: 1; background-position: -20% 0; }
+        46%  { opacity: 0; background-position: -20% 0; }
+        100% { opacity: 0; background-position: -20% 0; }
+    }
+
+    .hero-scroll__chev {
+        animation: chev-dip 1.8s ease-in-out infinite;
+    }
+
+    @keyframes chev-dip {
+        0%, 100% { transform: translateY(-3px) rotate(45deg); opacity: 0.6; }
+        50%      { transform: translateY(2px) rotate(45deg); opacity: 1; }
+    }
+
+    .typed-cursor {
+        animation: cursor-blink 1s steps(2, start) infinite;
+    }
+
+    @keyframes cursor-blink {
+        to { visibility: hidden; }
+    }
+
+    /* Feature icons tilt when their card is hovered. */
+    .feature-card .feature-icon,
+    .feature-card [data-icon] {
+        transition: transform var(--dur) var(--ease-out);
+    }
+
+    .feature-card:hover .feature-icon,
+    .feature-card:hover [data-icon] {
+        transform: translateY(-2px) rotate(-6deg);
+    }
+
+    /* Cards lift slightly on hover, so the grid feels responsive to the cursor. */
+    .feature-card {
+        transition: transform var(--dur) var(--ease-out),
+                    box-shadow var(--dur) var(--ease-out),
+                    border-color var(--dur) var(--ease-out);
+    }
+
+    .feature-card:hover {
+        transform: translateY(-3px);
+        box-shadow: var(--shadow);
+        border-color: var(--line-strong);
+    }
+
+    .btn {
+        transition: transform var(--dur-fast) var(--ease-out),
+                    background-color var(--dur-fast) var(--ease-out),
+                    color var(--dur-fast) var(--ease-out),
+                    border-color var(--dur-fast) var(--ease-out);
+    }
+
+    .btn:hover  { transform: translateY(-1px); }
+    .btn:active { transform: translateY(0); }
+}
+
+/* The hero needs a positioning context for the wash above, in every theme. */
+.hero {
+    position: relative;
+    overflow: hidden;
+}
+
+.hero-content {
+    position: relative;
+    z-index: 1;
+}
+
+/* ── Buttons on the call-to-action band ───────────────────────────────────
+   The band follows the theme now, so its buttons are the ordinary inverted
+   pair and need no override — the block that forced --inverse-* here has been
+   removed. Left in place: the hover shade, so the solid and outline buttons in
+   the band land on the same colour. */
+
+.cta-section .btn-secondary-large:hover {
+    background: var(--ink-hover);
+    color: var(--surface);
+    border-color: var(--ink-hover);
+}
+
+/* ── The settlement section ───────────────────────────────────────────────
+   Replaces the feature bento. Four tiles with identical borders, radii and
+   padding, mirrored two left and two right under a centred title, was a
+   template: perfect bilateral symmetry, equal weight on every tile, and so no
+   hierarchy for the eye to follow. This is one artefact with real weight over
+   a quiet rail, beside the token. */
+
+.settle {
+    max-width: 1188px;
+    margin: 0 auto;
+    padding: 80px 24px;
+}
+
+/* Left-aligned. Breaking the centre axis at the top sets up the asymmetry
+   below instead of fighting it. */
+.settle__head { margin-bottom: 34px; }
+
+.settle__eyebrow {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: var(--text-xs);
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin-bottom: 12px;
+}
+
+.settle__eyebrow::after {
+    content: "";
+    height: 1px;
+    width: 64px;
+    background: var(--line-strong);
+}
+
+.settle__head h2 {
+    margin: 0 0 11px;
+    font-size: var(--text-2xl);
+    font-weight: 700;
+    letter-spacing: -0.025em;
+    line-height: 1.1;
+    color: var(--ink);
+    max-width: 17ch;
+}
+
+.settle__head p {
+    margin: 0;
+    color: var(--ink-2);
+    font-size: 15px;
+    line-height: 1.65;
+    max-width: 58ch;
+}
+
+/* Nothing crosses the coin. Column 8 is left empty as a gutter, so the rail
+   and the receipt stop at 7 and the coin owns 9-12 outright — the orbit's 70px
+   of overhang drifts into that gutter and still reaches nothing.
+
+   minmax(0, 1fr), not 1fr: a bare 1fr is minmax(auto, 1fr), so any item wider
+   than its share expands its own tracks and slides the rest of the grid. */
+.settle__compose {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    column-gap: 18px;
+    align-items: start;
+}
+
+.settle-rail { grid-column: 1 / 8; grid-row: 1; margin: 0; }
+
+/* Indented one column from the rail rather than flush under it. That single
+   step is what keeps a left stack beside a right figure from reading as a
+   plain two-column split. */
+.settle-receipt { grid-column: 2 / 8; grid-row: 2; margin: 26px 0 0; }
+
+.settle__figure { grid-column: 9 / 13; grid-row: 1 / 3; align-self: center; }
+
+/* ── The rail ─────────────────────────────────────────────────────────────
+   No boxes. A definition list with a drawn accent rule is structurally a
+   different object from a card grid, which is what stops it reading as one.
+   The rule scales up from zero on entry and takes the ink colour on hover, so
+   the row answers without anything moving. */
+.settle-rail__row {
+    position: relative;
+    display: grid;
+    grid-template-columns: 92px 1fr;
+    gap: 16px;
+    padding: 17px 0 17px 22px;
+    border-top: 1px solid var(--line);
+}
+
+.settle-rail__row:first-child { border-top: 0; padding-top: 2px; }
+
+.settle-rail__row::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 16px;
+    bottom: 16px;
+    width: 2px;
+    border-radius: 2px;
+    background: var(--line-strong);
+    transition: background-color var(--dur) var(--ease-out);
+}
+
+.settle-rail__row:hover::before { background: var(--ink); }
+
+.settle-rail dt {
+    font-size: var(--text-xs);
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    padding-top: 3px;
+    transition: color var(--dur) var(--ease-out);
+}
+
+.settle-rail__row:hover dt { color: var(--ink-2); }
+
+.settle-rail dd { margin: 0; }
+
+.settle-rail dd p {
+    margin: 9px 0 0;
+    font-size: 13px;
+    line-height: 1.62;
+    color: var(--ink-2);
+}
+
+.settle-rail__chains { display: flex; flex-wrap: wrap; gap: 4px; }
+
+.settle-rail__chains i {
+    font-style: normal;
+    font-size: var(--text-xs);
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    padding: 3px 7px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--surface-sunken);
+    color: var(--ink-2);
+}
+
+.settle-rail__ticks { display: flex; gap: 5px; align-items: center; }
+
+.settle-rail__ticks i {
+    width: 15px;
+    height: 15px;
+    border-radius: var(--radius-sm);
+    border: 1px dashed var(--line-strong);
+    background: transparent;
+}
+
+.settle-rail__ticks i.is-done { background: var(--ok); border: 1px solid var(--ok); }
+
+.settle-rail__ticks em {
+    font-style: normal;
+    font-size: var(--text-xs);
+    color: var(--ink-3);
+    margin-left: 8px;
+    font-variant-numeric: tabular-nums;
+}
+
+.settle-rail__route {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 !important;
+    font-size: var(--text-xs);
+    color: var(--ink-3);
+}
+
+.settle-rail__route b {
+    padding: 4px 9px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--surface-sunken);
+    color: var(--ink);
+    font-size: var(--text-xs);
+}
+
+/* ── The receipt ──────────────────────────────────────────────────────────
+   The one artefact with real weight, and the only place here that shows money
+   — so the figures are the product's own. PLATFORM_FEE_RATE defaults to 0.05;
+   the tile this replaces showed 0.00100 on 0.5 ETH, which is 0.2%, under a
+   heading promising the number you see is the number that sends. */
+.settle-receipt {
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
+}
+
+.settle-receipt figcaption {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 11px 18px;
+    border-bottom: 1px solid var(--line);
+    background: var(--surface-sunken);
+    font-size: var(--text-xs);
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+}
+
+.settle-receipt__body {
+    padding: 13px 18px 7px;
+    font-variant-numeric: tabular-nums;
+}
+
+.settle-receipt__body > div {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 6px 0;
+    font-size: 13px;
+    color: var(--ink-2);
+}
+
+.settle-receipt__body i { font-style: normal; color: var(--ink-3); font-size: var(--text-xs); }
+
+.settle-receipt__total {
+    margin-top: 6px;
+    padding-top: 11px;
+    border-top: 1px solid var(--line-strong);
+    color: var(--ink);
+    font-weight: 700;
+    font-size: 15px;
+}
+
+.settle-receipt__note {
+    margin: 0;
+    padding: 11px 18px 15px;
+    font-size: var(--text-sm);
+    line-height: 1.55;
+    color: var(--ink-3);
+    border-top: 1px dashed var(--line);
+}
+
+/* ── The live line ────────────────────────────────────────────────────────
+   Not a stats band. Four equal centred columns repeated the mistake the tiles
+   were making, and three of its four numbers could not be defended: $1k+ daily
+   volume wrapped 42px extra-bold type around a small number, 99.9% uptime is
+   the most generic figure in SaaS, and an average confirmation across Bitcoin
+   and Solana is not a quantity.
+
+   Every live figure is fetched from GET /api/status, so it cannot contradict
+   the status page. The strip ships empty: while the call is out it holds a
+   skeleton, and if the call fails it stays empty rather than inventing one. */
+.live-line {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 9px 16px;
+    margin-top: 42px;
+    padding-top: 15px;
+    border-top: 1px solid var(--line);
+    text-decoration: none;
+    color: inherit;
+}
+
+.live-line__live { display: contents; }
+
+.live-line__item {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 13px;
+    color: var(--ink-2);
+}
+
+.live-line b {
+    font-weight: 700;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+}
+
+.live-line__dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex: none;
+    background: var(--ok);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 20%, transparent);
+}
+
+.live-line__dot[data-tone="degraded"] {
+    background: var(--warn);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--warn) 20%, transparent);
+}
+
+.live-line__dot[data-tone="down"] {
+    background: var(--danger);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger) 20%, transparent);
+}
+
+.live-line__sep { width: 1px; height: 12px; background: var(--line); }
+
+.live-line__go {
+    margin-left: auto;
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--ink-2);
+    transition: color var(--dur) var(--ease-out), transform var(--dur) var(--ease-out);
+}
+
+.live-line:hover .live-line__go { color: var(--ink); }
+
+/* While the status call is out, the figures are blocks rather than numbers the
+   page does not have yet. */
+.live-line__live[data-state="loading"] .live-line__val {
+    color: transparent;
+    background: var(--line-strong);
+    border-radius: var(--radius-sm);
+}
+
+.live-line__live[data-state="loading"] .live-line__dot {
+    background: var(--ink-3);
+    box-shadow: none;
+}
+
+/* ── Stacked ──────────────────────────────────────────────────────────────
+   One column, coin first. The scene scales rather than the coin, so the orbit,
+   the trail and the plane stay in proportion with it. */
+@media (max-width: 1000px) {
+    .settle__compose { grid-template-columns: 1fr; }
+
+    .settle-rail,
+    .settle-receipt,
+    .settle__figure { grid-column: 1 / -1; grid-row: auto; }
+
+    .settle__figure { order: -1; }
+    .settle__figure .token-stage { --token-scale: 0.62; }
+    .settle__head h2 { max-width: none; }
+    .live-line__go { margin-left: 0; }
+}
+
+@media (max-width: 720px) {
+    .settle { padding: 48px 16px; }
+    .settle__head h2 { font-size: 27px; }
+    .settle-rail__row { grid-template-columns: 1fr; gap: 8px; padding-left: 18px; }
+}
+
+/* ── The token ──────────────────────────────────────────────────────────── */
+.token-stage { position:relative; perspective:900px; display:flex; align-items:center; justify-content:center;
+               height:calc(420px * var(--token-scale, 1)); }
+.token-scene { position:relative; width:240px; height:240px; transform-style:preserve-3d;
+               transform:rotateX(-8deg) scale(var(--token-scale, 1)); }
+
+.coin { position:absolute; inset:0; transform-style:preserve-3d; will-change:transform;
+        animation:coin-spin 24s linear infinite; }
+@keyframes coin-spin { to { transform:rotateY(360deg); } }
+
+.coin__face { position:absolute; inset:0; backface-visibility:hidden; }
+.coin__face svg { width:100%; height:100%; display:block; color:var(--ink); }
+.coin__face--front { transform:translateZ(13px); }
+/* rotateY(180deg) ALONE. Adding scaleX(-1) to "un-mirror" it cancels the
+   rotation's own x-flip — diag(-1,1,-1) x diag(-1,1,1) = diag(1,1,-1) — so the
+   face is never actually turned round and the E comes past backwards. The
+   face's 180 and the coin's 180 have to compose to 360. */
+.coin__face--back  { transform:rotateY(180deg) translateZ(13px); }
+
+.coin__edge { position:absolute; left:50%; top:50%; width:0; height:0; transform-style:preserve-3d; }
+/* 48 panels, not 24. A 24-gon leaves the silhouette 1.03px short of the true
+   circle at its widest — visible as flat spots on the rim. 48 puts that at
+   0.26px, under what the pixels can show. Each is 4% taller than its chord so
+   no hairline gaps open between them as they turn. */
+.coin__edge i {
+  position:absolute; display:block; width:26px; height:16.3px; margin:-8.15px 0 0 -13px;
+  background:var(--ink); border-left:1px solid var(--surface-sunken);
+}
+
+/* ── The orbit ──────────────────────────────────────────────────────────── */
+/* ── The orbit ───────────────────────────────────────────────────────────
+   Back inside the 3D scene. The 2D offset-path guaranteed the plane was
+   always readable, but it could only ever look like it was passing *behind*
+   the coin — a flat sprite on a flat curve has no depth to swell or shrink
+   with. In the scene's perspective the plane runs z +168 to -168, which the
+   stage's 900px perspective turns into a 1.23x swell in front and 0.84x
+   behind. That 1.46x swing across the orbit is what reads as "around" —
+   at 1300px it was only 1.08x, near enough orthographic to read flat.
+
+   The tilt drops 74deg -> 62deg. 74 was picked when the plane was a flat
+   sprite and the ring only had to look like a ring; a plane with real
+   dihedral lying in a 74deg plane is near enough edge-on to us the whole way
+   round. -28deg on the outside keeps the bottom-left to top-right run. */
+.orbit { position:absolute; inset:-70px; transform-style:preserve-3d;
+         transform:rotateZ(-28deg) rotateX(62deg); }
+.orbit__trail { position:absolute; inset:0; border-radius:50%;
+                border:2px dashed color-mix(in srgb, var(--ink) 30%, transparent); }
+.orbit__arm { position:absolute; inset:0; transform-style:preserve-3d;
+              will-change:transform; animation:orbit-spin 18s linear infinite; }
+@keyframes orbit-spin { to { transform:rotateZ(360deg); } }
+
+/* ── The plane ───────────────────────────────────────────────────────────
+   Two bare triangles only ever read as a dart, and with enough dihedral to
+   show the fold they stopped looking like an aircraft at all. The shape
+   carries the detail instead: one panel clipped to a whole planform seen from
+   above — pointed nose, swept wings with a tip chord, a tailplane at the back
+   — plus a fin standing up at the tail so the thing still turns in 3D and
+   catches the light differently as it comes round.
+
+   Everything has to survive ~84px on screen, so the detail lives in the
+   outline, and the wing chords are wide enough not to render as hairlines:
+   the first cut had a 5.8px tip chord and looked spindly rather than fine.
+   Winglets and fold creases were both tried and both landed under 4px,
+   where they only dirty the silhouette. */
+.plane { position:absolute; left:50%; top:50%; width:0; height:0;
+         transform-style:preserve-3d; transform:translateY(-190px); }
+.plane i { position:absolute; display:block; background:currentColor; color:var(--ink); }
+
+.plane__body { width:84px; height:40px; left:-42px; top:-20px;
+               clip-path:polygon(100% 50%, 66% 44%, 36% 6%, 22% 6%, 42% 44%, 14% 44%, 4% 26%, 0 26%, 6% 44%, 0 50%, 6% 56%, 0 74%, 4% 74%, 14% 56%, 42% 56%, 22% 94%, 36% 94%, 66% 56%); transform:rotateX(-18deg); }
+/* The fin, stood up on the tail. It is the one part that breaks the flat
+   silhouette, which is what keeps the plane from reading as a sticker. */
+.plane__fin { width:23px; height:16px; left:-40px; top:-16px; transform-origin:50% 100%;
+              clip-path:polygon(100% 100%, 20% 0, 0 100%); transform:rotateX(-80deg); opacity:.72; }
+
+
+/* ── Supply drops ────────────────────────────────────────────────────────
+   The plane drops a chute every few seconds. Each is spawned at the plane's
+   live screen position — read off .plane__body's rect rather than guessed
+   from the orbit angle, so it leaves from wherever the plane actually is,
+   including mid-way behind the coin.
+
+   Two nested elements because both halves animate transform and one element
+   cannot run both: the outer falls and sways, the inner pops. The canopy
+   rocks on its own. Everything removes itself on animationend, so the DOM
+   never accumulates. */
+.drops { position:absolute; inset:0; pointer-events:none; overflow:visible; z-index:3; }
+.drop { position:absolute; width:36px; height:52px; margin:-26px 0 0 -18px;
+        animation:drop-fall 3s cubic-bezier(.35,.06,.5,1) forwards; }
+/* --fall, --sway and --s are all set in px by the spawner, already multiplied
+   by the scene's scale. The overlay sits outside .token-scene so it does not
+   inherit the 3D transform — which also means it does not inherit the 62%
+   mobile scale, and a drop would otherwise fall a full-size 168px through a
+   scene that is two-thirds the size. */
+@keyframes drop-fall {
+  from { transform:translate(0, 0) scale(var(--s, 1)); }
+  to   { transform:translate(var(--sway), var(--fall)) scale(var(--s, 1)); }
+}
+
+/* One animation per element. A fade-in listed alongside the delayed pop left
+   the element stuck at its base opacity:0 — two animations on one element
+   both claiming opacity, one of them still in its delay. The chute simply
+   starts visible; it is spawned behind the plane anyway. */
+.drop__inner { width:100%; height:100%;
+               animation:drop-pop .45s 3s ease-in forwards; }
+@keyframes drop-pop { 0% { transform:scale(1);   opacity:1; }
+                      45%{ transform:scale(1.28); opacity:1; }
+                      100%{ transform:scale(.35); opacity:0; } }
+
+/* The rock belongs to the chute AND the coin together. On the chute alone it
+   pivoted about the canopy while the coin stayed put, so the rigging swung
+   away from the thing it is supposed to be holding — the two have to be one
+   rigid body. Pivot near the canopy's crown so the whole load swings under it
+   like a pendulum, which is what a descending chute actually does.
+
+   It needs its own element: .drop__inner is already running the pop, and two
+   animations on one element both claiming transform is the same trap that
+   kept the chutes invisible earlier. */
+.drop__rig { display:block; width:100%; transform-origin:50% 8%;
+             animation:chute-rock 1.9s ease-in-out infinite; }
+@keyframes chute-rock { 0%,100% { transform:rotate(-7deg); } 50% { transform:rotate(7deg); } }
+.drop__chute { display:block; width:36px; height:32px; color:var(--ink); }
+/* -2px so the coin's rim meets the point the rigging converges on. The
+   circle sits ~1.5px inside its own 22px box, so butting the boxes up
+   against each other still left a visible gap. */
+.drop__coin { display:block; width:22px; height:22px; margin:-2px auto 0; color:var(--ink); }
+
+/* The burst the pop leaves behind. It cannot live inside .drop__inner — the
+   pop would shrink and fade it away instead of letting it expand — so it gets
+   its own copy of the rock to ride. Both rigs are 52 tall and start together,
+   so they stay in phase and the ring breaks out of wherever the coin actually
+   is rather than where it would have hung dead still. */
+.drop__rig--burst { position:absolute; inset:0; }
+.drop__ring { position:absolute; left:50%; top:30px; width:22px; height:22px; margin-left:-11px;
+              border:2px solid var(--ink); border-radius:50%; opacity:0;
+              animation:ring-out .45s 3s ease-out forwards; }
+@keyframes ring-out { 0% { opacity:.55; transform:scale(.5); }
+                      100%{ opacity:0;   transform:scale(2.1); } }
+
+
+/* ── The settlement section's entrance ────────────────────────────────────
+   The site's [data-reveal] observer drives all of this; only the direction
+   changes. The default rises 14px, this one comes in 26px from the left, and
+   both resting states are the visible one — if the observer never runs,
+   reveal.js's failsafe still releases everything.
+
+   The cascades below are the detail *inside* an already-revealed block, so a
+   row resolves into its parts instead of arriving whole. Their index is set by
+   token.js into --cascade-delay; an element it misses is simply undelayed
+   rather than invisible. */
+
+@media (prefers-reduced-motion: no-preference) {
+    .settle [data-reveal] { transform: translateX(-26px); }
+    .settle [data-reveal].is-revealed { transform: none; }
+
+    /* The accent rule draws itself down the side of the row. */
+    .settle-rail__row::before {
+        transform: scaleY(0);
+        transform-origin: 50% 0;
+        transition: transform var(--dur-slow) var(--ease-out) var(--reveal-delay, 0ms),
+                    background-color var(--dur) var(--ease-out);
+    }
+
+    .settle-rail__row.is-revealed::before { transform: scaleY(1); }
+
+    /* Ten chain chips 34ms apart; the receipt's rows 80ms apart, top to bottom,
+       so the total lands last. */
+    .settle-rail__chains i,
+    .settle-receipt__body > div {
+        opacity: 0;
+        transform: translateX(-10px);
+        transition: opacity var(--dur) var(--ease-out) var(--cascade-delay, 0ms),
+                    transform var(--dur-slow) var(--ease-out) var(--cascade-delay, 0ms);
+    }
+
+    .settle-rail__row.is-revealed .settle-rail__chains i,
+    .settle-receipt.is-revealed .settle-receipt__body > div {
+        opacity: 1;
+        transform: none;
+    }
+
+    /* The confirmations fill in sequence, so you watch three-of-three count. */
+    .settle-rail__ticks i.is-done {
+        background: transparent;
+        border: 1px dashed var(--line-strong);
+        transition: background-color var(--dur) var(--ease-out) var(--cascade-delay, 0ms),
+                    border-color var(--dur) var(--ease-out) var(--cascade-delay, 0ms);
+    }
+
+    .settle-rail__row.is-revealed .settle-rail__ticks i.is-done {
+        background: var(--ok);
+        border: 1px solid var(--ok);
+    }
+
+    .live-line:hover .live-line__go { transform: translateX(3px); }
+
+    /* A slow breath on the status dot once the figures have resolved. */
+    .live-line__live[data-state="ready"] .live-line__dot {
+        animation: live-pulse 2.6s ease-in-out infinite;
+    }
+
+    @keyframes live-pulse {
+        0%, 100% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 20%, transparent); }
+        50%      { box-shadow: 0 0 0 6px color-mix(in srgb, var(--ok) 6%, transparent); }
+    }
+
+    .live-line__live[data-state="loading"] .live-line__val {
+        animation: live-sheen 1.15s ease-in-out infinite;
+    }
+
+    @keyframes live-sheen {
+        0%, 100% { opacity: 0.45; }
+        50%      { opacity: 0.85; }
+    }
+}
+
+/* The drops are the one thing with no still equivalent: a parachute that never
+   falls is just a picture of a parachute. */
+@media (prefers-reduced-motion: reduce) {
+    .drops { display: none; }
+}
+
+
+/* ── Smooth anchor scrolling ──────────────────────────────────────────────
+   The chevron under the hero points at #features; without this it teleports.
+   Only on this page — index.css is the only stylesheet the landing page
+   loads — and only when motion is welcome. tokens.css's reduced-motion block
+   already forces scroll-behavior back to auto, so this needs no counterpart. */
+@media (prefers-reduced-motion: no-preference) {
+    html { scroll-behavior: smooth; }
+}
+
+/* The header is sticky and about 65px tall, so an anchor landing flush with
+   the viewport top would sit underneath it. */
+.settle { scroll-margin-top: 84px; }
+
+/* ── The closing band ─────────────────────────────────────────────────────
+   A rule that draws itself out from the centre, then the heading, the line
+   and each button in turn. The band already carries a slow sheen; this is
+   what happens once, on arrival. */
+.cta-rule {
+    display: block;
+    width: 64px;
+    height: 2px;
+    margin: 0 auto 22px;
+    border-radius: 2px;
+    background: linear-gradient(90deg, transparent, var(--ink-3), transparent);
+}
+
+.cta-content h2 { letter-spacing: -0.02em; }
+
+@media (prefers-reduced-motion: no-preference) {
+    /* The band is centred, so its rule opens from the middle rather than
+       sliding in from a side like the settlement section's. */
+    .cta-rule { transform: scaleX(0); }
+    .cta-rule.is-revealed { transform: scaleX(1); }
+
+    /* .btn already carries `transition: all` and its own hover lift, and it
+       beats [data-reveal]'s transition on specificity, so the buttons would
+       enter with no stagger at all. Only the delay needs adding - and it has
+       to be dropped once they arrive, or every later hover would wait out the
+       entrance delay before responding. */
+    .cta-buttons .btn { transition-delay: var(--reveal-delay, 0ms); }
+    .cta-buttons .btn.is-revealed { transition-delay: 0ms; }
 }

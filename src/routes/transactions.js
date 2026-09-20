@@ -1,25 +1,19 @@
 const { Router } = require('express');
 const TransactionService = require('../services/TransactionService');
-const PayoutService = require('../services/PayoutService');
 const { db } = require('../config/database');
 const BalanceWatcher = require('../services/BalanceWatcher');
-const { ApiError } = require('../utils/errors');
+const { ValidationError } = require('../utils/errors');
+const { assertOwnership } = require('../middleware/auth');
 
 const router = Router();
 
 /**
- * Get all transactions for a client
+ * List the caller's transactions.
  * GET /api/transactions/list
  */
 router.get('/list', (req, res, next) => {
   try {
-    const { clientId } = req.body;
-
-    if (!clientId) {
-      throw new ApiError(400, 'API Key or clientId is required');
-    }
-
-    const transactions = TransactionService.getClientTransactions(clientId);
+    const transactions = TransactionService.getClientTransactions(req.auth.clientId);
 
     res.json(
       transactions.map((transaction) => ({
@@ -33,7 +27,7 @@ router.get('/list', (req, res, next) => {
         createdAt: transaction.createdAt,
         completedAt: transaction.completedAt,
         failedAt: transaction.failedAt,
-        failureReason: transaction.failureReason
+        failureReason: transaction.failureReason,
       }))
     );
   } catch (error) {
@@ -42,39 +36,37 @@ router.get('/list', (req, res, next) => {
 });
 
 /**
- * Get transaction history for a wallet
+ * On-chain history for one of the caller's wallets.
  * POST /api/transactions/wallet
  */
 router.post('/wallet', async (req, res, next) => {
   try {
     const { walletId } = req.body;
-    const { db } = require('../config/database');
- 
-    const wallet = db.getById('wallets', walletId);
-    if (!wallet) {
-      throw new ApiError(404, 'Wallet not found');
-    }
+    if (!walletId) throw new ValidationError('walletId is required');
 
-    const txHistory = await BalanceWatcher.getTransactionHistory(wallet);
-    
-    res.json(txHistory);
+    const wallet = assertOwnership(db.getById('wallets', walletId), req, 'Wallet');
+    const history = await BalanceWatcher.getTransactionHistory(wallet);
+
+    res.json(history || { status: 'unavailable', transactions: [] });
   } catch (error) {
     next(error);
   }
 });
 
 /**
- * Get a specific transaction by ID
- * POST /api/transactions/getTransaction
+ * Fetch one transaction the caller owns.
+ * GET /api/transactions/:transactionId
  */
-router.get('/getTransaction', (req, res, next) => {
+router.get('/:transactionId', (req, res, next) => {
   try {
-    const { transactionId } = req.body;
-    const transaction = TransactionService.getTransaction(transactionId);
+    const { transactionId } = req.params;
+    if (!transactionId) throw new ValidationError('transactionId is required');
 
-    if (!transaction) {
-      throw new ApiError(404, 'Transaction not found');
-    }
+    const transaction = assertOwnership(
+      TransactionService.getTransaction(transactionId),
+      req,
+      'Transaction'
+    );
 
     res.json({
       id: transaction.id,
@@ -95,7 +87,7 @@ router.get('/getTransaction', (req, res, next) => {
       completedAt: transaction.completedAt,
       failedAt: transaction.failedAt,
       failureReason: transaction.failureReason,
-      failureMessage: transaction.failureMessage
+      failureMessage: transaction.failureMessage,
     });
   } catch (error) {
     next(error);

@@ -4,6 +4,7 @@ const ecc = require('tiny-secp256k1');
 const bip39 = require('bip39');
 const { v4: uuidv4 } = require('uuid');
 const { db } = require('../../config/database');
+const KeyVault = require('../crypto/KeyVault');
 const ProxyService = require('../ProxyService');
 
 const bip32 = BIP32Factory(ecc);
@@ -33,6 +34,14 @@ class LitecoinWalletService {
     this.rpcEndpoints = {
       mainnet: 'https://litecoin-mainnet.gateway.tatum.io',
     };
+
+    // Where a signed transaction is pushed, in order. The Tatum gateway
+    // accepts sendrawtransaction without a key today; litecoinspace is the
+    // fallback for the day it stops.
+    this.broadcastEndpoints = [
+      { kind: 'rpc', url: 'https://litecoin-mainnet.gateway.tatum.io' },
+      { kind: 'explorer', url: 'https://litecoinspace.org/api/tx' },
+    ];
 
     this.networkConfig = {
       mainnet: { name: 'Litecoin Mainnet', derivation: "m/44'/2'/0'/0/0" },
@@ -213,7 +222,8 @@ class LitecoinWalletService {
       };
 
       // Save to database
-      return db.create('wallets', wallet);
+      // Encrypt privateKey and seedPhrase before they touch the database.
+      return db.create('wallets', KeyVault.sealWallet(wallet));
     } catch (error) {
       throw new Error(`Failed to create Litecoin wallet: ${error.message}`);
     }
@@ -238,13 +248,34 @@ class LitecoinWalletService {
 
       const data = await response.json();
 
-      const transactions = (data || []).slice(0, limit).map(tx => ({
-        txid: tx.txid,
-        time: tx.status.block_time ? new Date(tx.status.block_time * 1000).toISOString() : null,
-        blockHeight: tx.status.block_height || null,
-        inputCount: tx.vin?.length || 0,
-        outputCount: tx.vout?.length || 0,
-      }));
+      // Chain tip, so each transaction can report its depth. LTC checkout
+      // requires two confirmations; without the tip the most this could ever
+      // report was one, so no LTC session ever settled.
+      const tipHeight = await this.getTipHeight();
+
+      const transactions = (Array.isArray(data) ? data : []).slice(0, limit).map(tx => {
+        const inputSum  = tx.vin?.reduce((s, inp) => s + (inp.prevout?.value || 0), 0) || 0;
+        const outputSum = tx.vout?.reduce((s, out) => s + (out.value       || 0), 0) || 0;
+        const blockHeight = tx.status?.block_height || null;
+        return {
+          txid:        tx.txid,
+          hash:        tx.txid,
+          time:        tx.status?.block_time || null,   // unix seconds (null if unconfirmed)
+          blockHeight,
+          confirmations: blockHeight && tipHeight ? Math.max(1, tipHeight - blockHeight + 1) : (blockHeight ? 1 : 0),
+          inputs:  (tx.vin  || []).map(inp => ({
+            address: inp.prevout?.scriptpubkey_address || null,
+            value:   (inp.prevout?.value || 0) / 1e8,
+          })),
+          outputs: (tx.vout || []).map(out => ({
+            address: out.scriptpubkey_address || null,
+            value:   (out.value || 0) / 1e8,
+          })),
+          totalInput:  inputSum  / 1e8,
+          totalOutput: outputSum / 1e8,
+          fee:         (inputSum - outputSum) / 1e8,
+        };
+      });
 
       return {
         address,
@@ -260,6 +291,21 @@ class LitecoinWalletService {
         status: 'error',
         error: error.message,
       };
+    }
+  }
+
+  /**
+   * Current chain height, or null when the explorer is unavailable.
+   */
+  async getTipHeight() {
+    try {
+      const response = await ProxyService.fetch(`${this.apiEndpoints.mainnet}/blocks/tip/height`);
+      if (!response.ok) return null;
+      const height = Number(await response.text());
+      return Number.isFinite(height) ? height : null;
+    } catch (error) {
+      console.warn(`[LitecoinWalletService] Tip height unavailable: ${error.message}`);
+      return null;
     }
   }
 
@@ -311,29 +357,51 @@ class LitecoinWalletService {
    * @returns {Promise<number>} Fee in satoshis for typical transaction
    */
   async estimateFee(targetConfirmations = 6) {
+    const feeRateSatPerVb = await this.estimateFeeRate(targetConfirmations);
+    const txSizeVBytes = LitecoinWalletService.virtualSize(1, 2);
+    const feeSatoshis = Math.ceil(feeRateSatPerVb * txSizeVBytes);
+
+    console.log(`[LitecoinWalletService] Fee rate: ${feeRateSatPerVb} sat/vB → ${feeSatoshis} sats (${txSizeVBytes} vB)`);
+    return Math.max(feeSatoshis, LitecoinWalletService.MIN_FEE_SATS);
+  }
+
+  /**
+   * Live fee rate in sat/vB for the target confirmation window.
+   */
+  async estimateFeeRate(targetConfirmations = 6) {
     try {
       // litecoinspace.org uses the same API format as mempool.space (sat/vB)
-      const res = await fetch(`${this.apiEndpoints.mainnet}/v1/fees/recommended`);
+      const res = await ProxyService.fetch(`${this.apiEndpoints.mainnet}/v1/fees/recommended`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
       const fees = await res.json();
       // fastestFee ≈ next block, halfHourFee ≈ 3 blocks, hourFee ≈ 6 blocks
-      let feeRateSatPerVb;
-      if (targetConfirmations <= 1)      feeRateSatPerVb = fees.fastestFee;
-      else if (targetConfirmations <= 3) feeRateSatPerVb = fees.halfHourFee;
-      else                               feeRateSatPerVb = fees.hourFee;
+      let rate;
+      if (targetConfirmations <= 1)      rate = fees.fastestFee;
+      else if (targetConfirmations <= 3) rate = fees.halfHourFee;
+      else                               rate = fees.hourFee;
 
-      // P2WPKH SegWit 1-in 2-out transaction: ~141 vB
-      const txSizeVBytes = 141;
-      const feeSatoshis = Math.ceil(feeRateSatPerVb * txSizeVBytes);
-
-      console.log(`[LitecoinWalletService] Fee rate: ${feeRateSatPerVb} sat/vB → ${feeSatoshis} sats (${txSizeVBytes} vB)`);
-      return Math.max(feeSatoshis, 500);
+      if (!Number.isFinite(rate) || rate <= 0) throw new Error('no usable fee rate in response');
+      return rate;
     } catch (error) {
       console.error(`[LitecoinWalletService] Fee estimation error: ${error.message}`);
-      return 1000; // Fallback
+      return LitecoinWalletService.FALLBACK_FEE_RATE;
     }
   }
+
+  /**
+   * Size of a legacy P2PKH transaction with the given shape - the wallets
+   * here are P2PKH ("L..." addresses), which are larger than SegWit:
+   * overhead 10 + 148 per input + 34 per output.
+   */
+  static virtualSize(inputCount, outputCount) {
+    return 10 + 148 * inputCount + 34 * outputCount;
+  }
+
+  /** Below this a change output is not worth creating; it becomes fee. */
+  static get DUST_SATS() { return 1000; }
+  static get MIN_FEE_SATS() { return 1000; }
+  static get FALLBACK_FEE_RATE() { return 10; } // sat/vB, deliberately generous
 
   /**
    * Parse address and identify its type and format
@@ -458,13 +526,18 @@ class LitecoinWalletService {
         throw new Error('No unspent outputs (UTXOs) available');
       }
 
-      const utxos = data;
-      const amountSatoshis = Math.floor(amount * 100000000); // Convert LTC to satoshis
-      const feeSatoshis = await this.estimateFee(6); // Fetch dynamic fee
-      const totalNeeded = amountSatoshis + feeSatoshis;
+      // Largest first, so the fewest inputs (and the least fee) cover the send.
+      const utxos = [...data].sort((a, b) => b.value - a.value);
+      // Round, not floor - see the Bitcoin service.
+      const amountSatoshis = Math.round(Number(amount) * 100000000); // Convert LTC to satoshis
+      const feeRate = await this.estimateFeeRate(6);
 
+      // Fee sized to the transaction actually being built - see the Bitcoin
+      // service for why. Each P2PKH input adds ~148 bytes.
       let selectedUtxos = [];
       let totalValue = 0;
+      let feeSatoshis = 0;
+      let totalNeeded = amountSatoshis;
 
       for (const utxo of utxos) {
         selectedUtxos.push({
@@ -473,12 +546,24 @@ class LitecoinWalletService {
           value: utxo.value,
         });
         totalValue += utxo.value;
+        feeSatoshis = Math.max(
+          Math.ceil(feeRate * LitecoinWalletService.virtualSize(selectedUtxos.length, 2)),
+          LitecoinWalletService.MIN_FEE_SATS
+        );
+        totalNeeded = amountSatoshis + feeSatoshis;
         if (totalValue >= totalNeeded) break;
       }
 
       if (totalValue < totalNeeded) {
         throw new Error(`Insufficient funds: need ${totalNeeded} satoshis, have ${totalValue}`);
       }
+
+      let changeSatoshis = totalValue - totalNeeded;
+      if (changeSatoshis > 0 && changeSatoshis < LitecoinWalletService.DUST_SATS) {
+        feeSatoshis += changeSatoshis;
+        changeSatoshis = 0;
+      }
+      console.log(`[LitecoinWalletService] ${selectedUtxos.length} input(s), fee ${feeSatoshis} sats at ${feeRate} sat/vB, change ${changeSatoshis} sats`);
 
       // Build transaction using P2PKH (compatible with Litecoin)
       const { output: scriptOutput } = bitcoin.payments.p2pkh({ 
@@ -590,10 +675,10 @@ class LitecoinWalletService {
       });
 
       // Add change output if needed
-      if (totalValue > totalNeeded) {
+      if (changeSatoshis > 0) {
         psbt.addOutput({
           script: Uint8Array.from(scriptOutput),
-          value: BigInt(totalValue - totalNeeded),
+          value: BigInt(changeSatoshis),
         });
       }
 
@@ -623,39 +708,71 @@ class LitecoinWalletService {
   }
 
   /**
-   * Broadcast a raw transaction via Litecoin RPC
+   * Broadcast a signed transaction, trying each endpoint in turn. A node
+   * rejection is final; only transport and gateway failures move on.
    * @param {string} txHex - Signed transaction in hex format
    * @returns {Promise<string>} Transaction ID
    */
   async broadcastRawTransaction(txHex) {
-    try {
-      const response = await ProxyService.fetch(this.rpcEndpoints.mainnet, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          jsonrpc: '2.0',
-          id: 1,
-          method: 'sendrawtransaction',
-          params: [txHex],
-        }),
-      });
+    const failures = [];
 
-      if (!response.ok) {
-        throw new Error(`RPC error: ${response.status} ${response.statusText}`);
+    for (const endpoint of this.broadcastEndpoints) {
+      try {
+        if (endpoint.kind === 'rpc') {
+          return await this._broadcastViaRpc(endpoint.url, txHex);
+        }
+        return await this._broadcastViaExplorer(endpoint.url, txHex);
+      } catch (error) {
+        if (error.rejected) {
+          throw new Error(`Transaction rejected by the network: ${error.message}`);
+        }
+        failures.push(`${endpoint.url}: ${error.message}`);
+        console.warn(`[LitecoinWalletService] Broadcast via ${endpoint.url} failed, trying next: ${error.message}`);
       }
-
-      const data = await response.json();
-
-      if (data.error) {
-        throw new Error(`RPC error: ${data.error.message || JSON.stringify(data.error)}`);
-      }
-
-      return data.result; // txid
-    } catch (error) {
-      throw new Error(`Failed to broadcast transaction via RPC: ${error.message}`);
     }
+
+    throw new Error(`Failed to broadcast transaction on every endpoint: ${failures.join(' | ')}`);
+  }
+
+  async _broadcastViaRpc(url, txHex) {
+    const response = await ProxyService.fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'sendrawtransaction', params: [txHex] }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`RPC error: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    if (data.error) {
+      const error = new Error(data.error.message || JSON.stringify(data.error));
+      error.rejected = [-25, -26, -27].includes(data.error.code);
+      throw error;
+    }
+
+    return data.result; // txid
+  }
+
+  async _broadcastViaExplorer(url, txHex) {
+    const response = await ProxyService.fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: txHex,
+    });
+
+    const text = (await response.text()).trim();
+    if (!response.ok) {
+      const error = new Error(`explorer ${response.status}: ${text.slice(0, 200)}`);
+      error.rejected = response.status === 400;
+      throw error;
+    }
+
+    if (!/^[0-9a-f]{64}$/i.test(text)) {
+      throw new Error(`unexpected broadcast response: ${text.slice(0, 100)}`);
+    }
+    return text;
   }
 }
 

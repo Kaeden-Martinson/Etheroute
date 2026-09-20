@@ -1,320 +1,304 @@
+/**
+ * About.
+ *
+ * Replaces the generated company-page outline — Mission, Values, Why Choose
+ * Etheroute, Technology Stack, Our Journey, Get in Touch — with four sections
+ * that each do something the others don't.
+ *
+ * Two of the originals were the same section written twice: "Our Values" was
+ * four cards (Privacy First, Speed & Efficiency, Security, Accessibility) and
+ * "Why Choose Etheroute" was six green checkmarks (No KYC, Multi-Chain, Fair
+ * Fees, Instant Setup, API, 24/7 Support) — four arguments, made twice, in the
+ * two shapes that had just been taken off the landing page. They collapse into
+ * one numbered rail with no boxes at all.
+ *
+ * The page opens with the shared .hero from tokens.css, the same banner the
+ * status page uses: gradient ground, slow diagonal sheen, heading rising in.
+ * Everything below it is left-aligned and enters from the left, matching the
+ * landing page's settlement section.
+ */
+
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
 }
 
-body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', sans-serif;
-    background: #f8f8f8;
-    color: #1a1a1a;
-    line-height: 1.6;
-}
-
-.header {
-    background: #ffffff;
-    border-bottom: 1px solid #e5e5e5;
-    padding: 16px 24px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    position: sticky;
-    top: 0;
-    z-index: 100;
-}
-
-.header-left {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    cursor: pointer;
-    transition: opacity 0.2s;
-}
-
-.logo-mini {
-    width: 32px;
-    height: 32px;
-    background: #1a1a1a;
-    border-radius: 6px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.header-left:hover {
-    opacity: 0.8;
-}
-
-.brand {
-    font-size: 16px;
-    font-weight: 600;
-    color: #1a1a1a;
-}
-
-.nav-links {
-    display: flex;
-    gap: 24px;
-    align-items: center;
-}
-
-.nav-link {
-    text-decoration: none;
-    color: #666666;
-    font-size: 13px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    position: relative;
-    padding-bottom: 4px;
-    transition: color 0.2s;
-}
-
-.nav-link::after {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    width: 0;
-    height: 2px;
-    background: #1a1a1a;
-    transition: width 0.3s ease;
-}
-
-.nav-link:hover {
-    color: #1a1a1a;
-}
-
-.nav-link:hover::after {
-    width: 100%;
-}
-
-.nav-link.active {
-    color: #1a1a1a;
-}
-
-.nav-link.active::after {
-    width: 100%;
-}
-
-.hero {
-    background: linear-gradient(135deg, #ffffff 0%, #f5f5f5 100%);
-    padding: 80px 24px;
-    text-align: center;
-    border-bottom: 1px solid #e5e5e5;
-}
-
-.hero h1 {
-    font-size: 48px;
-    font-weight: 700;
-    margin-bottom: 16px;
-    color: #1a1a1a;
-}
-
-.hero p {
-    font-size: 18px;
-    color: #666666;
-    max-width: 600px;
-    margin: 0 auto;
-}
-
 .container {
-    max-width: 900px;
+    max-width: 1140px;
     margin: 0 auto;
-    padding: 60px 24px;
+    padding: 72px 24px 88px;
 }
 
-h2 {
-    font-size: 28px;
-    font-weight: 700;
-    margin-bottom: 16px;
-    color: #1a1a1a;
+/* ── Entrance ─────────────────────────────────────────────────────────────
+   reveal.js drives this; only the direction differs from the default rise. */
+@media (prefers-reduced-motion: no-preference) {
+    .container [data-reveal] { transform: translateX(-26px); }
+    .container [data-reveal].is-revealed { transform: none; }
 }
 
-h3 {
-    font-size: 18px;
-    font-weight: 700;
-    margin-top: 32px;
-    margin-bottom: 16px;
-    color: #1a1a1a;
-}
-
-p {
-    margin-bottom: 16px;
-    color: #333333;
-    font-size: 15px;
-    line-height: 1.8;
-}
-
-.section {
-    margin-bottom: 48px;
-}
-
-.highlight-box {
-    background: #ffffff;
-    border: 1px solid #e5e5e5;
-    border-radius: 8px;
-    padding: 32px;
-    margin: 32px 0;
-}
-
-.highlight-box h3 {
-    margin-top: 0;
-}
-
-.values-grid {
+/* ── Fact strip ───────────────────────────────────────────────────────────
+   Four figures, every one of them checkable in the repo. No "trusted by
+   thousands", and no large type wrapped around a small number. */
+.facts {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 24px;
-    margin: 32px 0;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    border-top: 1px solid var(--line);
 }
 
-.value-card {
-    background: #ffffff;
-    border: 1px solid #e5e5e5;
-    border-radius: 8px;
-    padding: 24px;
-    text-align: center;
-}
+.facts div { padding: 22px 22px 0 0; }
 
-.value-icon {
-    width: 52px;
-    height: 52px;
-    background: #f5f5f5;
-    border-radius: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin: 0 auto 20px;
-}
-
-.value-icon svg {
-    width: 24px;
-    height: 24px;
-    stroke: #1a1a1a;
-}
-
-.value-card h3 {
-    margin-top: 0;
-    font-size: 16px;
-}
-
-.value-card p {
-    font-size: 13px;
-    color: #666666;
-    margin-bottom: 0;
-}
-
-.feature-list {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-    gap: 12px;
-    margin: 24px 0;
-}
-
-.feature-item {
-    display: flex;
-    align-items: flex-start;
-    gap: 12px;
-    padding: 16px;
-    background: #ffffff;
-    border: 1px solid #e5e5e5;
-    border-radius: 8px;
-}
-
-.feature-check {
-    width: 18px;
-    height: 18px;
-    flex-shrink: 0;
-    margin-top: 2px;
-}
-
-.feature-check svg {
-    width: 18px;
-    height: 18px;
-    stroke: #1a1a1a;
-}
-
-.feature-text strong {
+.facts b {
     display: block;
-    font-size: 14px;
-    font-weight: 600;
-    margin-bottom: 2px;
-    color: #1a1a1a;
+    font-size: 26px;
+    font-weight: 700;
+    letter-spacing: -0.025em;
+    font-variant-numeric: tabular-nums;
+    margin-bottom: 6px;
+    color: var(--ink);
 }
 
-.feature-text div {
-    font-size: 13px;
-    color: #666666;
+.facts span {
+    display: block;
+    font-size: var(--text-sm);
+    color: var(--ink-3);
     line-height: 1.5;
 }
 
-.timeline {
-    margin: 32px 0;
+/* ── Prose ────────────────────────────────────────────────────────────────
+   Two unequal columns. A single centred column of body copy under a centred
+   heading is the other half of the template this replaces. */
+.prose {
+    display: grid;
+    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+    gap: 52px;
+    margin-top: 68px;
+    align-items: start;
 }
 
-.timeline-item {
-    display: flex;
-    gap: 16px;
-    margin-bottom: 24px;
-    padding-left: 16px;
-    border-left: 3px solid #1a1a1a;
-}
-
-.timeline-year {
+.prose h2 {
+    margin: 0 0 16px;
+    font-size: var(--text-xl);
     font-weight: 700;
-    color: #1a1a1a;
-    min-width: 60px;
+    letter-spacing: -0.02em;
+    max-width: 20ch;
+    color: var(--ink);
 }
 
-.timeline-content {
-    flex: 1;
+.prose p {
+    margin: 0 0 15px;
+    color: var(--ink-2);
+    font-size: 14.5px;
+    line-height: 1.72;
 }
 
-.timeline-content p {
-    margin-bottom: 0;
+.prose p:last-child { margin-bottom: 0; }
+
+.pull {
+    margin: 6px 0 0;
+    padding: 4px 0 4px 20px;
+    border-left: 2px solid var(--ink);
 }
 
-.cta-section {
-    background: #ffffff;
-    border: 1px solid #e5e5e5;
-    border-radius: 8px;
-    padding: 40px;
-    text-align: center;
-    margin-top: 60px;
-}
-
-.cta-section h2 {
-    margin-bottom: 12px;
-}
-
-.cta-section p {
-    color: #666666;
-    margin-bottom: 24px;
-}
-
-.btn {
-    display: inline-block;
-    padding: 12px 28px;
-    background: #1a1a1a;
-    color: #ffffff;
-    text-decoration: none;
-    border-radius: 4px;
+.pull blockquote {
+    margin: 0;
+    color: var(--ink);
+    font-size: var(--text-md);
+    line-height: 1.6;
     font-weight: 600;
-    font-size: 13px;
+    letter-spacing: -0.01em;
+}
+
+.pull figcaption {
+    margin-top: 10px;
+    font-size: var(--text-xs);
+    color: var(--ink-3);
+    letter-spacing: 0.1em;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
-    transition: background 0.2s;
+    font-weight: 700;
 }
 
-.btn:hover {
-    background: #333333;
+/* ── Principles ───────────────────────────────────────────────────────────
+   The rail that replaces the cards and the checkmarks. The accent rule draws
+   down the side on entry and takes the ink colour on hover, so a row answers
+   the pointer without anything moving. */
+.principles { margin-top: 76px; }
+
+.principles > h2 {
+    margin: 0 0 6px;
+    font-size: var(--text-xl);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--ink);
 }
 
+.principles__lede {
+    margin: 0 0 10px;
+    color: var(--ink-2);
+    font-size: var(--text-base);
+    max-width: 56ch;
+}
+
+.rule {
+    position: relative;
+    display: grid;
+    grid-template-columns: 52px minmax(0, 1fr) minmax(0, 1.25fr);
+    gap: 22px;
+    padding: 25px 0 25px 22px;
+    border-top: 1px solid var(--line);
+    align-items: start;
+}
+
+.rule::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 24px;
+    bottom: 24px;
+    width: 2px;
+    border-radius: 2px;
+    background: var(--line-strong);
+    transition: background-color var(--dur) var(--ease-out);
+}
+
+.rule:hover::before { background: var(--ink); }
+
+.rule i {
+    font-style: normal;
+    font-size: 11.5px;
+    font-weight: 700;
+    color: var(--ink-3);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.06em;
+    padding-top: 3px;
+}
+
+.rule h3 {
+    margin: 0;
+    font-size: var(--text-md);
+    font-weight: 700;
+    letter-spacing: -0.015em;
+    color: var(--ink);
+}
+
+.rule p {
+    margin: 0;
+    color: var(--ink-2);
+    font-size: 13.5px;
+    line-height: 1.65;
+}
+
+.rule code {
+    font-size: 12.5px;
+    padding: 1px 5px;
+    border-radius: var(--radius-sm);
+    background: var(--surface-sunken);
+    border: 1px solid var(--line);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .rule::before {
+        transform: scaleY(0);
+        transform-origin: 50% 0;
+        transition: transform var(--dur-slow) var(--ease-out) var(--reveal-delay, 0ms),
+                    background-color var(--dur) var(--ease-out);
+    }
+
+    .rule.is-revealed::before { transform: scaleY(1); }
+}
+
+/* ── Get in touch ─────────────────────────────────────────────────────────
+   The Help Center's block, same markup and same rules. It replaces a grey slab
+   that printed a Telegram URL as plain text rather than as a link. */
+.contact {
+    margin-top: 78px;
+    padding-top: 36px;
+    border-top: 1px solid var(--line);
+}
+
+.contact h2 {
+    margin: 0 0 8px;
+    font-size: var(--text-xl);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+}
+
+.contact > p {
+    margin: 0;
+    color: var(--ink-2);
+    font-size: 14.5px;
+    line-height: 1.65;
+    max-width: 58ch;
+}
+
+.channels-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+    margin: 22px 0 0;
+}
+
+.channel {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 18px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    color: var(--ink);
+    font-weight: 600;
+    font-size: var(--text-base);
+    text-decoration: none;
+    transition: border-color var(--dur-fast) var(--ease-out),
+                transform var(--dur-fast) var(--ease-out),
+                box-shadow var(--dur-fast) var(--ease-out);
+}
+
+.channel:hover {
+    border-color: var(--ink);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-sm);
+}
+
+.channel svg {
+    width: 22px;
+    height: 22px;
+    flex-shrink: 0;
+    color: var(--ink-2);
+}
+
+.channel:hover svg { color: var(--ink); }
+
+/* ── Narrow ───────────────────────────────────────────────────────────── */
+@media (max-width: 900px) {
+    .facts { grid-template-columns: 1fr 1fr; }
+    .facts div { padding-right: 16px; }
+    .prose { grid-template-columns: 1fr; gap: 32px; margin-top: 52px; }
+    .principles { margin-top: 58px; }
+    .contact { margin-top: 60px; }
+
+    /* Number and heading share a row, the body drops beneath them. */
+    .rule { grid-template-columns: 38px minmax(0, 1fr); gap: 8px 14px; }
+    .rule p { grid-column: 2; }
+}
+
+@media (max-width: 560px) {
+    .container { padding: 48px 16px 64px; }
+    .facts { grid-template-columns: 1fr; }
+    .facts div { padding: 18px 0 0; }
+}
+
+/* ── Footer ───────────────────────────────────────────────────────────────
+   Theme tokens, matching every other page. Unchanged in substance from what
+   this file already had — it is restated here only because the rest of the
+   stylesheet was rewritten around it. */
 .footer {
-    background: #1a1a1a;
-    color: #ffffff;
+    background: var(--surface-sunken);
+    color: var(--ink);
     padding: 40px 24px;
-    border-top: 1px solid #333333;
+    border-top: 1px solid var(--line);
 }
 
 .footer-content {
@@ -330,101 +314,37 @@ p {
 }
 
 .footer-section h4 {
-    font-size: 14px;
+    font-size: var(--text-base);
     font-weight: 600;
     margin-bottom: 16px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    color: var(--ink);
 }
 
 .footer-link {
-    color: #999999;
+    color: var(--ink-2);
     text-decoration: none;
     font-size: 13px;
     margin-bottom: 8px;
     display: block;
-    transition: color 0.2s;
+    transition: color var(--dur) var(--ease-out);
 }
 
-.footer-link:hover {
-    color: #ffffff;
-}
+.footer-link:hover { color: var(--ink); }
 
 .footer-bottom {
-    border-top: 1px solid #333333;
+    border-top: 1px solid var(--line);
     padding-top: 24px;
     text-align: center;
-    color: #999999;
+    color: var(--ink-3);
     font-size: 13px;
 }
 
-.auth-buttons {
-    display: flex;
-    gap: 12px;
-    align-items: center;
-}
-
-.nav-link.login-btn {
-    padding: 8px 16px;
-    background: #ffffff;
-    border: 1px solid #e5e5e5;
-    border-radius: 4px;
-    text-decoration: none;
-    color: #1a1a1a;
-    font-size: 12px;
-    font-weight: 600;
-    transition: all 0.2s;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    display: inline-block;
-}
-
-.nav-link.login-btn:hover {
-    background: #f5f5f5;
-    border-color: #1a1a1a;
-}
-
-.nav-link.signup-btn {
-    padding: 8px 16px;
-    background: #1a1a1a;
-    border: 1px solid #1a1a1a;
-    border-radius: 4px;
-    text-decoration: none;
-    color: #ffffff;
-    font-size: 12px;
-    font-weight: 600;
-    transition: all 0.2s;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    display: inline-block;
-}
-
-.nav-link.signup-btn:hover {
-    background: #333333;
-    border-color: #333333;
-}
-
-@media (max-width: 1024px) {
-    .values-grid { grid-template-columns: repeat(2, 1fr); }
-    .hero h1 { font-size: 38px; }
-}
-
 @media (max-width: 768px) {
-    .hero { padding: 60px 20px; }
-    .hero h1 { font-size: 30px; }
-    .hero p { font-size: 16px; }
-    h2 { font-size: 22px; }
-    .container { padding: 40px 20px; }
-    .values-grid { grid-template-columns: 1fr; }
-    .feature-list { grid-template-columns: 1fr; }
-    .highlight-box { padding: 20px; }
-    .cta-section { padding: 40px 20px; }
     .footer-grid { grid-template-columns: repeat(2, 1fr); gap: 24px; }
 }
 
 @media (max-width: 480px) {
-    .hero h1 { font-size: 24px; }
     .footer-grid { grid-template-columns: 1fr; }
-    .timeline-item { flex-direction: column; gap: 4px; }
-    .cta-section { padding: 32px 16px; }
 }

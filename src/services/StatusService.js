@@ -1,18 +1,16 @@
 const { v4: uuidv4 } = require('uuid');
 const { db } = require('../config/database');
 
-const CHAIN_SERVICES = [
-  { key: 'ETH', label: 'Ethereum', kind: 'chain', description: 'Wallet balances and ETH withdrawals' },
-  { key: 'BTC', label: 'Bitcoin', kind: 'chain', description: 'Wallet balances and BTC withdrawals' },
-  { key: 'SOL', label: 'Solana', kind: 'chain', description: 'Wallet balances and SOL withdrawals' },
-  { key: 'LTC', label: 'Litecoin', kind: 'chain', description: 'Wallet balances and LTC withdrawals' },
-];
+// Individual chains are no longer listed here: with a chain registry that
+// grows, a row per coin is noise. Chain reachability shows up under the
+// platform services that depend on it (wallet sync, checkout, payouts).
+const CHAIN_SERVICES = [];
 
 const PLATFORM_SERVICES = [
   { key: 'API', label: 'API', kind: 'platform', description: 'Public and authenticated API endpoints' },
   { key: 'WALLET_SYNC', label: 'Wallet Sync', kind: 'platform', description: 'On-chain balance and transaction refresh' },
-  { key: 'WITHDRAWALS', label: 'Withdrawals', kind: 'platform', description: 'Withdrawal previews and processing' },
-  { key: 'PAYOUTS', label: 'Payout Engine', kind: 'platform', description: 'Batch swap and payout execution' },
+  { key: 'CHECKOUTS', label: 'Checkouts', kind: 'platform', description: 'Payment links and settlement' },
+  { key: 'PAYOUTS', label: 'Payout Engine', kind: 'platform', description: 'Withdrawals, swaps and payout execution' },
 ];
 
 const WINDOW_DAYS = 30;
@@ -44,6 +42,48 @@ class StatusService {
     return overlap > 0 ? overlap / 60000 : 0;
   }
 
+  /**
+   * One entry per day in the window, oldest first, for the uptime bar on the
+   * status page.
+   *
+   * Days are bucketed in UTC so the same incident never lands on a different
+   * tick for two viewers in different timezones; the date is sent as an ISO day
+   * and formatted client-side. Today's bucket only counts the minutes that have
+   * actually elapsed, otherwise every day would open at "100% so far" and then
+   * appear to degrade as the hours pass.
+   */
+  _buildDailyHistory(scoped, now) {
+    const dayMs = 24 * 60 * 60 * 1000;
+    const startOfToday = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+    const days = [];
+
+    for (let offset = WINDOW_DAYS - 1; offset >= 0; offset -= 1) {
+      const dayStart = new Date(startOfToday - offset * dayMs);
+      const dayEnd = new Date(Math.min(dayStart.getTime() + dayMs, now.getTime()));
+      const elapsedMinutes = Math.max(1, (dayEnd.getTime() - dayStart.getTime()) / 60000);
+      const downtimeMinutes = scoped.reduce(
+        (sum, incident) => sum + this._incidentOverlapMinutes(incident, dayStart, dayEnd),
+        0,
+      );
+      const uptimePercentage = Math.max(0, 100 - (downtimeMinutes / elapsedMinutes) * 100);
+
+      let status = 'operational';
+      if (downtimeMinutes > 0) {
+        // A blip and an all-day outage should not paint the same tick.
+        status = downtimeMinutes >= elapsedMinutes * 0.25 ? 'down' : 'partial';
+      }
+
+      days.push({
+        date: dayStart.toISOString().slice(0, 10),
+        status,
+        downtimeMinutes: Number(downtimeMinutes.toFixed(1)),
+        uptimePercentage: Number(uptimePercentage.toFixed(2)),
+      });
+    }
+
+    return days;
+  }
+
   _buildSummary(definition, incidents, windowStart, windowEnd, windowMinutes) {
     const scoped = incidents.filter((incident) => incident.scope === definition.kind && incident.key === definition.key);
     const activeIncident = scoped.find((incident) => !incident.resolvedAt) || null;
@@ -51,6 +91,7 @@ class StatusService {
     const uptimePercentage = Math.max(0, 100 - (downtimeMinutes / windowMinutes) * 100);
 
     return {
+      days: this._buildDailyHistory(scoped, windowEnd),
       key: definition.key,
       label: definition.label,
       kind: definition.kind,

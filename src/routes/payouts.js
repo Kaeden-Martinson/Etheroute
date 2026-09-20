@@ -1,51 +1,50 @@
 const { Router } = require('express');
 const PayoutService = require('../services/PayoutService');
-const { ApiError } = require('../utils/errors');
+const { ValidationError } = require('../utils/errors');
+const { assertOwnership } = require('../middleware/auth');
 
 const router = Router();
 
 /**
- * Get all payouts for a user
+ * Shape a payout for the API, computing per-chain gas from the stored plan.
+ */
+function presentPayout(payout) {
+  const gasPerChain = {};
+  for (const transfer of (payout.withdrawalPlan && payout.withdrawalPlan.transfers) || []) {
+    gasPerChain[transfer.chain] = (gasPerChain[transfer.chain] || 0) + (transfer.estimatedGas || 0);
+  }
+
+  return {
+    id: payout.id,
+    clientId: payout.clientId,
+    status: payout.status,
+    totalAmountUsd: payout.totalAmountUsd,
+    platformFee: payout.platformFee,
+    estimatedTotalGas: payout.estimatedTotalGas || 0,
+    gasPerChain,
+    netAmountUsd: payout.netAmountUsd,
+    chain: payout.chain,
+    recipientAddress: payout.recipientAddress,
+    type: payout.type,
+    createdAt: payout.createdAt,
+    updatedAt: payout.updatedAt,
+    completedAt: payout.completedAt,
+    withdrawalPlan: payout.withdrawalPlan,
+  };
+}
+
+/**
+ * List the caller's payouts.
  * GET /api/payouts/list
  */
 router.get('/list', (req, res, next) => {
   try {
-    const { clientId } = req.body;
-
-    if (!clientId) {
-      throw new ApiError(400, 'API Key is required');
-    }
-
-    const payouts = PayoutService.getClientPayouts(clientId);
+    const payouts = PayoutService.getClientPayouts(req.auth.clientId);
 
     res.json({
       success: true,
       count: payouts.length,
-      payouts: payouts.map((payout) => {
-        // Compute gasPerChain from the stored transfer plan
-        const gasPerChain = {};
-        for (const t of (payout.withdrawalPlan?.transfers || [])) {
-          if (!gasPerChain[t.chain]) gasPerChain[t.chain] = 0;
-          gasPerChain[t.chain] += t.estimatedGas || 0;
-        }
-        return {
-          id: payout.id,
-          clientId: payout.clientId,
-          status: payout.status,
-          totalAmountUsd: payout.totalAmountUsd,
-          platformFee: payout.platformFee,
-          estimatedTotalGas: payout.estimatedTotalGas || 0,
-          gasPerChain,
-          netAmountUsd: payout.netAmountUsd,
-          chain: payout.chain,
-          recipientAddress: payout.recipientAddress,
-          type: payout.type,
-          createdAt: payout.createdAt,
-          updatedAt: payout.updatedAt,
-          completedAt: payout.completedAt,
-          withdrawalPlan: payout.withdrawalPlan,
-        };
-      }),
+      payouts: payouts.map(presentPayout),
     });
   } catch (error) {
     next(error);
@@ -53,45 +52,17 @@ router.get('/list', (req, res, next) => {
 });
 
 /**
- * Get a specific payout by ID
- * POST /api/payouts/getPayout
+ * Fetch one payout the caller owns.
+ * GET /api/payouts/:payoutId
  */
-router.get('/getPayout', (req, res, next) => {
+router.get('/:payoutId', (req, res, next) => {
   try {
-    const { payoutId } = req.body;
+    const { payoutId } = req.params;
+    if (!payoutId) throw new ValidationError('payoutId is required');
 
-    const payout = PayoutService.getPayout(payoutId);
+    const payout = assertOwnership(PayoutService.getPayout(payoutId), req, 'Payout');
 
-    if (!payout) {
-      throw new ApiError(404, 'Payout not found');
-    }
-
-    const gasPerChain = {};
-    for (const t of (payout.withdrawalPlan?.transfers || [])) {
-      if (!gasPerChain[t.chain]) gasPerChain[t.chain] = 0;
-      gasPerChain[t.chain] += t.estimatedGas || 0;
-    }
-
-    res.json({
-      success: true,
-      payout: {
-        id: payout.id,
-        clientId: payout.clientId,
-        status: payout.status,
-        totalAmountUsd: payout.totalAmountUsd,
-        platformFee: payout.platformFee,
-        estimatedTotalGas: payout.estimatedTotalGas || 0,
-        gasPerChain,
-        netAmountUsd: payout.netAmountUsd,
-        chain: payout.chain,
-        recipientAddress: payout.recipientAddress,
-        type: payout.type,
-        createdAt: payout.createdAt,
-        updatedAt: payout.updatedAt,
-        completedAt: payout.completedAt,
-        withdrawalPlan: payout.withdrawalPlan,
-      },
-    });
+    res.json({ success: true, payout: presentPayout(payout) });
   } catch (error) {
     next(error);
   }

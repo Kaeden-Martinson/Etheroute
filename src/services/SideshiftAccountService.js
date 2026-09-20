@@ -31,6 +31,12 @@ class SideshiftAccountService {
     // Cache HttpsProxyAgent instances so we don't recreate them on every request
     this.agentCache = {};
 
+    // Proxies that refused a connection, and when to try them again. A
+    // request on such an account goes direct in the meantime - Sideshift's
+    // limits are per IP, so this trades address diversity for actually
+    // working, which is the right trade when the proxy provider is down.
+    this.proxyCooldowns = {};
+
     this._load();
   }
 
@@ -67,10 +73,26 @@ class SideshiftAccountService {
   // ---------------------------------------------------------------------------
 
   _getAgent(proxyUrl) {
+    if (!proxyUrl) return null;
     if (!this.agentCache[proxyUrl]) {
       this.agentCache[proxyUrl] = new HttpsProxyAgent(proxyUrl);
     }
     return this.agentCache[proxyUrl];
+  }
+
+  static get PROXY_COOLDOWN_MS() { return 10 * 60 * 1000; }
+
+  /** The agent for an account, or null while its proxy is cooling down. */
+  _agentFor(account) {
+    const until = this.proxyCooldowns[account.id] || 0;
+    if (until > Date.now()) return null;
+    return this._getAgent(account.proxyUrl);
+  }
+
+  /** Sideline an account's proxy after it refused or timed out. */
+  markProxyBad(accountId, reason) {
+    this.proxyCooldowns[accountId] = Date.now() + SideshiftAccountService.PROXY_COOLDOWN_MS;
+    console.warn(`[SideshiftAccountService] Proxy for "${accountId}" sidelined for 10 min (${reason}); requests go direct meanwhile`);
   }
 
   // ---------------------------------------------------------------------------
@@ -85,7 +107,7 @@ class SideshiftAccountService {
    * @returns {{ account: Object, agent: HttpsProxyAgent, affiliateId: string, secret: string }}
    * @throws {Error} when all accounts are currently rate-limited
    */
-  getAccount(type = 'quote') {
+  getAccount(type = 'quote', preferredId = null) {
     const limit = RATE_LIMITS[type] ?? 20;
     const windowMs = 60 * 1000;
     const now = Date.now();
@@ -93,6 +115,28 @@ class SideshiftAccountService {
     const active = this.accounts.filter(a => a.active !== false);
     if (active.length === 0) {
       throw new Error('[SideshiftAccountService] No active Sideshift accounts configured in data/accounts.json');
+    }
+
+    // A fixed-rate shift must be created on the account that requested its
+    // quote - Sideshift checks that the affiliateId matches. Round-robin
+    // would hand the shift to the next account along, so the caller pins it.
+    if (preferredId) {
+      const account = active.find(a => a.id === preferredId);
+      if (!account) {
+        throw new Error(`[SideshiftAccountService] Account "${preferredId}" is not available`);
+      }
+      const tracker = this.usageTracker[account.id] || { shifts: [], quotes: [] };
+      const key = type === 'shift' ? 'shifts' : 'quotes';
+      const recent = tracker[key].filter(t => now - t < windowMs).length;
+      if (recent >= limit) {
+        throw new Error(`[SideshiftAccountService] Account "${preferredId}" has used its ${type} limit for this minute`);
+      }
+      return {
+        account,
+        agent: this._agentFor(account),
+        affiliateId: account.affiliateId,
+        secret: account.secret,
+      };
     }
 
     for (let i = 0; i < active.length; i++) {
@@ -114,7 +158,7 @@ class SideshiftAccountService {
 
         return {
           account,
-          agent: this._getAgent(account.proxyUrl),
+          agent: this._agentFor(account),
           affiliateId: account.affiliateId,
           secret: account.secret,
         };

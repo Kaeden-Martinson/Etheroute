@@ -5,16 +5,16 @@
 }
 
 body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', sans-serif;
-    background: #f8f8f8;
-    color: #1a1a1a;
+    font-family: var(--font-sans);
+    background: var(--surface-sunken);
+    color: var(--ink);
     line-height: 1.6;
 }
 
 .header {
-    background: #ffffff;
-    border-bottom: 1px solid #e5e5e5;
-    padding: 16px 24px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--line);
+    padding: 10px 24px;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -42,7 +42,7 @@ body {
 
 .nav-link {
     text-decoration: none;
-    color: #666666;
+    color: var(--ink-2);
     font-size: 13px;
     font-weight: 600;
     text-transform: uppercase;
@@ -60,12 +60,12 @@ body {
     left: 0;
     width: 0;
     height: 2px;
-    background: #1a1a1a;
+    background: var(--ink);
     transition: width 0.3s ease;
 }
 
 .nav-link:hover {
-    color: #1a1a1a;
+    color: var(--ink);
 }
 
 .nav-link:hover::after {
@@ -73,7 +73,7 @@ body {
 }
 
 .nav-link.active {
-    color: #1a1a1a;
+    color: var(--ink);
 }
 
 .nav-link.active::after {
@@ -81,13 +81,20 @@ body {
 }
 
 .logo-mini {
-    width: 32px;
-    height: 32px;
-    background: #1a1a1a;
-    border-radius: 6px;
+    width: 45px;
+    height: 45px;
+    /* No tile — the mark sits straight on the header, so it takes --ink. */
+    background: none;
+    color: var(--ink);
     display: flex;
     align-items: center;
     justify-content: center;
+}
+
+.logo-mini svg {
+    width: 45px;
+    height: 45px;
+    display: block;
 }
 
 .brand {
@@ -114,13 +121,13 @@ body {
 }
 
 .user-menu:hover {
-    background: #f5f5f5;
+    background: var(--surface-sunken);
 }
 
 .user-avatar {
     width: 32px;
     height: 32px;
-    background: #e5e5e5;
+    background: var(--line);
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -147,8 +154,8 @@ body {
 }
 
 .card {
-    background: #ffffff;
-    border: 1px solid #e5e5e5;
+    background: var(--surface);
+    border: 1px solid var(--line);
     border-radius: 8px;
     padding: 24px;
     margin-bottom: 48px;
@@ -160,39 +167,39 @@ body {
     align-items: center;
     margin-bottom: 16px;
     padding-bottom: 12px;
-    border-bottom: 1px solid #f0f0f0;
+    border-bottom: 1px solid var(--line);
 }
 
 .card-title {
     font-size: 16px;
     font-weight: 600;
-    color: #1a1a1a;
+    color: var(--ink);
 }
 
 .card-subtitle {
     font-size: 12px;
-    color: #999999;
+    color: var(--ink-3);
     margin-top: 4px;
 }
 
 .balance-display {
     font-size: 36px;
     font-weight: 700;
-    color: #1a1a1a;
+    color: var(--ink);
     margin: 20px 0 8px;
     font-family: 'Courier New', monospace;
 }
 
 .balance-label {
     font-size: 12px;
-    color: #999999;
+    color: var(--ink-3);
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
 
 .balance-secondary {
     font-size: 14px;
-    color: #666666;
+    color: var(--ink-2);
     margin-top: 12px;
 }
 
@@ -217,32 +224,32 @@ button {
 }
 
 .btn-primary {
-    background: #1a1a1a;
-    color: #ffffff;
+    background: var(--ink);
+    color: var(--surface);
     flex: 1;
 }
 
 .btn-primary:hover {
-    background: #333333;
+    background: var(--ink-hover);
 }
 
 .btn-secondary {
-    background: #f5f5f5;
-    color: #1a1a1a;
-    border: 1px solid #e5e5e5;
+    background: var(--surface-sunken);
+    color: var(--ink);
+    border: 1px solid var(--line);
     flex: 1;
 }
 
 .btn-secondary:hover {
-    background: #f0f0f0;
+    background: var(--line);
 }
 
 .btn-withdraw {
     width: 100%;
     margin-top: 16px;
     padding: 14px 20px;
-    background: linear-gradient(135deg, #1a1a1a 0%, #333333 100%);
-    color: #ffffff;
+    background: linear-gradient(135deg, var(--ink) 0%, var(--ink-2) 100%);
+    color: var(--surface);
     border: none;
     border-radius: 8px;
     font-size: 14px;
@@ -258,7 +265,7 @@ button {
 }
 
 .btn-withdraw:hover {
-    background: linear-gradient(135deg, #333333 0%, #1a1a1a 100%);
+    background: linear-gradient(135deg, var(--ink-2) 0%, var(--ink) 100%);
     transform: translateY(-2px);
     box-shadow: 0 8px 16px rgba(26, 26, 26, 0.3);
 }
@@ -271,8 +278,8 @@ button {
     width: 100%;
     margin-top: 16px;
     padding: 14px 20px;
-    background: #f8f8f8;
-    border: 1px solid #e5e5e5;
+    background: var(--surface-sunken);
+    border: 1px solid var(--line);
     border-radius: 8px;
     font-size: 14px;
     font-weight: 600;
@@ -283,25 +290,12 @@ button {
 }
 
 .status-text {
-    color: #1a1a1a;
-}
-
-.status-badge {
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    display: flex;
-    align-items: right;
-    justify-content: right;
-    font-size: 13px;
-    font-weight: 700;
-    width: auto;
-    margin-left: auto;
+    color: var(--ink);
 }
 
 .status-badge.available {
-    background: #e8f5e9;
-    color: #27ae60;
+    background: var(--ok-bg);
+    color: var(--ok);
 }
 
 .status-badge.available svg {
@@ -310,8 +304,8 @@ button {
 }
 
 .status-badge.unavailable {
-    background: #ffebee;
-    color: #e74c3c;
+    background: var(--danger-bg);
+    color: var(--danger);
     position: relative;
 }
 
@@ -321,15 +315,15 @@ button {
 }
 
 .status-badge.unavailable:hover {
-    background: #ffcdd2;
+    background: var(--danger-bg);
 }
 
 .info-tooltip {
     position: absolute;
     bottom: 100%;
     right: -20.25%;
-    background: #1a1a1a;
-    color: #ffffff;
+    background: var(--ink);
+    color: var(--surface);
     padding: 8px 12px;
     border-radius: 6px;
     font-size: 12px;
@@ -349,17 +343,11 @@ button {
     left: 50%;
     transform: translateX(-50%);
     border: 4px solid transparent;
-    border-top-color: #1a1a1a;
+    border-top-color: var(--ink);
 }
 
 .withdrawal-status:hover .info-tooltip {
     opacity: 1;
-}
-
-.btn-small {
-    padding: 6px 12px;
-    font-size: 12px;
-    flex: none;
 }
 
 .wallets-grid {
@@ -372,8 +360,8 @@ button {
     align-items: center;
     justify-content: space-between;
     padding: 12px;
-    background: #f8f8f8;
-    border: 1px solid #e5e5e5;
+    background: var(--surface-sunken);
+    border: 1px solid var(--line);
     border-radius: 6px;
     margin-bottom: 10px;
 }
@@ -388,14 +376,120 @@ button {
 .chain-badge {
     width: 32px;
     height: 32px;
-    background: #f0f0f0;
-    border: 1px solid #e5e5e5;
+    background: var(--line);
+    border: 1px solid var(--line);
     border-radius: 6px;
     display: flex;
     align-items: center;
     justify-content: center;
     font-weight: 600;
     font-size: 12px;
+}
+
+.wallet-group {
+    margin-bottom: 16px;
+}
+
+.wallet-group__title {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ink-3);
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.wallet-group.hidden,
+.wallet-item.hidden {
+    display: none;
+}
+
+.wallet-label {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ink);
+    line-height: 1.3;
+    margin-bottom: 2px;
+}
+
+.wallet-label--empty {
+    color: var(--ink-muted);
+    font-weight: 500;
+    font-style: italic;
+}
+
+.wallet-rename {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.wallet-rename input {
+    width: auto;
+    min-width: 180px;
+    padding: 6px 10px;
+    font-size: 13px;
+}
+
+.search-field {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 10px;
+    border: 1px solid var(--line-strong);
+    border-radius: 6px;
+    background: var(--surface);
+    color: var(--ink-3);
+    margin: 0;
+    text-transform: none;
+    letter-spacing: 0;
+    font-weight: 400;
+}
+
+.search-field:focus-within {
+    border-color: var(--ink);
+    box-shadow: 0 0 0 3px var(--line);
+}
+
+.search-field .inline-icon {
+    margin: 0;
+    width: 15px;
+    height: 15px;
+}
+
+.search-field input {
+    width: 220px;
+    border: 0;
+    /* Match the height of the adjacent button so the search box and "Add Wallet"
+       sit on one clean line. */
+    padding: 8px 0;
+    font-size: 13px;
+    background: transparent;
+    color: var(--ink);
+    margin-right: -10px;
+    margin-left: 5px;
+}
+
+.search-field input:focus {
+    outline: none;
+    box-shadow: none;
+}
+
+.wallet-search-empty {
+    padding: 20px;
+    text-align: center;
+    color: var(--ink-muted);
+    font-size: 13px;
+}
+
+.wallet-search-empty.hidden {
+    display: none;
+}
+
+.wallet-chain .muted {
+    color: var(--ink-3);
+    font-weight: 400;
 }
 
 .wallet-details {
@@ -405,7 +499,7 @@ button {
 .wallet-address {
     font-family: 'Courier New', monospace;
     font-size: 12px;
-    color: #666666;
+    color: var(--ink-2);
     word-break: break-all;
 }
 
@@ -414,12 +508,12 @@ button {
     font-weight: 600;
     text-align: right;
     margin-right: 10px;
-    color: #1a1a1a;
+    color: var(--ink);
 }
 
 .wallet-balance-usd {
     font-size: 12px;
-    color: #999999;
+    color: var(--ink-3);
     margin-right: 10px;
     text-align: right;
 }
@@ -442,35 +536,35 @@ button {
     justify-content: center;
     cursor: pointer;
     transition: all 0.2s;
-    color: #1a1a1a;
+    color: var(--ink);
 }
 
 .icon-btn:hover {
-    background: #f5f5f5;
-    color: #666666;
+    background: var(--surface-sunken);
+    color: var(--ink-2);
 }
 
 .icon-btn svg {
     width: 16px;
     height: 16px;
-    color: #1a1a1a;
+    color: var(--ink);
 }
 
 .icon-btn.delete-btn:hover {
-    background: #ffebee;
-    color: #e74c3c;
+    background: var(--danger-bg);
+    color: var(--danger);
 }
 
 .icon-btn.delete-btn:hover svg {
-    color: #e74c3c;
+    color: var(--danger);
 }
 
 .bigger-icon-btn {
     width: 80px;
     height: 32px;
     padding: 0;
-    background: #f0f0f0;
-    border: 1px solid #e5e5e5;
+    background: var(--line);
+    border: 1px solid var(--line);
     border-radius: 4px;
     display: flex;
     align-items: center;
@@ -480,13 +574,13 @@ button {
 }
 
 .bigger-icon-btn:hover {
-    background: #e5e5e5;
+    background: var(--line);
 }
 
 .bigger-icon-btn svg {
     width: 16px;
     height: 16px;
-    color: #1a1a1a;
+    color: var(--ink);
 }
 
 .form-group {
@@ -497,44 +591,65 @@ label {
     display: block;
     font-size: 12px;
     font-weight: 600;
-    color: #1a1a1a;
+    color: var(--ink);
     margin-bottom: 6px;
     text-transform: uppercase;
     letter-spacing: 0.3px;
 }
 
-input[type="text"],
-input[type="email"],
-input[type="password"],
-input[type="number"],
+/* :where() keeps this at element specificity. Written as a chain of :not()s
+   it outranked every component rule on the page - the search fields set a
+   left padding for their magnifying glass and never got it, so the glass sat
+   on top of the text. */
+input:where(:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"])),
+textarea,
 select {
     width: 100%;
     padding: 10px 12px;
-    border: 1px solid #d5d5d5;
+    border: 1px solid var(--line-strong);
     border-radius: 6px;
     font-size: 13px;
-    color: #1a1a1a;
+    color: var(--ink);
+    background-color: var(--surface);
+}
+
+/* The global select rule in tokens.css draws the chevron; keep room for it
+   after the shared padding above. */
+select {
+    padding-right: 34px;
 }
 
 input:focus,
+textarea:focus,
 select:focus {
     outline: none;
-    border-color: #1a1a1a;
-    box-shadow: 0 0 0 3px rgba(26, 26, 26, 0.08);
+    border-color: var(--ink);
+    box-shadow: 0 0 0 3px var(--line);
+}
+
+/* Do not shout at a form the user has not filled in yet. */
+input:user-invalid,
+textarea:user-invalid {
+    border-color: var(--danger, var(--danger));
+}
+
+input:user-invalid:focus,
+textarea:user-invalid:focus {
+    box-shadow: 0 0 0 3px rgba(179, 38, 30, 0.12);
 }
 
 .info-box {
-    background: #f8f8f8;
-    border: 1px solid #e5e5e5;
+    background: var(--surface-sunken);
+    border: 1px solid var(--line);
     border-radius: 6px;
     padding: 12px;
     font-size: 13px;
-    color: #666666;
+    color: var(--ink-2);
     margin-bottom: 16px;
 }
 
 .info-box strong {
-    color: #1a1a1a;
+    color: var(--ink);
     display: block;
     margin-bottom: 4px;
 }
@@ -545,7 +660,7 @@ select:focus {
     gap: 12px;
     margin: 16px 0;
     padding: 12px;
-    background: #f0f0f0;
+    background: var(--line);
     border-radius: 6px;
 }
 
@@ -554,7 +669,7 @@ select:focus {
 }
 
 .fee-label {
-    color: #999999;
+    color: var(--ink-3);
     display: block;
     margin-bottom: 4px;
 }
@@ -562,7 +677,7 @@ select:focus {
 .fee-value {
     font-size: 16px;
     font-weight: 600;
-    color: #1a1a1a;
+    color: var(--ink);
     font-family: 'Courier New', monospace;
 }
 
@@ -585,7 +700,7 @@ select:focus {
 }
 
 .modal-content {
-    background: #ffffff;
+    background: var(--surface);
     border-radius: 8px;
     padding: 32px;
     max-width: 500px;
@@ -598,13 +713,13 @@ select:focus {
 .modal-header {
     margin-bottom: 24px;
     padding-bottom: 12px;
-    border-bottom: 1px solid #e5e5e5;
+    border-bottom: 1px solid var(--line);
 }
 
 .modal-title {
     font-size: 20px;
     font-weight: 600;
-    color: #1a1a1a;
+    color: var(--ink);
 }
 
 .close-btn {
@@ -616,14 +731,15 @@ select:focus {
     cursor: pointer;
     padding: 8px;
     display: flex;
-    align-items: right;
-    justify-content: right;
+    /* right is not a value for either of these; the icon simply centres. */
+    align-items: center;
+    justify-content: center;
 }
 
 .close-btn svg {
     width: 20px;
     height: 20px;
-    color: #666666;
+    color: var(--ink-2);
 }
 
 .loading {
@@ -632,9 +748,9 @@ select:focus {
 }
 
 .error-message {
-    background: #fee;
-    border: 1px solid #fcc;
-    color: #c00;
+    background: var(--danger-bg);
+    border: 1px solid var(--danger-bg);
+    color: var(--danger);
     padding: 12px;
     border-radius: 6px;
     font-size: 12px;
@@ -653,7 +769,7 @@ select:focus {
     border: none;
     cursor: pointer;
     padding: 6px;
-    color: #1a1a1a;
+    color: var(--ink);
     align-items: center;
     justify-content: center;
     border-radius: 4px;
@@ -662,7 +778,95 @@ select:focus {
 }
 
 .dash-nav-toggle:hover {
-    background: #f5f5f5;
+    background: var(--surface-sunken);
+}
+
+/* ── The created link ────────────────────────────────────────────────── */
+
+.checkout-result {
+    margin-top: var(--space-4);
+    padding: var(--space-4) var(--space-4) var(--space-4);
+    position: relative;
+    background:
+        linear-gradient(180deg, color-mix(in srgb, var(--ok) 8%, var(--surface)) 0%, var(--surface) 60%);
+    border: 1px solid color-mix(in srgb, var(--ok) 45%, var(--line));
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    animation: result-pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes result-pop {
+    from { opacity: 0; transform: translateY(6px) scale(0.99); }
+    to   { opacity: 1; transform: none; }
+}
+
+.checkout-result.hidden { display: none; }
+
+.checkout-result__close {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 26px;
+    height: 26px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--ink-3);
+    cursor: pointer;
+}
+
+.checkout-result__close:hover { background: var(--surface-sunken); color: var(--ink); }
+.checkout-result__close [data-icon] { width: 15px; height: 15px; display: inline-flex; }
+
+.checkout-result__head {
+    display: flex;
+    gap: var(--space-3);
+    align-items: center;
+    margin-bottom: var(--space-3);
+    padding-right: 28px;
+}
+
+.checkout-result__badge {
+    width: 34px;
+    height: 34px;
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: var(--ok);
+    color: #fff;
+}
+
+.checkout-result__badge [data-icon],
+.checkout-result__badge svg { width: 18px; height: 18px; }
+
+.checkout-result__title {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--ink);
+    line-height: 1.2;
+}
+
+.checkout-result__meta {
+    font-size: var(--text-sm);
+    color: var(--ink-3);
+    margin-top: 2px;
+}
+
+.checkout-result__hint {
+    margin: 0;
+    font-size: var(--text-sm);
+    line-height: 1.5;
+    color: var(--ink-2);
+}
+
+.checkout-result__hint strong {
+    color: var(--ink);
+    font-weight: 600;
 }
 
 /* ── Tablet (≤1024px) ── */
@@ -693,8 +897,8 @@ select:focus {
         top: 100%;
         left: 0;
         right: 0;
-        background: #fff;
-        border-bottom: 1px solid #e5e5e5;
+        background: var(--surface);
+        border-bottom: 1px solid var(--line);
         flex-direction: column;
         align-items: stretch;
         padding: 6px 0 12px;
@@ -702,6 +906,8 @@ select:focus {
         box-shadow: 0 4px 16px rgba(0,0,0,.09);
         z-index: 200;
         flex: none;
+        /* the in-flow version's top margin; hung from the strip it was a gap */
+        margin: 0;
     }
 
     #dashNavLinks.open {
@@ -711,7 +917,7 @@ select:focus {
     .nav-link {
         padding: 11px 24px !important;
         font-size: 14px;
-        border-bottom: 1px solid #f0f0f0;
+        border-bottom: 1px solid var(--line);
         border-radius: 0 !important;
         text-align: left;
     }
@@ -721,7 +927,7 @@ select:focus {
     }
 
     .nav-link:hover {
-        background: #f8f8f8;
+        background: var(--surface-sunken);
     }
 
     /* Layout */
@@ -764,7 +970,7 @@ select:focus {
         opacity: 1 !important;
         white-space: normal;
         background: transparent;
-        color: #888;
+        color: var(--ink-3);
         padding: 4px 0 0;
         margin-bottom: 0;
         border-radius: 0;
@@ -847,8 +1053,8 @@ select:focus {
     justify-content: space-between;
     align-items: center;
     padding: 12px;
-    background: #f8f8f8;
-    border: 1px solid #e5e5e5;
+    background: var(--surface-sunken);
+    border: 1px solid var(--line);
     border-radius: 6px;
     margin-bottom: 10px;
 }
@@ -867,7 +1073,7 @@ select:focus {
 
 .transaction-details {
     font-size: 12px;
-    color: #666;
+    color: var(--ink-2);
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 8px;
@@ -884,23 +1090,23 @@ select:focus {
 }
 
 .status-pending {
-    background: #fff3cd;
-    color: #856404;
+    background: var(--warn-bg);
+    color: var(--warn);
 }
 
 .status-processing {
-    background: #d1ecf1;
-    color: #0c5460;
+    background: var(--info-bg);
+    color: var(--info);
 }
 
 .status-confirmed {
-    background: #d4edda;
-    color: #155724;
+    background: var(--ok-bg);
+    color: var(--ok);
 }
 
 .status-failed {
-    background: #f8d7da;
-    color: #721c24;
+    background: var(--danger-bg);
+    color: var(--danger);
 }
 
 .payout-item {
@@ -908,8 +1114,8 @@ select:focus {
     justify-content: space-between;
     align-items: flex-start;
     padding: 12px;
-    background: #f8f8f8;
-    border: 1px solid #e5e5e5;
+    background: var(--surface-sunken);
+    border: 1px solid var(--line);
     border-radius: 6px;
     margin-bottom: 10px;
 }
@@ -932,7 +1138,7 @@ select:focus {
 
 .payout-details {
     font-size: 12px;
-    color: #666;
+    color: var(--ink-2);
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 8px;
@@ -941,13 +1147,13 @@ select:focus {
 
 .payout-chains {
     font-size: 12px;
-    color: #666;
+    color: var(--ink-2);
 }
 
 .transfer-list {
     margin-top: 8px;
     padding-top: 8px;
-    border-top: 1px solid #e0e0e0;
+    border-top: 1px solid var(--line);
     font-size: 12px;
 }
 
@@ -955,7 +1161,7 @@ select:focus {
     padding: 4px 0;
     display: flex;
     justify-content: space-between;
-    color: #666;
+    color: var(--ink-2);
 }
 
 .transfer-status {
@@ -975,8 +1181,8 @@ select:focus {
 }
 
 .toast {
-    background: #ffffff;
-    color: #1a1a1a;
+    background: var(--surface);
+    color: var(--ink);
     padding: 16px 20px;
     border-radius: 8px;
     min-width: 300px;
@@ -989,26 +1195,26 @@ select:focus {
     display: flex;
     align-items: center;
     gap: 12px;
-    border-left: 4px solid #1a1a1a;
+    border-left: 4px solid var(--ink);
     line-height: 1.5;
 }
 
 .toast.success {
-    background: #f0fdf4;
-    color: #166534;
-    border-left-color: #27ae60;
+    background: var(--ok-bg);
+    color: var(--ok);
+    border-left-color: var(--ok);
 }
 
 .toast.error {
-    background: #fef5f5;
-    color: #a92d2d;
-    border-left-color: #e74c3c;
+    background: var(--danger-bg);
+    color: var(--danger);
+    border-left-color: var(--danger);
 }
 
 .toast.info {
-    background: #f0f9ff;
-    color: #0c5a99;
-    border-left-color: #3498db;
+    background: var(--info-bg);
+    color: var(--info);
+    border-left-color: var(--info);
 }
 
 @keyframes slideInRight {
@@ -1038,6 +1244,9 @@ select:focus {
 }
 
 /* API Key Confirmation Overlay */
+/* Both confirmation overlays sit over card content and must follow the
+   theme. They were hardcoded to a near-white rgba(248,248,248), which in dark
+   mode put light text on a light panel and left the buttons unreadable. */
 .api-confirmation-overlay {
     display: none;
     position: absolute;
@@ -1045,8 +1254,8 @@ select:focus {
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(248, 248, 248, 1);
-    border: 1px solid #e5e5e5;
+    background: var(--surface-raised);
+    border: 1px solid var(--line);
     border-radius: 8px;
     z-index: 2000;
     flex-direction: column;
@@ -1062,7 +1271,7 @@ select:focus {
 }
 
 .confirmation-message {
-    color: #1a1a1a;
+    color: var(--ink);
     font-size: 16px;
     font-weight: 500;
     text-align: center;
@@ -1080,8 +1289,8 @@ select:focus {
 }
 
 .btn-confirm {
-    background: #1a1a1a;
-    color: #ffffff;
+    background: var(--ink);
+    color: var(--surface);
     border: none;
     padding: 12px 28px;
     border-radius: 6px;
@@ -1093,7 +1302,7 @@ select:focus {
 }
 
 .btn-confirm:hover {
-    background: #333333;
+    background: var(--ink-hover);
     transform: translateY(-2px);
 }
 
@@ -1102,9 +1311,9 @@ select:focus {
 }
 
 .btn-deny {
-    background: #ffffff;
-    color: #1a1a1a;
-    border: 1px solid #e5e5e5;
+    background: var(--surface);
+    color: var(--ink);
+    border: 1px solid var(--line);
     padding: 12px 28px;
     border-radius: 6px;
     cursor: pointer;
@@ -1115,22 +1324,12 @@ select:focus {
 }
 
 .btn-deny:hover {
-    background: #f5f5f5;
-    border-color: #d5d5d5;
+    background: var(--surface-sunken);
+    border-color: var(--line-strong);
 }
 
 .btn-deny:active {
     transform: translateY(0);
-}
-
-.btn-deny:hover {
-    background: #ffffff;
-    border-color: #cccccc;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.btn-deny:active {
-    background: #f5f5f5;
 }
 
 /* Delete Wallet Confirmation Overlay */
@@ -1141,8 +1340,8 @@ select:focus {
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(248, 248, 248, 0.95);
-    border: 1px solid #e5e5e5;
+    background: color-mix(in srgb, var(--surface-raised) 96%, transparent);
+    border: 1px solid var(--line);
     border-radius: 8px;
     z-index: 2000;
     flex-direction: column;
@@ -1162,7 +1361,7 @@ select:focus {
     display: flex;
     gap: 0;
     margin-bottom: 32px;
-    border-bottom: 2px solid #e5e5e5;
+    border-bottom: 2px solid var(--line);
     padding-bottom: 0;
     overflow: hidden;
 }
@@ -1175,7 +1374,7 @@ select:focus {
     flex: 1;
     padding: 16px 0;
     cursor: pointer;
-    color: #999999;
+    color: var(--ink-3);
     text-decoration: none;
     font-size: 14px;
     font-weight: 600;
@@ -1190,12 +1389,12 @@ select:focus {
 }
 
 .nav-item:hover {
-    color: #1a1a1a;
+    color: var(--ink);
 }
 
 .nav-item.active {
-    color: #1a1a1a;
-    border-bottom-color: #1a1a1a;
+    color: var(--ink);
+    border-bottom-color: var(--ink);
 }
 
 .nav-item svg {
@@ -1205,13 +1404,31 @@ select:focus {
 
 /* ========== WITHDRAWAL CSS (from withdrawal.css) ========== */
 
+/* One size for the small buttons, filled or hairline, <button> or <a>: the
+   head's actions sit side by side and must read as siblings, not as a big
+   one and a small one. An icon inside is sized here too - unsized, the
+   24px glyph made "Add wallet" a third taller than its neighbour. */
 .btn-small {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    box-sizing: border-box;
     padding: 6px 12px;
+    border: 1px solid transparent; /* the ghost colours it; same height either way */
+    border-radius: 6px;
     font-size: 12px;
+    font-weight: 600;
+    line-height: normal;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    text-decoration: none;
+    white-space: nowrap;
+    cursor: pointer;
     flex: none;
 }
+
+.btn-small [data-icon], .btn-small [data-icon] svg, .btn-small > svg { width: 14px; height: 14px; display: block; flex: none; }
 
 .steps {
     display: flex;
@@ -1222,25 +1439,25 @@ select:focus {
 
 .step-badge {
     padding: 8px 16px;
-    background: #f5f5f5;
-    border: 1px solid #e5e5e5;
+    background: var(--surface-sunken);
+    border: 1px solid var(--line);
     border-radius: 20px;
     font-size: 12px;
     font-weight: 600;
     white-space: nowrap;
-    color: #666666;
+    color: var(--ink-2);
 }
 
 .step-badge.active {
-    background: #1a1a1a;
-    color: #ffffff;
-    border-color: #1a1a1a;
+    background: var(--ink);
+    color: var(--surface);
+    border-color: var(--ink);
 }
 
 .step-badge.completed {
-    background: #27ae60;
-    color: #ffffff;
-    border-color: #27ae60;
+    background: var(--ok);
+    color: var(--surface);
+    border-color: var(--ok);
 }
 
 .section-step {
@@ -1262,16 +1479,16 @@ select:focus {
     align-items: center;
     justify-content: space-between;
     padding: 12px;
-    background: #f8f8f8;
-    border: 1px solid #e5e5e5;
+    background: var(--surface-sunken);
+    border: 1px solid var(--line);
     border-radius: 6px;
     cursor: pointer;
     transition: all 0.2s;
 }
 
 .wallet-card:hover:not(.disabled) {
-    background: #f5f5f5;
-    border-color: #d0d0d0;
+    background: var(--surface-sunken);
+    border-color: var(--line-strong);
 }
 
 .wallet-card.disabled {
@@ -1280,8 +1497,8 @@ select:focus {
 }
 
 .wallet-card.selected {
-    background: #f0f0f0;
-    border-color: #1a1a1a;
+    background: var(--line);
+    border-color: var(--ink);
 }
 
 .wallet-info {
@@ -1291,20 +1508,20 @@ select:focus {
 .wallet-chain {
     font-weight: 600;
     font-size: 14px;
-    color: #1a1a1a;
+    color: var(--ink);
     margin-bottom: 4px;
 }
 
 .wallet-balance {
     font-size: 12px;
-    color: #999999;
+    color: var(--ink-3);
 }
 
 .wallet-checkbox {
     width: 20px;
     height: 20px;
     cursor: pointer;
-    accent-color: #1a1a1a;
+    accent-color: var(--ink);
 }
 
 .wallet-checkbox:disabled {
@@ -1313,11 +1530,11 @@ select:focus {
 }
 
 .preview-item {
-    background: #f8f8f8;
+    background: var(--surface-sunken);
     padding: 12px;
     border-radius: 6px;
     margin-bottom: 12px;
-    border-left: 3px solid #e5e5e5;
+    border-left: 3px solid var(--line);
 }
 
 .preview-row {
@@ -1328,19 +1545,19 @@ select:focus {
 }
 
 .preview-label {
-    color: #999999;
+    color: var(--ink-3);
     font-weight: 600;
 }
 
 .preview-value {
-    color: #1a1a1a;
+    color: var(--ink);
     font-weight: 500;
     font-family: 'Courier New', monospace;
 }
 
 .summary-box {
-    background: #f8f8f8;
-    border: 1px solid #e5e5e5;
+    background: var(--surface-sunken);
+    border: 1px solid var(--line);
     border-radius: 6px;
     padding: 16px;
     margin-top: 20px;
@@ -1349,7 +1566,7 @@ select:focus {
 .summary-title {
     font-size: 14px;
     font-weight: 600;
-    color: #1a1a1a;
+    color: var(--ink);
     margin-bottom: 12px;
 }
 
@@ -1358,11 +1575,88 @@ select:focus {
     justify-content: space-between;
     padding: 8px 0;
     font-size: 13px;
-    border-bottom: 1px solid #e5e5e5;
+    border-bottom: 1px solid var(--line);
 }
 
 .summary-row:last-child {
     border-bottom: none;
+}
+
+/* A small SVG sitting in a line of text, coloured with it. */
+.inline-icon {
+    display: inline-flex;
+    align-items: center;
+    vertical-align: -0.15em;
+    width: 1em;
+    height: 1em;
+    margin-right: 0.4em;
+}
+
+.inline-icon svg {
+    width: 100%;
+    height: 100%;
+}
+
+.wallet-processing {
+    display: inline-flex;
+    align-items: center;
+    font-size: 11px;
+    color: var(--warn);
+    margin-top: 2px;
+}
+
+.wallet-status {
+    display: inline-flex;
+    align-items: center;
+    font-weight: 600;
+}
+
+.wallet-status--ok { color: var(--ok); }
+.wallet-status--pending { color: var(--warn); }
+.wallet-status--no { color: var(--ink-3); }
+
+.alert .inline-icon {
+    width: 1.1em;
+    height: 1.1em;
+}
+
+.summary-row--head {
+    font-weight: 600;
+    color: var(--ink);
+}
+
+.summary-row--net {
+    font-weight: 600;
+    color: var(--ok);
+}
+
+.summary-row .muted {
+    color: var(--ink-3);
+    font-weight: 400;
+    font-size: 12px;
+}
+
+.summary-row .mono {
+    font-family: 'SFMono-Regular', Consolas, monospace;
+    font-size: 11px;
+    word-break: break-all;
+    text-align: right;
+    max-width: 60%;
+}
+
+.summary-row--address {
+    margin-top: 4px;
+}
+
+.summary-totals {
+    border-top: 2px solid var(--line);
+    margin-top: 12px;
+    padding-top: 12px;
+}
+
+.summary-totals .summary-title {
+    font-size: 14px;
+    margin-bottom: 8px;
 }
 
 .alert {
@@ -1374,32 +1668,32 @@ select:focus {
 }
 
 .alert-error {
-    background: #fef5f5;
-    color: #721c24;
-    border-color: #f5c6cb;
+    background: var(--danger-bg);
+    color: var(--danger);
+    border-color: var(--danger-bg);
 }
 
 .alert-success {
-    background: #f0fdf4;
-    color: #155724;
-    border-color: #c3e6cb;
+    background: var(--ok-bg);
+    color: var(--ok);
+    border-color: var(--ok-bg);
 }
 
 .alert-warning {
-    background: #fff8e1;
-    color: #856404;
-    border-color: #ffeaa7;
+    background: var(--warn-bg);
+    color: var(--warn);
+    border-color: var(--warn-bg);
 }
 
 .alert-info {
-    background: #e7f3ff;
-    color: #004085;
-    border-color: #b8daff;
+    background: var(--info-bg);
+    color: var(--info);
+    border-color: var(--info-bg);
 }
 
 .status-panel {
-    background: #f8f8f8;
-    border: 1px solid #e5e5e5;
+    background: var(--surface-sunken);
+    border: 1px solid var(--line);
     border-radius: 6px;
     padding: 16px;
     margin-top: 20px;
@@ -1411,27 +1705,27 @@ select:focus {
     display: flex;
     gap: 12px;
     padding: 12px;
-    background: white;
+    background: var(--surface-raised);
     border-radius: 4px;
     margin-bottom: 8px;
     font-size: 12px;
-    border-left: 3px solid #e5e5e5;
+    border-left: 3px solid var(--line);
 }
 
 .status-pending {
-    border-left-color: #ffc107;
+    border-left-color: var(--warn);
 }
 
 .status-confirmed {
-    border-left-color: #27ae60;
+    border-left-color: var(--ok);
 }
 
 .status-failed {
-    border-left-color: #e74c3c;
+    border-left-color: var(--danger);
 }
 
 .status-processing {
-    border-left-color: #3498db;
+    border-left-color: var(--info);
 }
 
 .status-details {
@@ -1440,20 +1734,20 @@ select:focus {
 
 .status-chain {
     font-weight: 600;
-    color: #1a1a1a;
+    color: var(--ink);
     margin-bottom: 4px;
 }
 
 .status-message {
-    color: #666666;
+    color: var(--ink-2);
 }
 
 .loading-spinner {
     display: inline-block;
     width: 14px;
     height: 14px;
-    border: 2px solid #f3f3f3;
-    border-top: 2px solid #1a1a1a;
+    border: 2px solid var(--line);
+    border-top: 2px solid var(--ink);
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
     margin-right: 8px;
@@ -1462,4 +1756,2862 @@ select:focus {
 @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
+}
+
+/* ── Newly issued API key ──────────────────────────────────────────────────
+   Shown once, so it is styled to be noticed and sits outside the key list,
+   which is re-rendered from the server. */
+.new-api-key {
+    background: var(--warn-bg);
+    border: 1px solid var(--warn);
+    border-radius: 8px;
+    padding: 16px 18px;
+    margin-bottom: 16px;
+}
+
+.new-api-key.hidden {
+    display: none;
+}
+
+.new-api-key__title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--warn);
+    margin-bottom: 6px;
+}
+
+.new-api-key__note {
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--warn);
+    margin: 0 0 12px;
+    max-width: 62ch;
+}
+
+.new-api-key__value {
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    word-break: break-all;
+    color: var(--ink);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    padding: 10px 12px;
+    margin-bottom: 12px;
+    user-select: all;
+}
+
+.new-api-key__actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+/* Its buttons are the dashboard's own filled btn-small, glyph and all - the
+   panel no longer draws a size of its own. */
+.new-api-key .btn-small:hover { opacity: 0.85; }
+
+/* ── Checkout page ─────────────────────────────────────────────────────────
+   Two columns on desktop: the create form stays put while the monitor on the
+   right refreshes on its own. Collapses to one column when there is not room
+   for the table to breathe. */
+
+.checkout-layout {
+    display: grid;
+    grid-template-columns: minmax(320px, 400px) 1fr;
+    gap: var(--space-5);
+    align-items: start;
+}
+
+@media (max-width: 1000px) {
+    .checkout-layout {
+        grid-template-columns: 1fr;
+    }
+}
+
+.checkout-layout .card {
+    margin-bottom: 0;
+}
+
+.card-actions {
+    display: flex;
+    gap: var(--space-2);
+    align-items: center;
+    flex-wrap: nowrap;
+    flex: none;
+}
+
+/* The filter is a compact control here, not a full-width form field. */
+.card-actions select {
+    width: auto;
+    padding-top: 7px;
+    padding-bottom: 7px;
+    font-size: 12px;
+}
+
+/* ── Form ────────────────────────────────────────────────────────────── */
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: var(--space-3);
+    align-items: start;
+}
+
+.form-group--narrow {
+    min-width: 108px;
+}
+
+.field-hint {
+    margin: var(--space-2) 0 0;
+    font-size: var(--text-sm);
+    line-height: 1.45;
+    color: var(--ink-3);
+}
+
+.label-optional {
+    font-weight: 400;
+    color: var(--ink-muted);
+    text-transform: none;
+    letter-spacing: 0;
+}
+
+.checkout-layout select,
+.checkout-layout input {
+    width: 100%;
+}
+
+/* ── Form sections ───────────────────────────────────────────────────── */
+
+.checkout-create .card-header {
+    margin-bottom: var(--space-4);
+}
+
+.form-section {
+    border: 0;
+    padding: var(--space-4) 0 var(--space-2);
+    margin: 0;
+    min-width: 0;
+    border-top: 1px solid var(--line);
+}
+
+.form-section:first-of-type {
+    border-top: 0;
+    padding-top: 0;
+}
+
+.form-section__title {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: 0;
+    margin-bottom: var(--space-3);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--ink);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.form-section__step {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--ink);
+    color: var(--surface);
+    font-size: var(--text-xs);
+    font-weight: 700;
+    letter-spacing: 0;
+}
+
+.form-section .form-group:last-child {
+    margin-bottom: 0;
+}
+
+.field-hint code {
+    font-family: 'SFMono-Regular', Consolas, monospace;
+    font-size: 0.95em;
+    padding: 0 3px;
+    background: var(--surface-sunken);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+}
+
+.amount-field {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: var(--space-2);
+    align-items: stretch;
+}
+
+/* Two-way toggle drawn as one control. */
+.form-footer {
+    padding-top: var(--space-4);
+    border-top: 1px solid var(--line);
+    margin-top: var(--space-2);
+}
+
+.btn-block {
+    width: 100%;
+}
+
+.form-footer__hint {
+    text-align: center;
+}
+
+/* ── Table ───────────────────────────────────────────────────────────── */
+
+.table-scroll {
+    overflow-x: auto;
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--text-base);
+    min-width: 620px;
+}
+
+.data-table th {
+    text-align: left;
+    font-size: var(--text-xs);
+    font-weight: 600;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    padding: 0 var(--space-4) var(--space-3) 0;
+    border-bottom: 1px solid var(--line-strong);
+    white-space: nowrap;
+}
+
+.data-table td {
+    padding: var(--space-3) var(--space-4) var(--space-3) 0;
+    border-bottom: 1px solid var(--line);
+    vertical-align: top;
+}
+
+.data-table th:last-child,
+.data-table td:last-child {
+    padding-right: 0;
+}
+
+.data-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.data-table .num {
+    font-variant-numeric: tabular-nums;
+}
+
+.data-table .col-actions {
+    text-align: right;
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
+/* Keep the row's actions on one line rather than stacking them. This used
+   to be `display: flex` on the <td> itself, which takes the cell out of the
+   table's layout: it no longer shares the row's height or its bottom border,
+   so the actions column sat at its own height with its own rule that never
+   met the others. The flex box lives on a wrapper inside the cell instead. */
+.data-table .row-actions {
+    display: inline-flex;
+    gap: var(--space-2);
+    justify-content: flex-end;
+    align-items: center;
+}
+
+/* Row action buttons — Copy link / Cancel / Details. Given more presence than
+   a bare ghost button (soft fill, real padding, sentence case, smooth hover)
+   so they read as proper controls rather than muted uppercase links. */
+.data-table .row-actions .btn-small {
+    text-transform: none;
+    letter-spacing: 0;
+    font-size: var(--text-sm);
+    font-weight: 600;
+    height: 32px;
+    padding: 0 12px;
+    border-radius: var(--radius-sm, 8px);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    line-height: 1;
+    transition: background var(--dur-fast, 140ms) var(--ease-out, ease),
+                border-color var(--dur-fast, 140ms) var(--ease-out, ease),
+                color var(--dur-fast, 140ms) var(--ease-out, ease),
+                box-shadow var(--dur-fast, 140ms) var(--ease-out, ease);
+}
+
+.data-table .row-actions .btn-ghost {
+    background: var(--surface-sunken);
+    border: 1px solid var(--line);
+    color: var(--ink-2);
+}
+
+.data-table .row-actions .btn-ghost:hover {
+    background: var(--surface);
+    border-color: var(--line-strong);
+    color: var(--ink);
+    box-shadow: var(--shadow-sm, 0 1px 2px rgba(0, 0, 0, 0.06));
+}
+
+.data-table .row-actions .btn-ghost--danger:hover {
+    background: var(--danger-bg);
+    border-color: var(--danger);
+    color: var(--danger);
+}
+
+.data-table .row-actions .btn-details .inline-icon--after {
+    width: 14px;
+    height: 14px;
+    opacity: 0.65;
+}
+
+.cell-strong {
+    display: block;
+    font-weight: 600;
+    color: var(--ink);
+}
+
+.cell-detail {
+    display: block;
+    margin-top: 2px;
+    font-size: var(--text-sm);
+    color: var(--ink-3);
+}
+
+/* ── Row details ─────────────────────────────────────────────────────── */
+
+.data-table .detail-row.hidden {
+    display: none;
+}
+
+.data-table .detail-row > td {
+    padding: 0 0 var(--space-3);
+    border-bottom: 1px solid var(--line);
+}
+
+.detail-panel {
+    background: var(--surface-sunken);
+    border: 1px solid var(--line);
+    border-radius: var(--radius, 8px);
+    padding: var(--space-4);
+}
+
+.detail-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: var(--space-3) var(--space-4);
+    margin: 0;
+}
+
+.detail-item dt {
+    font-size: var(--text-xs);
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin-bottom: 3px;
+}
+
+.detail-item dd {
+    margin: 0;
+    font-size: var(--text-sm);
+    color: var(--ink);
+    line-height: 1.45;
+}
+
+.detail-item--wide {
+    grid-column: 1 / -1;
+}
+
+.detail-panel .mono {
+    font-family: 'SFMono-Regular', Consolas, monospace;
+    font-size: var(--text-xs);
+}
+
+.detail-panel .break {
+    overflow-wrap: anywhere;
+}
+
+.detail-panel .muted {
+    color: var(--ink-muted);
+}
+
+.detail-shortfall {
+    color: var(--danger);
+    font-weight: 600;
+}
+
+.detail-link {
+    color: var(--ink);
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    white-space: nowrap;
+}
+
+.btn-details .inline-icon--after {
+    margin: 0 0 0 0.3em;
+    transition: transform var(--dur-fast, 140ms) ease;
+}
+
+.btn-details.is-open .inline-icon--after {
+    transform: rotate(180deg);
+}
+
+.table-empty {
+    padding: var(--space-6) var(--space-4);
+    text-align: center;
+    color: var(--ink-muted);
+}
+
+/* ── Ghost button ────────────────────────────────────────────────────── */
+
+.btn-ghost {
+    background: transparent;
+    color: var(--ink-2);
+    border: 1px solid var(--line-strong);
+    cursor: pointer;
+}
+
+.btn-ghost:hover {
+    background: var(--surface-sunken);
+    color: var(--ink);
+}
+
+.btn-ghost--danger:hover {
+    background: var(--danger-bg);
+    color: var(--danger);
+    border-color: var(--danger);
+}
+
+/* ── Confirmation dialog (themed replacement for window.confirm) ──────────── */
+
+.confirm-dialog-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: 12vh;
+    background: color-mix(in srgb, var(--ink) 32%, transparent);
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.confirm-dialog-backdrop.open { opacity: 1; }
+.confirm-dialog-backdrop.closing { opacity: 0; }
+
+.confirm-dialog {
+    width: min(420px, calc(100vw - 32px));
+    background: var(--surface);
+    color: var(--ink);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.24), 0 4px 12px rgba(0, 0, 0, 0.12);
+    padding: 20px 22px;
+    transform: translateY(-12px) scale(0.98);
+    transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.confirm-dialog-backdrop.open .confirm-dialog { transform: translateY(0) scale(1); }
+
+.confirm-dialog__title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--ink);
+    margin-bottom: 6px;
+}
+
+.confirm-dialog__body {
+    font-size: 13.5px;
+    line-height: 1.6;
+    color: var(--ink-2);
+    margin-bottom: 18px;
+}
+
+.confirm-dialog__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.btn-danger {
+    background: var(--danger);
+    color: #fff;
+    border: 1px solid var(--danger);
+}
+
+.btn-danger:hover {
+    background: color-mix(in srgb, var(--danger) 85%, #000);
+}
+
+/* ── API modal: docs link on the access box ─────────────────────────────── */
+
+.info-box--with-action {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.info-box__link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    flex: none;
+    padding: 9px 14px;
+    border: 1px solid var(--line-strong);
+    border-radius: 8px;
+    background: var(--surface);
+    color: var(--ink);
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: border-color var(--dur-fast, 140ms) var(--ease-out, ease),
+                background var(--dur-fast, 140ms) var(--ease-out, ease),
+                box-shadow var(--dur-fast, 140ms) var(--ease-out, ease);
+}
+
+.info-box__link:hover {
+    border-color: var(--ink);
+    background: var(--surface-sunken);
+    box-shadow: var(--shadow-sm, 0 1px 2px rgba(0, 0, 0, 0.06));
+}
+
+.info-box__link [data-icon] {
+    width: 16px;
+    height: 16px;
+    display: inline-flex;
+}
+
+.info-box__link [data-icon] svg { width: 100%; height: 100%; }
+
+.info-box__link-ext {
+    width: 13px !important;
+    height: 13px !important;
+    opacity: 0.5;
+    margin-left: -2px;
+}
+
+/* ── "View the docs" pairing on the account page ─────────────────────────
+   Two matched controls: a filled secondary and an outline link of the same
+   height, so the card footer reads as one intentional pair. */
+.account-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 16px;
+    flex-wrap: wrap;
+}
+
+.account-actions .btn-secondary {
+    flex: 1 1 0;
+    min-width: 150px;
+}
+
+.account-actions .btn-secondary [data-icon] {
+    width: 16px;
+    height: 16px;
+    display: inline-flex;
+}
+
+.account-actions .btn-secondary [data-icon] svg { width: 100%; height: 100%; }
+
+.btn-outline-link {
+    flex: 1 1 0;
+    min-width: 150px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border-radius: 6px;
+    border: 1px solid var(--line);
+    background: transparent;
+    color: var(--ink);
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: background var(--dur-fast, 140ms) var(--ease-out, ease),
+                border-color var(--dur-fast, 140ms) var(--ease-out, ease),
+                box-shadow var(--dur-fast, 140ms) var(--ease-out, ease);
+}
+
+.btn-outline-link:hover {
+    background: var(--surface-sunken);
+    border-color: var(--line-strong);
+    box-shadow: var(--shadow-sm, 0 1px 2px rgba(0, 0, 0, 0.06));
+}
+
+.btn-outline-link [data-icon] {
+    width: 16px;
+    height: 16px;
+    display: inline-flex;
+}
+
+.btn-outline-link [data-icon] svg { width: 100%; height: 100%; }
+
+.btn-outline-link__ext {
+    width: 13px !important;
+    height: 13px !important;
+    opacity: 0.5;
+    margin-left: -2px;
+}
+
+/* ── Account page ─────────────────────────────────────────────────────────── */
+.account-head {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+.account-avatar {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--surface);
+    background: var(--ink);
+    flex-shrink: 0;
+}
+.account-name {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--ink);
+    line-height: 1.2;
+}
+.account-sub {
+    color: var(--ink-3);
+    font-size: 14px;
+    margin-top: 2px;
+}
+
+.stat-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+}
+.stat-card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 18px 20px;
+}
+.stat-card__label {
+    color: var(--ink-3);
+    font-size: 13px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+.stat-card__value {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--ink);
+    margin: 6px 0 2px;
+    line-height: 1.1;
+}
+.stat-card__note {
+    color: var(--ink-3);
+    font-size: 13px;
+}
+
+.account-details,
+.account-api {
+    margin-top: 16px;
+}
+.account-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    padding: 11px 0;
+    border-bottom: 1px solid var(--line);
+    font-size: 14px;
+}
+.account-row:last-child {
+    border-bottom: none;
+}
+.account-row > span:first-child {
+    color: var(--ink-3);
+}
+.account-row > span:last-child {
+    color: var(--ink);
+    font-weight: 600;
+    text-align: right;
+    word-break: break-word;
+}
+.mono {
+    font-family: 'SF Mono', ui-monospace, 'Cascadia Code', Menlo, Consolas, monospace;
+    font-size: 13px;
+}
+
+@media (max-width: 900px) {
+    .stat-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 560px) {
+    .stat-grid { grid-template-columns: 1fr; }
+    .account-head { gap: 12px; }
+    .account-avatar { width: 52px; height: 52px; font-size: 22px; }
+    .account-name { font-size: 20px; }
+}
+
+/* ── Mobile header fit ───────────────────────────────────────────────────────
+   On a phone the top bar (logo + hamburger + theme + user menu + logout) ran
+   past the screen edge. Drop the username label to an avatar-only menu and
+   tighten spacing so the whole bar fits without horizontal scroll. */
+@media (max-width: 768px) {
+    .header-right { gap: 12px; }
+    .header-right #username { display: none; }
+    .user-menu { padding: 4px; gap: 0; }
+}
+
+@media (max-width: 360px) {
+    .header-right { gap: 8px; }
+    .header-left .brand { display: none; }
+}
+
+/* ── Mobile: checkout & card action rows ─────────────────────────────────────
+   The checkout two-column layout collapses to one column on narrow screens, but
+   the column was 1fr (= minmax(auto,1fr)) so a wide child (the filter/sort row,
+   a form row) stretched it past the viewport. minmax(0,1fr) + min-width:0 lets
+   the cards shrink to the screen; the action rows wrap instead of forcing width. */
+@media (max-width: 1000px) {
+    .checkout-layout { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 768px) {
+    .checkout-layout .card,
+    .checkout-create { min-width: 0; }
+
+    .card-header { flex-wrap: wrap; }
+
+    /* Filter / sort / refresh (checkout) and search / add-wallet rows wrap and
+       fill the width instead of overflowing on one line. */
+    .card-actions {
+        flex-wrap: wrap;
+        width: 100%;
+    }
+
+    .card-actions select { flex: 1 1 auto; }
+    .card-actions .search-field { flex: 1 1 100%; }
+}
+
+/* ── Mobile: checkout session details ────────────────────────────────────────
+   The expanded details live in a row of the payment-links table, which scrolls
+   sideways on a phone. Pin the panel to the left edge and size it to the screen
+   so every field is readable without scrolling left/right, in a single column
+   with even gaps and margins. */
+@media (max-width: 768px) {
+    .data-table .detail-row > td {
+        padding: 0 0 var(--space-3);
+    }
+
+    .data-table .detail-panel {
+        position: sticky;
+        left: 0;
+        width: calc(100vw - 64px);
+        box-sizing: border-box;
+        padding: var(--space-3);
+    }
+
+    .detail-grid {
+        grid-template-columns: 1fr;
+        gap: var(--space-3);
+    }
+
+    .detail-item--wide {
+        grid-column: auto;
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Foundation
+   ───────────────────────────────────────────────────────────────────────────
+   The vocabulary every dashboard surface shares, defined once, in the language
+   the landing page uses: hairline rules instead of boxes, tabular figures,
+   an eyebrow with a trailing rule, one status pill, one segmented control.
+
+   Appended after the older rules deliberately, so where the two disagree the
+   foundation wins the cascade. Surfaces migrate onto it one at a time; the
+   older rules for a surface go when that surface does.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Page head ────────────────────────────────────────────────────────────
+   Not a card. The page's name, its one line of context, its primary action,
+   and - on the overview - the figure that matters most. */
+.dash-head {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 16px 24px;
+    align-items: start;
+    padding: 34px 0 26px;
+}
+
+.dash-head__eyebrow {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: var(--text-xs);
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin-bottom: 12px;
+}
+
+.dash-head__eyebrow::after {
+    content: "";
+    height: 1px;
+    width: 48px;
+    background: var(--line-strong);
+}
+
+.dash-head__title {
+    margin: 0;
+    font-size: 26px;
+    font-weight: 700;
+    letter-spacing: -0.025em;
+    line-height: 1.1;
+    color: var(--ink);
+}
+
+.dash-head__lede {
+    margin: 8px 0 0;
+    color: var(--ink-2);
+    font-size: var(--text-base);
+    line-height: 1.6;
+    max-width: 58ch;
+}
+
+.dash-head__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+    padding-top: 30px;
+}
+
+/* The one figure the page is about. Tabular, so it does not jitter as it
+   updates, and large enough to be the first thing read. */
+.dash-balance {
+    margin: 6px 0 0;
+    font-size: 44px;
+    font-weight: 700;
+    letter-spacing: -0.035em;
+    line-height: 1;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+}
+
+.dash-balance__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 14px;
+    margin-top: 12px;
+    font-size: 13px;
+    color: var(--ink-3);
+}
+
+/* ── Fact strip ───────────────────────────────────────────────────────────
+   The landing page's strip: figures over hairlines, no boxes, every value
+   live. Replaces the "Account Statistics" card, two of whose four rows were
+   hardcoded ("Account Status: Active", "API Status: Available"). */
+.dash-facts {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 0 24px;
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+    margin: 0 0 40px;
+}
+
+.dash-facts > div {
+    padding: 18px 0;
+}
+
+.dash-facts > div + div {
+    border-left: 1px solid var(--line);
+    padding-left: 24px;
+}
+
+.dash-facts b {
+    display: block;
+    font-size: 24px;
+    font-weight: 700;
+    letter-spacing: -0.025em;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+    margin-bottom: 4px;
+}
+
+.dash-facts span {
+    display: block;
+    font-size: var(--text-sm);
+    color: var(--ink-3);
+    line-height: 1.45;
+}
+
+/* ── Section ──────────────────────────────────────────────────────────────
+   What .card was: a titled region. The title row carries a hairline and an
+   optional action; the body is not boxed unless the content itself is (a
+   chart, a form). */
+.dash-section {
+    margin: 0 0 44px;
+}
+
+.dash-section__head {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 16px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 4px;
+}
+
+.dash-section__title {
+    margin: 0;
+    font-size: var(--text-md);
+    font-weight: 700;
+    letter-spacing: -0.015em;
+    color: var(--ink);
+}
+
+.dash-section__sub {
+    margin: 4px 0 0;
+    font-size: 13px;
+    color: var(--ink-3);
+    font-variant-numeric: tabular-nums;
+}
+
+.dash-section__actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex: none;
+}
+
+/* Chart canvases sit on a raised panel; a chart is the one thing that needs
+   a bounded ground to read against. */
+.dash-panel {
+    margin-top: 16px;
+    padding: 18px 18px 12px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+}
+
+/* ── Empty state ──────────────────────────────────────────────────────────
+   A line and an action, not a box with an illustration. */
+.dash-empty {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 22px 0;
+    color: var(--ink-3);
+    font-size: var(--text-base);
+    border-bottom: 1px solid var(--line);
+}
+
+.dash-empty b { color: var(--ink-2); font-weight: 600; }
+
+/* ── Status pill ──────────────────────────────────────────────────────────
+   One pill, one set of tones. State is encoded in colour and shape, so a table
+   can be scanned for what needs attention rather than read row by row. Every
+   surface uses these modifiers; none defines its own. */
+
+.status-pill {
+    display: inline-block;
+    padding: 3px 9px;
+    border-radius: var(--radius-pill);
+    font-size: var(--text-xs);
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+    border: 1px solid transparent;
+}
+
+.status-pill--paid {
+    background: var(--ok-bg);
+    color: var(--ok);
+    border-color: var(--ok);
+}
+
+.status-pill--verifying {
+    background: var(--info-bg);
+    color: var(--info);
+    border-color: var(--info);
+}
+
+.status-pill--pending,
+.status-pill--awaiting_payment {
+    background: var(--warn-bg);
+    color: var(--warn);
+    border-color: var(--warn);
+}
+
+.status-pill--insufficient {
+    background: var(--danger-bg);
+    color: var(--danger);
+    border-color: var(--danger);
+}
+
+.status-pill--expired,
+.status-pill--closed {
+    background: var(--surface-sunken);
+    color: var(--ink-3);
+    border-color: var(--line-strong);
+}
+
+/* The withdrawal-readiness indicator dashboard.js drives: it writes
+   `status-badge available` / `status-badge unavailable` onto this element and
+   sets a data-icon. Scoped so the transaction pill's rules do not reach it. */
+#withdrawalStatus {
+    /* The older .withdrawal-status rule drew this as a full-width boxed bar.
+       In the balance line it is an inline indicator, so that box comes off. */
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    position: relative;
+    width: auto;
+    margin: 0;
+    padding: 0;
+    background: none;
+    border: 0;
+    border-radius: 0;
+    font-weight: 500;
+}
+
+#withdrawalStatus .status-text {
+    font-size: 13px;
+    color: var(--ink-3);
+}
+
+#withdrawalStatus .status-badge {
+    all: unset;
+    display: inline-flex;
+    width: 18px;
+    height: 18px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    flex: none;
+}
+
+#withdrawalStatus .status-badge svg { width: 12px; height: 12px; }
+#withdrawalStatus .status-badge.available   { background: var(--ok-bg);   color: var(--ok); }
+#withdrawalStatus .status-badge.unavailable { background: var(--warn-bg); color: var(--warn); }
+
+/* dashboard.js sets display:block when there is something to explain; the
+   opacity gate keeps it out of the way until the pointer asks. Bounded width
+   and normal wrapping, so a long message cannot push the page sideways. */
+#withdrawalStatus .info-tooltip {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    /* The older .info-tooltip rule pins bottom, right and a margin too; with
+       top and bottom both set the box stretched to nothing. Those come off. */
+    bottom: auto;
+    right: auto;
+    margin: 0;
+    z-index: 10;
+    /* never narrower than the arrow's spot, so the arrow stays on the tip */
+    min-width: calc(var(--arrow-x, 14px) + 24px);
+    max-width: min(320px, 80vw);
+    padding: 8px 12px;
+    border-radius: var(--radius);
+    background: var(--surface-raised);
+    border: 1px solid var(--line);
+    box-shadow: var(--shadow);
+    color: var(--ink-2);
+    font-size: var(--text-sm);
+    line-height: 1.5;
+    white-space: normal;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--dur-fast) var(--ease-out);
+}
+
+#withdrawalStatus:hover .info-tooltip,
+#withdrawalStatus:focus-within .info-tooltip { opacity: 1; }
+
+/* The old arrow pointed down from a tip that sat above; this one sits below,
+   so the arrow points up, drawn in the tip's own line colour - and at the
+   badge, not the text: dashboard.js measures where the badge's centre falls
+   and writes it to --arrow-x, and the tip is never narrower than that. */
+#withdrawalStatus .info-tooltip::after {
+    top: auto;
+    bottom: 100%;
+    left: var(--arrow-x, 14px);
+    transform: translateX(-50%);
+    border: 5px solid transparent;
+    border-bottom-color: var(--line);
+}
+
+/* Nothing to hover with on a phone. The older 768px rule meant the note to
+   sit in the flow as plain text, but only its opacity survived the rule
+   above, so a raised tip floated over the head buttons permanently. This
+   puts the rest of that intent back. */
+@media (max-width: 768px) {
+    #withdrawalStatus { flex-wrap: wrap; }
+    #withdrawalStatus .info-tooltip {
+        position: static;
+        flex-basis: 100%;
+        min-width: 0;
+        max-width: none;
+        padding: 2px 0 0;
+        border: 0;
+        border-radius: 0;
+        background: none;
+        box-shadow: none;
+        color: var(--ink-3);
+        font-size: 12px;
+        opacity: 1;
+        pointer-events: auto;
+    }
+    #withdrawalStatus .info-tooltip::after { display: none; }
+}
+
+/* ── Segmented control ────────────────────────────────────────────────────
+   One control, two ways of driving it. The chart period is three buttons and
+   dashboard.js marks the active one by swapping .btn-secondary for
+   .btn-primary; the checkout's "priced in" toggle is radio inputs with
+   labels. Both draw the same way - a pill sliding inside a sunken track - and
+   both selected states are defined here, so the two cannot drift apart again.
+   The older radio-only definition this replaces drew a different control. */
+.segmented {
+    display: inline-flex;
+    position: relative;
+    padding: 3px;
+    gap: 2px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--surface-sunken);
+}
+
+.segmented input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.segmented label,
+.segmented .btn-small {
+    all: unset;
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+    padding: 5px 12px;
+    border-radius: calc(var(--radius) - 3px);
+    font: inherit;
+    font-size: var(--text-sm);
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: var(--ink-3);
+    transition: color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out);
+}
+
+.segmented label:hover,
+.segmented .btn-small:hover { color: var(--ink); }
+
+.segmented input:checked + label,
+.segmented .btn-small.btn-primary {
+    background: var(--surface);
+    color: var(--ink);
+    box-shadow: var(--shadow-sm);
+}
+
+.segmented input:focus-visible + label,
+.segmented .btn-small:focus-visible { box-shadow: var(--focus-ring); }
+
+/* ── Wallet rail ──────────────────────────────────────────────────────────
+   Groups by chain, each a hairline row rather than a tile. dashboard.js
+   renders .wallet-group > .wallet-group__title + .wallet-item; the item's own
+   rules are older and stay for now. */
+.dash-rail .wallet-group { padding: 6px 0 2px; }
+.dash-rail .wallet-group + .wallet-group { border-top: 1px solid var(--line); }
+
+.dash-rail .wallet-group__title {
+    font-size: var(--text-xs);
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    padding: 12px 0 6px;
+}
+
+/* ── Entrance ─────────────────────────────────────────────────────────────
+   Same left-entering pattern as the marketing pages. The page heads and the
+   static blocks carry data-reveal; enterDashboardPage() in dashboard.js
+   releases them each time a page is opened, since a page toggled with
+   display:none never scrolls into reveal.js's observer. */
+@media (prefers-reduced-motion: no-preference) {
+    .dashboard-page [data-reveal] { transform: translateX(-18px); }
+    .dashboard-page [data-reveal].is-revealed { transform: none; }
+
+    /* Script-rendered blocks that replace something - the link once made -
+       land the same way, from a keyframe rather than the switcher. */
+    @keyframes page-enter { from { opacity: 0; transform: translateX(-18px); } to { opacity: 1; transform: none; } }
+    .link-ready:not(.hidden) { animation: page-enter var(--dur-slow) var(--ease-out) both; }
+}
+
+@media (max-width: 720px) {
+    .dash-head { grid-template-columns: 1fr; padding-top: 24px; }
+    .dash-head__actions { padding-top: 0; }
+    .dash-balance { font-size: 36px; }
+    .dash-facts { grid-template-columns: 1fr 1fr; }
+    .dash-facts > div:nth-child(odd) { border-left: 0; padding-left: 0; }
+    .dash-facts > div:nth-child(n+3) { border-top: 1px solid var(--line); }
+    .dash-section__head { flex-direction: column; align-items: flex-start; }
+}
+
+/* ── The shell ────────────────────────────────────────────────────────────
+   A left rail and a content column. The rail is sticky and full height; the
+   content column is the old .container, now with the rail's width taken off
+   the left. */
+.dash-shell {
+    display: grid;
+    grid-template-columns: 232px minmax(0, 1fr);
+    min-height: 100vh;
+}
+
+.dash-shell .container {
+    max-width: 1120px;
+    margin: 0;
+    padding: 12px 40px 56px;
+    width: 100%;
+    min-width: 0;
+}
+
+.rail {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    padding: 18px 12px 14px;
+    border-right: 1px solid var(--line);
+    background: var(--surface);
+    box-sizing: border-box;
+}
+
+/* The brand on the left, the theme at the top right. */
+.rail__top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 4px 8px 20px;
+}
+
+.rail__brand {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    min-width: 0;
+    color: var(--ink);
+    font-weight: 700;
+    font-size: 15px;
+    letter-spacing: -0.01em;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.rail__mark { width: 30px; height: 30px; flex: none; color: var(--ink); display: inline-flex; }
+.rail__mark svg { width: 100%; height: 100%; }
+
+.rail__toggle { display: none; }
+
+.rail__links { display: flex; flex-direction: column; gap: 2px; }
+
+.rail__group {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    padding: 14px 10px 6px;
+}
+
+/* The active item carries the same accent bar the marketing rails use.
+   dashboard.js toggles .active; aria-current is set alongside it for
+   assistive tech, and both select the same rule so they cannot disagree. */
+.rail .nav-link {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px 8px 14px;
+    border-radius: var(--radius);
+    color: var(--ink-2);
+    font-size: 13.5px;
+    font-weight: 500;
+    /* The older top-bar .nav-link rule set these; a rail reads in sentence
+       case, not small caps. */
+    text-transform: none;
+    letter-spacing: 0;
+    text-decoration: none;
+    cursor: pointer;
+    transition: color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out);
+}
+
+.rail .nav-link::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 8px;
+    bottom: 8px;
+    width: 2px;
+    border-radius: 2px;
+    background: transparent;
+    transition: background var(--dur-fast) var(--ease-out);
+}
+
+.rail .nav-link::after { content: none; }
+
+.rail .nav-link:hover {
+    color: var(--ink);
+    background: color-mix(in srgb, var(--ink) 4%, transparent);
+}
+
+.rail .nav-link:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+
+.rail .nav-link.active,
+.rail .nav-link[aria-current="page"] { color: var(--ink); font-weight: 600; }
+
+.rail .nav-link.active::before,
+.rail .nav-link[aria-current="page"]::before { background: var(--ink); }
+
+.rail .nav-link svg { width: 16px; height: 16px; flex: none; color: var(--ink-3); }
+.rail .nav-link.active svg,
+.rail .nav-link[aria-current="page"] svg { color: var(--ink); }
+
+/* The foot: who is signed in, and the way out. One row on a hairline, the
+   name taking the width and the sign-out at the end; the theme lives at the
+   top of the rail now. */
+.rail__foot {
+    margin-top: auto;
+    padding-top: 12px;
+    border-top: 1px solid var(--line);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.rail__account {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 8px 6px 6px;
+    border-radius: var(--radius);
+    flex: 1;
+    min-width: 0;
+    cursor: pointer;
+    transition: background var(--dur-fast) var(--ease-out);
+}
+
+.rail__account:hover { background: color-mix(in srgb, var(--ink) 4%, transparent); }
+.rail__account:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+
+/* The avatar in ink, as the account page draws it. */
+.rail__avatar {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    flex: none;
+    background: var(--ink);
+    color: var(--surface);
+    display: grid;
+    place-items: center;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.rail__who { min-width: 0; line-height: 1.25; }
+.rail__who b { display: block; font-size: 12.5px; font-weight: 600; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rail__who span { font-size: 11px; color: var(--ink-3); }
+.rail__who span::before {
+    content: "";
+    display: inline-block;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--ok);
+    margin-right: 6px;
+    vertical-align: middle;
+    position: relative;
+    top: -1px;
+}
+
+.rail__icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 7px;
+    border: 1px solid var(--line);
+    background: none;
+    display: grid;
+    place-items: center;
+    color: var(--ink-3);
+    cursor: pointer;
+    padding: 0;
+    transition: color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
+}
+
+.rail__icon:hover { color: var(--ink); border-color: var(--line-strong); }
+.rail__icon:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+/* Size only. A display value here would outrank tokens.css's .theme-icon
+   { display: none } and show all three theme icons at once. */
+.rail__icon svg, .rail__icon [data-icon] { width: 14px; height: 14px; }
+
+/* ── Icons-only at 1100, a top strip at 860 ──────────────────────────────
+   Between the two the rail keeps its structure and drops its labels: the
+   accent bar and the icon are enough to navigate by. */
+@media (max-width: 1100px) {
+    .dash-shell { grid-template-columns: 64px minmax(0, 1fr); }
+    .rail { padding: 14px 8px; }
+    .rail__word, .rail__group, .rail__who, .rail .nav-link span { display: none; }
+    .rail__top { flex-direction: column; gap: 10px; padding: 4px 0 16px; }
+    .rail__brand { justify-content: center; }
+    .rail .nav-link { justify-content: center; padding: 10px 0; }
+    .rail .nav-link::before { top: 10px; bottom: 10px; }
+    .rail__foot { flex-direction: column; gap: 6px; }
+    .rail__account { padding: 6px; justify-content: center; }
+    .dash-shell .container { padding: 12px 24px 48px; }
+}
+
+@media (max-width: 860px) {
+    /* The dashboard is the frame on a phone. The shell is exactly the
+       viewport, the strip is a fixed row at its top, and the page scrolls
+       inside the main column: the strip never moves, the document never
+       scrolls, and nothing bounces past the edges. dvh, so the browser's own
+       bars shrinking and growing resize the frame rather than hiding the
+       bottom of it. */
+    html, body { height: 100%; overflow: hidden; }
+    /* Two rows, and the strip's is sized to its content: with both rows auto,
+       a short page's leftover height split evenly between them and the strip
+       grew to 190px with its controls floating mid-band. */
+    .dash-shell {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto minmax(0, 1fr);
+        height: 100vh;
+        height: 100dvh;
+        min-height: 0;
+    }
+    .dash-shell .container {
+        min-height: 0;
+        overflow-y: auto;
+        overflow-x: hidden;
+        overscroll-behavior: contain;
+        -webkit-overflow-scrolling: touch;
+    }
+    .rail {
+        position: relative;
+        height: auto;
+        flex-direction: row;
+        flex-wrap: wrap;
+        align-items: center;
+        padding: 10px 16px;
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
+        z-index: 20;
+    }
+    .rail__top { flex-direction: row; padding: 0; gap: 10px; }
+    .rail__word { display: inline; }
+    .rail__toggle {
+        display: grid;
+        place-items: center;
+        margin-left: auto;
+        width: 36px;
+        height: 36px;
+        border-radius: var(--radius);
+        border: 1px solid var(--line);
+        background: none;
+        color: var(--ink);
+        cursor: pointer;
+        /* The global button rule pads 10px 16px; inside a 36px box that left
+           2px for the glyph, and the bars drew as a dot. */
+        padding: 0;
+    }
+    /* The theme and sign-out buttons are the toggle's size, in the same
+       box, so the strip's controls read as one set; the avatar matches. */
+    .rail__icon { width: 36px; height: 36px; border-radius: var(--radius); color: var(--ink); }
+    .rail__icon svg, .rail__icon [data-icon] { width: 16px; height: 16px; }
+    .rail__avatar { width: 36px; height: 36px; }
+    /* The bars: 22 x 16, and the morph is transform-only so opening and
+       closing are one animation in reverse. Each bar shortens towards its
+       right edge, where the chevron's point sits, and the -4.8px keeps the
+       two states on the same optical centre (navbar.js has the working). */
+    .rail__bars { position: relative; display: block; width: 22px; height: 16px; }
+    .rail__bars i {
+        position: absolute;
+        left: 0;
+        right: 0;
+        height: 2px;
+        border-radius: 2px;
+        background: currentColor;
+        transform-origin: 100% 50%;
+        transition: transform var(--dur) var(--ease-out), opacity var(--dur-fast) ease;
+    }
+    .rail__bars i:nth-child(1) { top: 0; }
+    .rail__bars i:nth-child(2) { top: 7px; }
+    .rail__bars i:nth-child(3) { top: 14px; }
+    .rail__toggle.open .rail__bars i:nth-child(1) { transform: translate(-4.8px, 7px) rotate(-45deg) scaleX(0.56); }
+    .rail__toggle.open .rail__bars i:nth-child(2) { opacity: 0; transform: translateX(-4.8px) scaleX(0.56); }
+    .rail__toggle.open .rail__bars i:nth-child(3) { transform: translate(-4.8px, -7px) rotate(45deg) scaleX(0.56); }
+    .rail__links {
+        display: none;
+        flex-basis: 100%;
+        padding: 10px 0 4px;
+        border-top: 1px solid var(--line);
+        margin-top: 10px;
+    }
+    .rail__links.open { display: flex; }
+    /* The document cannot scroll on a phone, so a menu taller than the
+       screen scrolls on its own. */
+    .rail__links { max-height: calc(100dvh - 70px); overflow-y: auto; }
+    .rail__group { display: block; }
+    .rail .nav-link { justify-content: flex-start; padding: 9px 10px 9px 14px; }
+    .rail .nav-link span { display: inline; }
+    .rail__foot { margin: 0 0 0 8px; padding: 0; border: 0; flex-direction: row; }
+    .rail__who { display: none; }
+    /* The column's top padding moves onto the page: a sticky filter pins to
+       the column's content edge, and with 12px of padding above it a band
+       of rows scrolled past between the strip and the pinned filter. */
+    .dash-shell .container { padding: 0 16px 40px; }
+    .dash-shell .container > .dashboard-page { padding-top: 12px; }
+}
+
+/* ── Distribution bar ─────────────────────────────────────────────────────
+   The dashboard's echo of the landing page's route network: the same ten
+   chains, showing where the balance actually is. Segments grow in from the
+   left on first paint. Hover one for its figure. */
+.dist { margin: 4px 0 0; }
+
+/* The bar and its segments stay overflow-visible: a segment's hover tip is
+   its own ::after, and overflow:hidden on either clipped every tip away.
+   The corners are rounded on the end segments instead, and the label sits in
+   an inner span that clips on its own. */
+.dist__bar {
+    display: flex;
+    height: 34px;
+    border-radius: var(--radius);
+    border: 1px solid var(--line);
+    background: var(--surface);
+}
+
+.dist__seg {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: var(--surface);
+    transform-origin: 0 50%;
+    cursor: default;
+    white-space: nowrap;
+    transition: flex-grow var(--dur-slow) var(--ease-out);
+}
+
+.dist__seg > span { overflow: hidden; text-overflow: clip; max-width: 100%; padding: 0 4px; }
+.dist__seg:first-child { border-radius: calc(var(--radius) - 1px) 0 0 calc(var(--radius) - 1px); }
+.dist__seg:last-child { border-radius: 0 calc(var(--radius) - 1px) calc(var(--radius) - 1px) 0; }
+.dist__seg:hover { z-index: 6; }
+
+.dist__seg + .dist__seg { border-left: 1px solid var(--surface); }
+
+/* The end segments' tips hug the bar's edges instead of running off the page. */
+.dist__seg:first-child:hover::after { left: 0; transform: none; }
+.dist__seg:last-child:hover::after { left: auto; right: 0; transform: none; }
+.dist__seg:nth-child(1) { background: var(--ink); }
+.dist__seg:nth-child(2) { background: color-mix(in srgb, var(--ink) 78%, var(--surface)); }
+.dist__seg:nth-child(3) { background: color-mix(in srgb, var(--ink) 60%, var(--surface)); }
+.dist__seg:nth-child(4) { background: color-mix(in srgb, var(--ink) 44%, var(--surface)); }
+.dist__seg:nth-child(5) {
+    background: repeating-linear-gradient(135deg,
+        color-mix(in srgb, var(--ink) 40%, var(--surface)) 0 4px,
+        color-mix(in srgb, var(--ink) 24%, var(--surface)) 4px 8px);
+    color: var(--ink);
+}
+.dist__seg:nth-child(n+6) { background: color-mix(in srgb, var(--ink) 16%, var(--surface)); color: var(--ink-2); }
+
+.dist__seg:hover::after {
+    content: attr(data-tip);
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    white-space: nowrap;
+    padding: 6px 10px;
+    border-radius: var(--radius-sm);
+    background: var(--surface-raised);
+    border: 1px solid var(--line);
+    box-shadow: var(--shadow);
+    color: var(--ink);
+    font-size: 11.5px;
+    font-weight: 600;
+    letter-spacing: 0;
+    text-transform: none;
+    z-index: 5;
+}
+
+/* No balance anywhere: one quiet segment, not ten empty slivers. */
+.dist__none {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    padding: 0 14px;
+    font-size: 12px;
+    color: var(--ink-3);
+    background: repeating-linear-gradient(135deg, transparent 0 6px, color-mix(in srgb, var(--ink) 4%, transparent) 6px 12px);
+    /* One line where it fits; the sentence is not worth two lines squeezed
+       past the bar's bottom edge on a phone. */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    border-radius: inherit;
+}
+
+.dist__key {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 18px;
+    margin-top: 10px;
+    font-size: 11.5px;
+    color: var(--ink-3);
+    font-variant-numeric: tabular-nums;
+}
+
+.dist__key b { color: var(--ink-2); font-weight: 600; margin-right: 4px; }
+
+@media (prefers-reduced-motion: no-preference) {
+    .dist__seg { animation: dist-grow 0.9s var(--ease-out) both; animation-delay: var(--d, 0ms); }
+    @keyframes dist-grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+}
+
+/* ── Activity rail ────────────────────────────────────────────────────────
+   Rows, not cards. The newest lands with a brief highlight, so a payment
+   arriving while you watch is visible without a toast. */
+.act__row {
+    display: grid;
+    grid-template-columns: 20px minmax(0, 1.6fr) minmax(0, 1fr) minmax(0, 0.9fr) auto;
+    gap: 14px;
+    align-items: center;
+    padding: 13px 0;
+    border-bottom: 1px solid var(--line);
+    font-size: 13px;
+}
+
+.act__dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ink-3); justify-self: center; }
+.act__dot.in { background: var(--ok); }
+.act__dot.out { background: var(--ink-2); }
+.act__what { min-width: 0; }
+.act__what b { display: block; font-weight: 600; color: var(--ink); }
+.act__what span { font-size: 11.5px; color: var(--ink-3); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.act__amt { font-variant-numeric: tabular-nums; font-weight: 600; color: var(--ink); white-space: nowrap; }
+.act__amt span { color: var(--ink-3); font-weight: 500; margin-left: 6px; }
+.act__when { color: var(--ink-3); font-size: 12px; font-variant-numeric: tabular-nums; }
+
+@media (prefers-reduced-motion: no-preference) {
+    .act__row.is-new { animation: act-land 2.4s var(--ease-out) both; }
+    @keyframes act-land { from { background: color-mix(in srgb, var(--ok) 14%, transparent); } to { background: transparent; } }
+}
+
+/* The two states the pill set lacked. A transaction that confirmed is not
+   "paid" - that is a payout's word - and a failure is not "insufficient". */
+.status-pill--confirmed { background: var(--ok-bg); color: var(--ok); border-color: var(--ok); }
+.status-pill--failed { background: var(--danger-bg); color: var(--danger); border-color: var(--danger); }
+
+.dash-section__link {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--ink-2);
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.dash-section__link:hover { color: var(--ink); }
+
+.btn-ghost {
+    background: none;
+    color: var(--ink);
+    border: 1px solid var(--line-strong);
+}
+
+.btn-ghost:hover { border-color: var(--ink); }
+
+@media (max-width: 720px) {
+    .act__row { grid-template-columns: 20px minmax(0, 1fr) auto; }
+    .act__amt, .act__when { display: none; }
+}
+
+/* ── Filter bar ───────────────────────────────────────────────────────────
+   Search, state chips, a count that follows. Sticky under the rail's top so
+   a long list can still be narrowed from anywhere in it. The chips use the
+   pill shape the rows do: the filter looks like what it filters. */
+.dash-filter {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 12px;
+    padding: 12px 0;
+    background: var(--surface-sunken);
+    border-bottom: 1px solid var(--line);
+}
+
+.dash-search { position: relative; width: 280px; max-width: 100%; }
+
+.dash-search svg {
+    position: absolute;
+    left: 11px;
+    top: 50%;
+    margin-top: -7px;
+    width: 14px;
+    height: 14px;
+    color: var(--ink-3);
+    pointer-events: none;
+}
+
+.dash-search input {
+    width: 100%;
+    box-sizing: border-box;
+    font: inherit;
+    font-size: 13px;
+    padding: 9px 12px 9px 33px;
+    border-radius: var(--radius);
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--ink);
+    transition: border-color var(--dur) var(--ease-out);
+}
+
+.dash-search input:focus { outline: none; border-color: var(--ink); box-shadow: var(--focus-ring); }
+.dash-search input::placeholder { color: var(--ink-3); }
+
+.dash-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.dash-chips button {
+    font: inherit;
+    font-size: 11.5px;
+    font-weight: 600;
+    padding: 6px 11px;
+    border-radius: var(--radius-pill);
+    cursor: pointer;
+    color: var(--ink-2);
+    border: 1px solid var(--line);
+    background: var(--surface);
+    transition: border-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+
+.dash-chips button:hover { border-color: var(--line-strong); color: var(--ink); }
+.dash-chips button:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.dash-chips button[aria-pressed="true"] { border-color: var(--ink); color: var(--ink); }
+
+.dash-count { margin-left: auto; font-size: var(--text-sm); color: var(--ink-3); font-variant-numeric: tabular-nums; }
+
+/* ── Table ────────────────────────────────────────────────────────────────
+   Hairline rows, no zebra, no cell borders. Amounts right-aligned and
+   tabular so the decimal points line up down the column. A row opens to its
+   details in place rather than in a modal. */
+.dash-table { width: 100%; border-collapse: collapse; margin-top: 4px; font-size: 13px; }
+
+.dash-table th {
+    text-align: left;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    padding: 14px 12px 10px 0;
+    border-bottom: 1px solid var(--line);
+    white-space: nowrap;
+}
+
+/* Right-aligned, but with a gutter on the right: a flush number runs into the
+   text of the column after it. */
+.dash-table th.num, .dash-table td.num { text-align: right; padding-right: 24px; font-variant-numeric: tabular-nums; }
+.dash-table td { padding: 13px 12px 13px 0; border-bottom: 1px solid var(--line); vertical-align: middle; }
+.dash-table td:last-child { padding-right: 0; width: 24px; }
+
+.dash-table tbody tr.row { cursor: pointer; transition: background var(--dur-fast) var(--ease-out); }
+.dash-table tbody tr.row:hover { background: color-mix(in srgb, var(--ink) 3%, transparent); }
+.dash-table tbody tr.row:focus-visible { outline: none; box-shadow: inset var(--focus-ring); }
+.dash-table tbody tr.row[aria-expanded="true"] { background: color-mix(in srgb, var(--ink) 4%, transparent); }
+.dash-table tbody tr.row[aria-expanded="true"] td { border-bottom-color: transparent; }
+
+.dash-table .when b { display: block; font-weight: 600; color: var(--ink); }
+.dash-table .when span { font-size: 11.5px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.dash-table .type { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
+.dash-table .type i { width: 7px; height: 7px; border-radius: 50%; background: var(--ink-3); }
+.dash-table .type i.in { background: var(--ok); }
+.dash-table .type i.out { background: var(--ink-2); }
+.dash-table .amt b { display: block; font-weight: 600; color: var(--ink); white-space: nowrap; }
+.dash-table .amt span { font-size: 11.5px; color: var(--ink-3); }
+.dash-table .chain { color: var(--ink-2); white-space: nowrap; }
+
+.dash-table .hash {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 12px;
+    color: var(--ink-3);
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+}
+
+.dash-table .hash a { color: var(--ink-2); text-decoration: none; }
+.dash-table .hash a:hover { color: var(--ink); text-decoration: underline; }
+.dash-table .hash button { all: unset; cursor: pointer; color: var(--ink-3); display: grid; place-items: center; }
+.dash-table .hash button:hover { color: var(--ink); }
+.dash-table .hash svg { width: 12px; height: 12px; }
+
+.dash-table .chev { width: 14px; height: 14px; color: var(--ink-3); transition: transform var(--dur) var(--ease-out); display: block; }
+.dash-table tr[aria-expanded="true"] .chev { transform: rotate(180deg); }
+
+/* The detail row: a definition list on the accent rule, opening to its own
+   height with the same grid-rows transition the FAQ uses. */
+.dash-table tr.detail td { padding: 0; border-bottom: 1px solid var(--line); }
+.dash-table tr.detail[hidden] { display: none; }
+.dash-table .detail__wrap { display: grid; grid-template-rows: 0fr; transition: grid-template-rows var(--dur) var(--ease-out); }
+.dash-table tr.detail.open .detail__wrap { grid-template-rows: 1fr; }
+.dash-table .detail__in { overflow: hidden; }
+
+.dash-table .detail dl {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px 24px;
+    margin: 0 0 4px;
+    padding: 16px 0 20px 19px;
+    border-left: 2px solid var(--ink);
+}
+
+.dash-table .detail dt { font-size: 10.5px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 4px; }
+.dash-table .detail dd { margin: 0; font-size: 13px; color: var(--ink); font-variant-numeric: tabular-nums; word-break: break-all; }
+.dash-table .detail dd a { color: var(--ink); }
+.dash-table .detail dd.muted { color: var(--ink-3); }
+
+.confs { display: inline-flex; gap: 4px; align-items: center; margin-right: 8px; vertical-align: middle; }
+.confs i { width: 12px; height: 12px; border-radius: 3px; border: 1px dashed var(--line-strong); }
+.confs i.on { background: var(--ok); border: 1px solid var(--ok); }
+
+.dash-table__empty td {
+    padding: 40px 0 !important;
+    color: var(--ink-3);
+    font-size: var(--text-base);
+    text-align: left;
+}
+
+.dash-table__empty td b { color: var(--ink-2); font-weight: 600; }
+.dash-table__empty button { all: unset; cursor: pointer; color: var(--ink); font-weight: 600; text-decoration: underline; text-underline-offset: 2px; margin-left: 8px; }
+
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+
+/* ── Narrow screens: the tables lose columns rather than the page gaining a
+   horizontal scroll. What stays is what a row is scanned by - when, what,
+   how much, and its state; the rest is a tap away in the row's details. */
+@media (max-width: 760px) {
+    .dash-table th:nth-child(4), .dash-table td:nth-child(4),
+    .dash-table th:nth-child(5), .dash-table td:nth-child(5) { display: none; }
+    /* payouts: gross goes too; net and state are the row */
+    #payoutTable th:nth-child(3), #payoutTable td:nth-child(3) { display: none; }
+    .dash-table .detail dl { grid-template-columns: 1fr 1fr; }
+    .dash-search { width: 100%; }
+    .dash-count { margin-left: 0; }
+}
+
+@media (max-width: 480px) {
+    /* the type is said by the amount's sign and the pill; paid-in by the details */
+    #txTable th:nth-child(2), #txTable td:nth-child(2),
+    #payoutTable th:nth-child(2), #payoutTable td:nth-child(2) { display: none; }
+    .dash-table th, .dash-table td { padding-left: 6px; padding-right: 6px; }
+    .dash-table th.num, .dash-table td.num { padding-right: 10px; }
+    .dash-table .detail dl { grid-template-columns: 1fr; }
+    .dash-chips { width: 100%; }
+}
+
+/* On a phone the page scrolls inside the main column, so a filter pinned at
+   0 pins to the top of that column - right under the strip, which is outside
+   it. It used to be static here, from when the document scrolled and the
+   filter slid under the sticky strip. */
+@media (max-width: 860px) {
+    .dash-filter { position: sticky; top: 0; }
+}
+
+/* ── Wallet row ───────────────────────────────────────────────────────────
+   One rule for the row on both the overview and the wallets page: chain
+   mark, name over address, figures, state, actions - on a hairline, not in
+   a tile. The older .wallet-item rules above are overridden here and go when
+   nothing else reads them. */
+.dash-rail .wallet-item {
+    display: grid;
+    grid-template-columns: 40px minmax(0, 1.6fr) minmax(0, 1fr) auto auto;
+    gap: 16px;
+    align-items: center;
+    padding: 12px 0;
+    border: 0;
+    border-bottom: 1px solid var(--line);
+    border-radius: 0;
+    background: none;
+    box-shadow: none;
+    margin: 0;
+}
+
+.dash-rail .wallet-item:hover { background: color-mix(in srgb, var(--ink) 3%, transparent); }
+.dash-rail .wallet-item.hidden { display: none; }
+
+.dash-rail .wallet-info { display: contents; }
+
+.dash-rail .chain-badge {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius);
+    display: grid;
+    place-items: center;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: var(--ink);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    margin: 0;
+}
+
+.dash-rail .wallet-details { min-width: 0; }
+.dash-rail .wallet-label { font-size: 13.5px; font-weight: 600; color: var(--ink); margin: 0 0 2px; }
+.dash-rail .wallet-label--empty { color: var(--ink-3); font-weight: 500; font-style: italic; }
+
+.dash-rail .wallet-address {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 12px;
+    color: var(--ink-3);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.dash-rail .wallet-figures { text-align: right; font-variant-numeric: tabular-nums; }
+.dash-rail .wallet-balance { font-size: 13.5px; font-weight: 600; color: var(--ink); margin: 0; white-space: nowrap; }
+.dash-rail .wallet-balance-usd { font-size: 11.5px; color: var(--ink-3); margin: 0; }
+.dash-rail .wallet-state { white-space: nowrap; }
+
+.dash-rail .action-buttons { display: flex; gap: 4px; }
+
+.dash-rail .action-buttons .icon-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 7px;
+    border: 1px solid transparent;
+    background: none;
+    color: var(--ink-3);
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+    padding: 0;
+    transition: color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
+}
+
+.dash-rail .action-buttons .icon-btn:hover { color: var(--ink); border-color: var(--line-strong); }
+.dash-rail .action-buttons .icon-btn:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.dash-rail .action-buttons .icon-btn.delete-btn:hover { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 40%, transparent); }
+.dash-rail .action-buttons svg, .dash-rail .action-buttons [data-icon] { width: 14px; height: 14px; }
+
+/* the inline rename */
+.dash-rail .wallet-label input {
+    font: inherit;
+    font-size: 13.5px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--ink);
+    background: var(--surface);
+    color: var(--ink);
+    width: min(100%, 240px);
+}
+
+.dash-rail .wallet-search-empty { padding: 22px 0; color: var(--ink-3); font-size: var(--text-base); }
+.dash-rail .wallet-search-empty.hidden { display: none; }
+
+@media (max-width: 720px) {
+    .dash-rail .wallet-item { grid-template-columns: 40px minmax(0, 1fr) auto; gap: 12px; }
+    .dash-rail .wallet-figures { grid-column: 2; text-align: left; }
+    .dash-rail .wallet-state { display: none; }
+    .dash-rail .action-buttons { grid-column: 3; grid-row: 1 / 3; }
+}
+
+/* ── Payout detail: the transfer breakdown ───────────────────────────────── */
+.dash-table td.muted { color: var(--ink-3); }
+.dash-table .muted { color: var(--ink-3); }
+.dash-table .muted-sm { display: block; font-size: 11px; color: var(--ink-3); }
+
+.xfers { padding: 14px 0 6px 19px; border-left: 2px solid var(--ink); }
+.xfers__head, .xfer {
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.2fr) minmax(0, 0.8fr) minmax(0, 0.7fr) auto;
+    gap: 14px;
+    align-items: center;
+    font-size: 13px;
+}
+.xfers__head { font-size: 10.5px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-3); padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+.xfer { padding: 9px 0; border-bottom: 1px solid var(--line); }
+.xfer:last-child { border-bottom: 0; }
+.xfer__chain { color: var(--ink); font-weight: 600; }
+.xfer__amt, .xfer__usd { font-variant-numeric: tabular-nums; color: var(--ink-2); }
+.xfer__how { color: var(--ink-3); font-size: 12px; }
+.xfer--none { display: block; color: var(--ink-3); padding: 12px 0; }
+
+.payout-meta { display: flex; gap: 32px; margin: 12px 0 8px 19px; padding-left: 2px; }
+.payout-meta dt { font-size: 10.5px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 3px; }
+.payout-meta dd { margin: 0; font-size: 12.5px; color: var(--ink-2); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; word-break: break-all; }
+
+@media (max-width: 760px) {
+    #payoutTable th:nth-child(4), #payoutTable td:nth-child(4),
+    #payoutTable th:nth-child(5), #payoutTable td:nth-child(5) { display: none; }
+    .xfers__head, .xfer { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; }
+    .xfer__usd, .xfer__how, .xfers__head span:nth-child(3), .xfers__head span:nth-child(4) { display: none; }
+}
+
+/* ── New payment link ─────────────────────────────────────────────────────
+   Its own page. The form is a sequence to fill in, so it gets a single column
+   at a reading width, fields on hairlines grouped under a small-caps rule -
+   no fieldset boxes, no numbered badges. */
+.link-page { max-width: 640px; }
+
+.link-form.hidden { display: none; }
+
+.fgroup { padding: 18px 0 6px; }
+.fgroup + .fgroup { border-top: 1px solid var(--line); margin-top: 8px; }
+
+.fgroup__title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 14px;
+    font-size: var(--text-xs);
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+}
+
+.fgroup__title em, .field label em {
+    font-style: normal;
+    font-weight: 500;
+    letter-spacing: 0;
+    text-transform: none;
+    color: var(--ink-3);
+}
+
+.field { display: grid; gap: 6px; margin-bottom: 16px; }
+/* The old form vocabulary uppercases every label; these read as prose. */
+.field label { font-size: 13px; font-weight: 600; color: var(--ink); text-transform: none; letter-spacing: 0; margin: 0; }
+.field label em { margin-left: 6px; }
+
+.field input[type="text"],
+.field input[type="url"],
+.field input[type="number"],
+.field select {
+    font: inherit;
+    font-size: 13.5px;
+    padding: 10px 12px;
+    border-radius: var(--radius);
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--ink);
+    width: 100%;
+    box-sizing: border-box;
+    transition: border-color var(--dur) var(--ease-out);
+}
+
+.field input:focus, .field select:focus { outline: none; border-color: var(--ink); box-shadow: var(--focus-ring); }
+.field .field-hint { margin: 0; }
+
+/* Two fields of the same kind, read together, share a line. */
+.fgroup__row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.fgroup__row + .field-hint { margin: -6px 0 16px; }
+
+/* The amount is the one figure on the page, so it is set the way the
+   balance is on the overview: large, tabular, with the unit toggle beside it
+   at the same height. */
+.amount-field #checkoutAmount {
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+    padding: 8px 12px;
+}
+
+.amount-field .segmented { align-self: center; }
+
+/* Under it, the conversion at the current rate: figure left, price age right. */
+.quote {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+    font-variant-numeric: tabular-nums;
+}
+
+.quote .field-hint { margin: 0; }
+.quote b { color: var(--ink); font-weight: 600; }
+
+.quote__age {
+    flex: none;
+    font-size: 11px;
+    color: var(--ink-3);
+    white-space: nowrap;
+}
+
+.quote__age::before {
+    content: "";
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--ok);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 20%, transparent);
+    margin-right: 7px;
+    vertical-align: middle;
+}
+
+.quote__age--stale::before { background: var(--warn); box-shadow: 0 0 0 3px color-mix(in srgb, var(--warn) 20%, transparent); }
+
+.link-form__foot {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 14px;
+    padding-top: 18px;
+    margin-top: 8px;
+    border-top: 1px solid var(--line);
+}
+
+.link-form__foot .field-hint { margin: 0; }
+
+/* ── The link, ready ──────────────────────────────────────────────────────
+   Takes the form's place. The URL is the hero; beside it a QR of the link a
+   customer can scan to open it; under that the figures that were fixed at
+   creation and a countdown to expiry. */
+.link-ready.hidden { display: none; }
+
+.link-ready__head { display: flex; align-items: center; gap: 12px; padding: 18px 0 14px; }
+
+.link-ready__check {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--ok-bg);
+    color: var(--ok);
+    display: grid;
+    place-items: center;
+    flex: none;
+}
+
+.link-ready__check svg { width: 16px; height: 16px; }
+.link-ready__title { font-size: var(--text-md); font-weight: 700; letter-spacing: -0.015em; color: var(--ink); }
+.link-ready__sub { font-size: 12.5px; color: var(--ink-3); margin-top: 2px; font-variant-numeric: tabular-nums; }
+.link-ready__sub b { color: var(--ink); }
+
+.link-ready__url { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; margin: 6px 0 18px; }
+
+.link-ready__url input {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 12.5px;
+    padding: 11px 12px;
+    border-radius: var(--radius);
+    border: 1px solid var(--ink);
+    background: var(--surface);
+    color: var(--ink);
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.link-ready__body { display: grid; grid-template-columns: 148px minmax(0, 1fr); gap: 22px; align-items: start; }
+
+/* The SVG paints its own white quiet zone, as a QR must; the frame around it
+   follows the theme like everything else. */
+.link-ready__qr {
+    width: 148px;
+    height: 148px;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--line);
+    background: var(--surface);
+    padding: 8px;
+    box-sizing: border-box;
+}
+
+.link-ready__qr svg { width: 100%; height: 100%; display: block; }
+.link-ready__qr:empty { display: none; }
+
+.link-ready__facts { display: grid; gap: 10px; font-size: 13px; }
+.link-ready__facts div { display: flex; justify-content: space-between; gap: 14px; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
+.link-ready__facts span:first-child { color: var(--ink-3); flex: none; }
+.link-ready__facts b { font-weight: 600; color: var(--ink); text-align: right; word-break: break-word; font-variant-numeric: tabular-nums; }
+.link-ready__facts .muted { color: var(--ink-3); font-weight: 500; }
+
+.link-ready__foot { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 18px; }
+
+/* ── Payment links: the row's extras ─────────────────────────────────────── */
+.dash-live {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-size: var(--text-xs);
+    font-weight: 600;
+    color: var(--ink-3);
+    margin-right: 6px;
+}
+
+.dash-live::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--ok);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 20%, transparent);
+}
+
+.dash-table .ref b { display: block; font-weight: 600; color: var(--ink); }
+.dash-table .ref span { font-size: 11.5px; color: var(--ink-3); }
+.dash-table .st__sub { display: block; font-size: 11.5px; color: var(--ink-3); margin-top: 4px; white-space: nowrap; }
+.dash-table .st__sub .confs { margin-right: 6px; }
+.dash-table .st__sub .confs i { width: 10px; height: 10px; border-radius: 2px; }
+
+/* the link detail: link + facts on the left, the timeline on the right */
+.ck-detail {
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+    gap: 24px;
+    padding: 16px 0 18px 19px;
+    border-left: 2px solid var(--ink);
+}
+
+.ck-link { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 6px; margin-bottom: 14px; }
+
+.ck-link input {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11.5px;
+    padding: 8px 10px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--ink-2);
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.ck-link .btn-small { padding: 7px 11px; }
+
+.ck-facts { display: grid; gap: 9px; font-size: 12.5px; }
+.ck-facts div { display: flex; justify-content: space-between; gap: 12px; }
+.ck-facts span:first-child { color: var(--ink-3); flex: none; }
+.ck-facts b { font-weight: 600; color: var(--ink); text-align: right; word-break: break-all; font-variant-numeric: tabular-nums; }
+.ck-facts a { color: var(--ink); }
+.ck-facts .muted { color: var(--ink-3); font-weight: 500; }
+.ck-facts .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; }
+.ck-facts .shortfall { color: var(--danger); font-weight: 600; }
+
+.ck-timeline { font-size: 12.5px; }
+.ck-timeline__t { font-size: 10.5px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 8px; }
+.ck-timeline div { display: grid; grid-template-columns: 14px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 6px 0; }
+.ck-timeline i { width: 8px; height: 8px; border-radius: 50%; background: var(--line-strong); justify-self: center; }
+.ck-timeline i.on { background: var(--ok); }
+.ck-timeline i.stop { background: var(--warn); }
+.ck-timeline i.now { background: var(--info); box-shadow: 0 0 0 3px color-mix(in srgb, var(--info) 20%, transparent); }
+.ck-timeline span:last-child { color: var(--ink-3); font-variant-numeric: tabular-nums; font-size: 11.5px; }
+.ck-timeline .todo { color: var(--ink-3); }
+
+.ck-detail__foot { grid-column: 1 / -1; display: flex; gap: 8px; padding-top: 4px; }
+
+.btn-ghost--danger { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 40%, transparent); }
+
+@media (prefers-reduced-motion: no-preference) {
+    .dash-live::before { animation: live-pulse 2.6s ease-in-out infinite; }
+    .dash-table tr.changed { animation: act-land 2.4s var(--ease-out) both; }
+}
+
+@media (max-width: 760px) {
+    .link-ready__body { grid-template-columns: 1fr; }
+    .fgroup__row { grid-template-columns: 1fr; gap: 0; }
+    .ck-detail { grid-template-columns: 1fr; }
+    .ck-link { grid-template-columns: 1fr; }
+    #checkoutSessionsTable th:nth-child(4), #checkoutSessionsTable td:nth-child(4) { display: none; }
+}
+
+/* ── Withdrawal ───────────────────────────────────────────────────────────
+   Three steps on a rail: where it goes, what it comes from, the receipt with
+   the one button that sends. The old page was four cards with a badge row;
+   Review and Confirm drew the same figures twice. The receipt draws them
+   once, under the warning, and the button names the amount. */
+.wd-page { max-width: 680px; }
+
+/* The head's figure: what can be withdrawn right now, set like the balance. */
+.dash-head__actions.wd-avail { display: block; text-align: right; padding-top: 26px; }
+.wd-avail b { display: block; font-size: 24px; font-weight: 700; letter-spacing: -0.025em; color: var(--ink); font-variant-numeric: tabular-nums; line-height: 1.1; }
+.wd-avail span { font-size: 11.5px; color: var(--ink-3); }
+
+/* The stepper: a hairline per step whose accent fills as you pass. */
+.wd-rail {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    list-style: none;
+    margin: 4px 0 26px;
+    padding: 0;
+}
+
+.wd-rail li {
+    padding: 10px 0 0;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--ink-3);
+    border-top: 2px solid var(--line);
+    transition: color var(--dur) var(--ease-out), border-color var(--dur) var(--ease-out);
+}
+
+.wd-rail li span { display: block; font-size: 10.5px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 3px; }
+.wd-rail li.is-done { border-top-color: var(--ok); color: var(--ink-2); cursor: pointer; }
+/* A finished step carries the site's green dot - the one "Live" wears on the
+   payment links page - rather than a tick. Still, not pulsing: it is done. */
+.wd-rail li.is-done b::after {
+    content: "";
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--ok);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 20%, transparent);
+    margin-left: 9px;
+    vertical-align: middle;
+    position: relative;
+    top: -1px;
+}
+.wd-rail li.is-now { border-top-color: var(--ink); color: var(--ink); }
+
+.wd-stage { display: none; }
+.wd-stage.active { display: block; }
+
+.wd-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding-top: 18px;
+    margin-top: 8px;
+    border-top: 1px solid var(--line);
+}
+
+.wd-foot .btn-small.is-busy { opacity: 0.7; pointer-events: none; }
+
+#recipientHint.is-ok { color: var(--ok); font-weight: 600; }
+#recipientHint.is-bad { color: var(--danger); }
+
+/* Sources: the wallet row with a checkbox. A wallet that cannot be withdrawn
+   from stays in the list and says why. */
+.wd-src {
+    display: grid;
+    grid-template-columns: 22px 40px minmax(0, 1.4fr) minmax(0, 1fr) auto;
+    gap: 14px;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--line);
+    cursor: pointer;
+    /* it is a <label>, so the old form-label rule would uppercase it */
+    margin: 0;
+    font-size: inherit;
+    font-weight: 400;
+    letter-spacing: 0;
+    text-transform: none;
+    color: inherit;
+}
+
+.wd-src.is-off { cursor: default; }
+.wd-src.is-off > *:not(.status-pill) { opacity: 0.5; }
+.wd-src input { width: 16px; height: 16px; margin: 0; accent-color: var(--ink); }
+
+.wd-src__badge {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius);
+    display: grid;
+    place-items: center;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    color: var(--ink);
+}
+
+.wd-src__who b { display: block; font-weight: 600; font-size: 13.5px; color: var(--ink); }
+.wd-src__who span { font-size: 11.5px; color: var(--ink-3); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.wd-src__bal { text-align: right; font-variant-numeric: tabular-nums; }
+.wd-src__bal b { display: block; font-weight: 600; font-size: 13.5px; color: var(--ink); }
+.wd-src__bal span { font-size: 11.5px; color: var(--ink-3); }
+
+.wd-tally { display: flex; justify-content: space-between; align-items: baseline; padding: 14px 0 0; font-size: 13px; color: var(--ink-3); }
+.wd-tally b { font-size: 20px; font-weight: 700; color: var(--ink); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+
+/* The receipt: per source, then the totals, then where it goes. */
+.receipt { border: 1px solid var(--line-strong); border-radius: var(--radius-lg); background: var(--surface); overflow: hidden; margin-top: 6px; }
+.receipt__cap { display: flex; justify-content: space-between; gap: 12px; padding: 11px 18px; border-bottom: 1px solid var(--line); background: var(--surface-sunken); font-size: 10.5px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-3); }
+.receipt__src { padding: 12px 18px 6px; border-bottom: 1px dashed var(--line); }
+.receipt__src .h { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; font-weight: 600; color: var(--ink); margin-bottom: 4px; }
+.receipt__src .h span:last-child { color: var(--ink-3); font-weight: 500; font-size: 11.5px; text-align: right; }
+.receipt__src div:not(.h) { display: flex; justify-content: space-between; gap: 12px; padding: 4px 0; font-size: 12.5px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.receipt__src div:not(.h) span:first-child { color: var(--ink-2); }
+.receipt__src .muted { color: var(--ink-3); }
+.receipt__tot { padding: 12px 18px 6px; font-variant-numeric: tabular-nums; }
+.receipt__tot div { display: flex; justify-content: space-between; gap: 12px; padding: 5px 0; font-size: 13px; color: var(--ink-2); }
+.receipt__tot .net { margin-top: 6px; padding-top: 11px; border-top: 1px solid var(--line-strong); color: var(--ink); font-weight: 700; font-size: 16px; }
+.receipt__to { padding: 12px 18px 14px; border-top: 1px dashed var(--line); display: grid; gap: 6px; font-size: 12.5px; }
+.receipt__to div { display: flex; justify-content: space-between; gap: 12px; }
+.receipt__to span:first-child { color: var(--ink-3); flex: none; }
+.receipt__to b { font-weight: 600; color: var(--ink); word-break: break-all; text-align: right; }
+.receipt__to .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; }
+
+.wd-warn {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    margin: 16px 0 0;
+    padding: 12px 14px;
+    border-radius: var(--radius);
+    background: var(--warn-bg);
+    border: 1px solid color-mix(in srgb, var(--warn) 30%, transparent);
+    color: var(--warn);
+    font-size: 12.5px;
+    line-height: 1.5;
+}
+
+.wd-warn .inline-icon { flex: none; margin-top: 1px; }
+
+/* Sent. */
+.wd-done { display: flex; align-items: center; gap: 12px; padding: 22px 0 16px; }
+.wd-done__title { font-size: var(--text-md); font-weight: 700; letter-spacing: -0.015em; color: var(--ink); }
+.wd-done__sub { font-size: 12.5px; color: var(--ink-3); margin-top: 2px; }
+.wd-done__sub b { color: var(--ink); font-weight: 600; }
+
+@media (max-width: 760px) {
+    /* Three short labels still fit three columns at 375px; stacked, the rail
+       cost a phone half its first screen before the form began. */
+    .wd-rail { gap: 8px; }
+    .dash-head__actions.wd-avail { text-align: left; padding-top: 0; }
+    .wd-src { grid-template-columns: 22px 40px minmax(0, 1fr) auto; }
+    .wd-src__bal { grid-column: 3; text-align: left; }
+    .wd-foot { flex-wrap: wrap; }
+}
+
+/* ── API ──────────────────────────────────────────────────────────────────
+   A page under Build, not a modal: the key as one row, a first call to copy,
+   and what the account has been doing. */
+.api-page { max-width: 760px; }
+
+/* The key: glyph, prefix, when, and the two things you can do to it. */
+.api-key__row {
+    display: grid;
+    grid-template-columns: 40px minmax(0, 1fr) auto;
+    gap: 14px;
+    align-items: center;
+    padding: 4px 0 16px;
+    border-bottom: 1px solid var(--line);
+}
+
+.api-key__badge {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius);
+    display: grid;
+    place-items: center;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    color: var(--ink);
+}
+
+.api-key__badge svg { width: 16px; height: 16px; }
+.api-key__who b { display: block; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 14px; font-weight: 600; letter-spacing: 0.01em; color: var(--ink); }
+.api-key__who span { font-size: 12px; color: var(--ink-3); }
+.api-key__row.is-none .api-key__who b { font-family: inherit; font-weight: 500; color: var(--ink-3); }
+.api-key__acts { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* "Active" wears the site's green dot. */
+.api-key__who .dot::before {
+    content: "";
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--ok);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 20%, transparent);
+    margin-right: 8px;
+    vertical-align: middle;
+    position: relative;
+    top: -1px;
+}
+
+.api-page .new-api-key { margin: 14px 0 0; border-radius: var(--radius-lg); }
+
+/* Quick start: a curl to copy, the prefix already in it. */
+.api-code {
+    position: relative;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    padding: 14px 16px;
+    overflow: auto;
+}
+
+.api-code pre {
+    margin: 0;
+    padding-right: 84px; /* clear of the Copy button pinned top right */
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 12.5px;
+    line-height: 1.65;
+    color: var(--ink-2);
+    white-space: pre;
+}
+
+.api-code pre b { color: var(--ink); font-weight: 500; }
+.api-code pre .c { color: var(--ink-3); }
+.api-code .btn-small { position: absolute; top: 10px; right: 10px; }
+
+.api-notes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 14px; }
+.api-notes div { font-size: 12.5px; color: var(--ink-3); line-height: 1.5; padding-top: 10px; border-top: 1px solid var(--line); }
+.api-notes div b { display: block; color: var(--ink); font-weight: 600; margin-bottom: 2px; }
+.api-notes code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.95em; padding: 0 3px; background: var(--surface-sunken); border: 1px solid var(--line); border-radius: 3px; color: var(--ink-2); }
+
+/* Usage: three figures, then the last requests. */
+.fgroup__title .dash-live { margin-left: auto; margin-right: 0; }
+.dash-facts.api-facts { border-top: 0; margin: 0 0 18px; }
+.dash-table .req { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; color: var(--ink-2); }
+.dash-table .req b { font-weight: 600; color: var(--ink); margin-right: 8px; }
+/* "just now" is two words; on a phone the column is narrow enough to break
+   them, and the path wraps instead. */
+#apiRecentTable td.num { white-space: nowrap; }
+#apiRecentTable .req { overflow-wrap: anywhere; }
+
+@media (max-width: 760px) {
+    .api-key__row { grid-template-columns: 40px minmax(0, 1fr); }
+    .api-key__acts { grid-column: 2; }
+    .api-notes { grid-template-columns: 1fr; }
+}
+
+/* ── Account ──────────────────────────────────────────────────────────────
+   Who you are, what you hold, and the two things that keep it yours. The
+   avatar sits in the title; the rest is rows on hairlines. */
+.acct-page { max-width: 760px; }
+.dash-head__title.acct-title { display: flex; align-items: center; gap: 14px; }
+
+.acct-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--ink);
+    color: var(--surface);
+    display: grid;
+    place-items: center;
+    font-size: 16px;
+    font-weight: 700;
+    flex: none;
+}
+
+/* A row: a label, a value, and sometimes a button. */
+.acct-row {
+    display: grid;
+    grid-template-columns: 150px minmax(0, 1fr) auto;
+    gap: 14px;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--line);
+    font-size: 13px;
+}
+
+.acct-row > span:first-child { color: var(--ink-3); }
+.acct-row .v { color: var(--ink); font-weight: 500; min-width: 0; }
+.acct-row .v small { display: block; font-size: 11.5px; color: var(--ink-3); font-weight: 400; margin-top: 2px; line-height: 1.45; }
+.acct-row .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; word-break: break-all; }
+.acct-row .acts { display: flex; gap: 8px; }
+
+/* The site's green dot for what is in order; amber for what needs attention. */
+.acct-row .dot::before {
+    content: "";
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--ok);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 20%, transparent);
+    margin-right: 8px;
+    vertical-align: middle;
+    position: relative;
+    top: -1px;
+}
+
+.acct-row .dot.dot--warn::before { background: var(--warn); box-shadow: 0 0 0 3px color-mix(in srgb, var(--warn) 20%, transparent); }
+
+/* The password form opens in place under its row. */
+.acct-form { padding: 14px 0 4px; border-bottom: 1px solid var(--line); }
+.acct-form.hidden { display: none; }
+.acct-form .field-hint { margin: -6px 0 12px; }
+.acct-form__foot { display: flex; gap: 8px; flex-wrap: wrap; padding-top: 4px; }
+.acct-form #changePasswordMessage .alert { margin-bottom: 12px; }
+
+/* The fresh codes, once, in the API key's panel. */
+.acct-page .new-api-key { margin: 14px 0 4px; border-radius: var(--radius-lg); }
+
+.acct-codes {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px 18px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 13px;
+    padding: 11px 14px;
+    border-radius: var(--radius);
+    border: 1px solid var(--warn);
+    background: var(--surface);
+    color: var(--ink);
+    margin-bottom: 12px;
+}
+
+@media (max-width: 760px) {
+    .acct-row { grid-template-columns: 1fr; gap: 6px; }
+    .acct-codes { grid-template-columns: 1fr; }
+}
+
+/* ── Wallets ──────────────────────────────────────────────────────────────
+   Rows that open, a form in place, and an address you can show. */
+
+/* The family's icon-only size: same height, square. */
+.btn-small.btn-icon { padding: 6px; }
+
+/* A chain's mark in the badge: one colour, the badge's ink, either theme.
+   A chain with no mark keeps its ticker. */
+.chain-mark { color: var(--ink); }
+.chain-mark svg { width: 20px; height: 20px; display: block; }
+
+/* ── Overview: wallets as tiles that share hairlines ─────────────────────
+   The 1px between tiles is the grid's own gap showing the line colour - the
+   facts strip's pattern, not a set of cards. A tile is a <button>: the
+   global button rule is unset so it can be a grid. */
+.wgrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    gap: 1px;
+    background: var(--line);
+    border-bottom: 1px solid var(--line);
+}
+
+.wtile {
+    all: unset;
+    box-sizing: border-box;
+    position: relative;
+    display: grid;
+    grid-template-columns: 34px minmax(0, 1fr) auto;
+    grid-template-rows: auto auto;
+    gap: 2px 12px;
+    align-items: center;
+    padding: 14px 16px 14px 14px;
+    background: var(--surface-sunken);
+    color: var(--ink);
+    font: inherit;
+    cursor: pointer;
+    transition: background var(--dur-fast) var(--ease-out);
+}
+
+.wtile:hover { background: color-mix(in srgb, var(--ink) 4%, var(--surface-sunken)); }
+.wtile:hover .wtile__name { text-decoration: underline; text-decoration-color: var(--line-strong); text-underline-offset: 3px; }
+.wtile:focus-visible { box-shadow: inset var(--focus-ring); z-index: 1; }
+
+.wtile__mark {
+    grid-row: 1 / 3;
+    width: 34px;
+    height: 34px;
+    border-radius: var(--radius);
+    display: grid;
+    place-items: center;
+    background: var(--surface);
+    border: 1px solid var(--line);
+}
+
+.wtile__mark svg { width: 18px; height: 18px; }
+.wtile__name { font-weight: 600; font-size: 13.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wtile__name--empty { color: var(--ink-3); font-weight: 500; }
+.wtile__addr { font-size: 11px; color: var(--ink-3); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.wtile__amt { grid-column: 3; grid-row: 1; text-align: right; font-weight: 600; font-size: 13.5px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.wtile__usd { grid-column: 3; grid-row: 2; text-align: right; font-size: 11px; color: var(--ink-3); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.wtile__usd .held { color: var(--warn); }
+
+/* The state as the site's dot: green active, blue confirming. */
+.wtile__dot {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--ok);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 20%, transparent);
+}
+
+.wtile__dot--busy { background: var(--info); box-shadow: 0 0 0 3px color-mix(in srgb, var(--info) 20%, transparent); }
+
+.wtile--add {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 66px;
+    color: var(--ink-3);
+    font-size: 12.5px;
+    font-weight: 600;
+}
+
+.wtile--add:hover { color: var(--ink); }
+.wtile--add svg { width: 14px; height: 14px; }
+.btn-small.is-busy { opacity: 0.7; pointer-events: none; }
+
+/* Add wallet, under the head. */
+.wallet-add {
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    padding: 4px 18px 16px;
+    margin-bottom: 22px;
+}
+
+.wallet-add.hidden { display: none; }
+.wallet-add .fgroup__title { margin: 14px 0 12px; }
+.wallet-add__foot { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.wallet-add__foot .field-hint { margin: 0 0 0 6px; }
+
+/* The row. A <div role=button>: the whole of it opens, its controls do not. */
+.wallet-row {
+    display: grid;
+    grid-template-columns: 40px minmax(0, 1.3fr) minmax(0, 1fr) auto auto;
+    gap: 14px;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--line);
+    cursor: pointer;
+    transition: background var(--dur-fast) var(--ease-out);
+}
+
+.wallet-row.hidden { display: none; }
+.wallet-row:focus-visible { outline: none; box-shadow: var(--focus-ring); border-radius: var(--radius-sm); }
+.wallet-row:hover .wallet-row__name { text-decoration: underline; text-decoration-color: var(--line-strong); text-underline-offset: 3px; }
+.wallet-row.is-open { border-bottom-color: transparent; }
+
+.wallet-row__badge {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius);
+    display: grid;
+    place-items: center;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    color: var(--ink);
+}
+
+.wallet-row__who { min-width: 0; }
+.wallet-row__name { display: block; font-weight: 600; font-size: 13.5px; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wallet-row__name--empty { color: var(--ink-3); font-weight: 500; }
+.wallet-row__addr { display: block; font-size: 11.5px; color: var(--ink-3); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.wallet-row__bal { text-align: right; font-variant-numeric: tabular-nums; min-width: 0; }
+.wallet-row__bal b { display: block; font-weight: 600; font-size: 13.5px; color: var(--ink); }
+.wallet-row__bal span { font-size: 11.5px; color: var(--ink-3); }
+.wallet-row__bal .held { color: var(--warn); }
+.wallet-row__acts { display: flex; gap: 6px; }
+
+/* Rename, in the name's place. */
+.wallet-row .wallet-rename { display: flex; gap: 6px; align-items: center; }
+.wallet-row .wallet-rename input { font: inherit; font-size: 13px; padding: 5px 9px; border-radius: var(--radius-sm); border: 1px solid var(--ink); background: var(--surface); color: var(--ink); min-width: 0; width: 180px; }
+
+/* The row, open: QR left, facts right, the ways on beneath. */
+.wallet-detail.hidden { display: none; }
+
+/* The QR column is fixed and always there: an empty holder used to be
+   display:none, which pushed the facts into its 148px column until the QR
+   arrived - and for good if it never did. Now the holder shows a quiet
+   placeholder while loading, and a failed QR drops the column instead. */
+.wallet-detail__in {
+    display: grid;
+    grid-template-columns: 148px minmax(0, 1fr);
+    gap: 18px 22px;
+    padding: 4px 0 18px 19px;
+    border-left: 2px solid var(--ink);
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 2px;
+}
+
+.wallet-detail__in.no-qr { grid-template-columns: minmax(0, 1fr); }
+
+/* A QR is black on white by definition; it does not follow the theme. */
+.wallet-detail__qr {
+    width: 148px;
+    height: 148px;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--line);
+    background: var(--surface);
+    padding: 8px;
+    box-sizing: border-box;
+}
+
+.wallet-detail__qr:empty { background: var(--surface-sunken); }
+.wallet-detail__qr svg { width: 100%; height: 100%; display: block; }
+
+/* The facts as a definition list: label on the left, value beside it, both
+   left-aligned so a sentence can wrap as a sentence. Only the address may
+   break inside a word. */
+.wallet-detail__facts { display: grid; gap: 0; font-size: 12.5px; align-content: start; min-width: 0; }
+
+.wallet-detail__facts > div {
+    display: grid;
+    grid-template-columns: 108px minmax(0, 1fr);
+    gap: 12px;
+    align-items: baseline;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--line);
+}
+
+.wallet-detail__facts > div:first-child { padding-top: 2px; }
+.wallet-detail__facts > div > span:first-child { color: var(--ink-3); }
+.wallet-detail__facts > div > b { font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; min-width: 0; overflow-wrap: normal; line-height: 1.5; }
+.wallet-detail__facts .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; overflow-wrap: anywhere; }
+.wallet-detail__facts .muted { color: var(--ink-3); font-weight: 500; }
+.wallet-detail__facts a { color: var(--ink); overflow-wrap: anywhere; }
+.wallet-detail__foot { grid-column: 1 / -1; display: flex; gap: 8px; flex-wrap: wrap; }
+
+@media (max-width: 760px) {
+    .wallet-row { grid-template-columns: 40px minmax(0, 1fr) auto; }
+    .wallet-row__bal { grid-column: 2; text-align: left; }
+    .wallet-row__acts { grid-column: 2 / -1; }
+    .wallet-detail__in { grid-template-columns: 1fr; }
 }

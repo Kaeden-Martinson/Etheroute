@@ -4,6 +4,7 @@ const ecc = require('tiny-secp256k1');
 const bip39 = require('bip39');
 const { v4: uuidv4 } = require('uuid');
 const { db } = require('../../config/database');
+const KeyVault = require('../crypto/KeyVault');
 const ProxyService = require('../ProxyService');
 
 const bip32 = BIP32Factory(ecc);
@@ -19,6 +20,14 @@ class BitcoinWalletService {
     this.rpcEndpoints = {
       mainnet: 'https://bitcoin-rpc.publicnode.com',
     };
+
+    // Where a signed transaction is pushed, in order. Each is a free public
+    // service that could go away; the second only has to answer when the
+    // first does not.
+    this.broadcastEndpoints = [
+      { kind: 'rpc', url: 'https://bitcoin-rpc.publicnode.com' },
+      { kind: 'explorer', url: 'https://mempool.space/api/tx' },
+    ];
 
     // Blockchain API endpoints for querying balance and transactions
     this.apiEndpoints = {
@@ -188,18 +197,31 @@ class BitcoinWalletService {
 
       const data = await response.json();
 
+      // Chain tip, so each transaction can report its depth. Checkout needs
+      // the real count: a "mined" flag alone caps every payment at one
+      // confirmation, which can never satisfy a two-confirmation rule.
+      const tipHeight = await this.getTipHeight();
+
       const transactions = (Array.isArray(data) ? data : []).slice(0, limit).map(tx => {
-        const inputSum = tx.vin?.reduce((sum, inp) => sum + (inp.prevout?.value || 0), 0) || 0;
-        const outputSum = tx.vout?.reduce((sum, out) => sum + (out.value || 0), 0) || 0;
+        const inputSum  = tx.vin?.reduce((sum, inp) => sum + (inp.prevout?.value || 0), 0) || 0;
+        const outputSum = tx.vout?.reduce((sum, out) => sum + (out.value       || 0), 0) || 0;
+        const blockHeight = tx.status?.block_height || null;
         return {
-          hash: tx.txid,
-          time: tx.status?.block_time || Math.floor(Date.now() / 1000),
-          blockHeight: tx.status?.block_height || null,
-          inputsCount: tx.vin?.length || 0,
-          outputsCount: tx.vout?.length || 0,
-          totalInput: inputSum / 100000000,
-          totalOutput: outputSum / 100000000,
-          fee: (inputSum - outputSum) / 100000000,
+          hash:        tx.txid,
+          time:        tx.status?.block_time || Math.floor(Date.now() / 1000),
+          blockHeight,
+          confirmations: blockHeight && tipHeight ? Math.max(1, tipHeight - blockHeight + 1) : (blockHeight ? 1 : 0),
+          inputs:  (tx.vin  || []).map(inp => ({
+            address: inp.prevout?.scriptpubkey_address || null,
+            value:   (inp.prevout?.value || 0) / 1e8,
+          })),
+          outputs: (tx.vout || []).map(out => ({
+            address: out.scriptpubkey_address || null,
+            value:   (out.value || 0) / 1e8,
+          })),
+          totalInput:  inputSum  / 1e8,
+          totalOutput: outputSum / 1e8,
+          fee:         (inputSum - outputSum) / 1e8,
         };
       });
 
@@ -217,6 +239,21 @@ class BitcoinWalletService {
         status: 'error',
         error: error.message,
       };
+    }
+  }
+
+  /**
+   * Current chain height, or null when the explorer is unavailable.
+   */
+  async getTipHeight() {
+    try {
+      const response = await ProxyService.fetch(`${this.apiEndpoints.mainnet}/blocks/tip/height`);
+      if (!response.ok) return null;
+      const height = Number(await response.text());
+      return Number.isFinite(height) ? height : null;
+    } catch (error) {
+      console.warn(`[BitcoinWalletService] Tip height unavailable: ${error.message}`);
+      return null;
     }
   }
 
@@ -252,7 +289,8 @@ class BitcoinWalletService {
       };
 
       // Save to database
-      return db.create('wallets', wallet);
+      // Encrypt privateKey and seedPhrase before they touch the database.
+      return db.create('wallets', KeyVault.sealWallet(wallet));
     } catch (error) {
       throw new Error(`Failed to create Bitcoin wallet: ${error.message}`);
     }
@@ -265,29 +303,50 @@ class BitcoinWalletService {
    * @returns {Promise<number>} Fee in satoshis for typical transaction
    */
   async estimateFee(targetConfirmations = 6) {
+    const feeRateSatPerVb = await this.estimateFeeRate(targetConfirmations);
+    const txSizeVBytes = BitcoinWalletService.virtualSize(1, 2);
+    const feeSatoshis = Math.ceil(feeRateSatPerVb * txSizeVBytes);
+
+    console.log(`[BitcoinWalletService] Fee rate: ${feeRateSatPerVb} sat/vB → ${feeSatoshis} sats (${txSizeVBytes} vB)`);
+    return Math.max(feeSatoshis, BitcoinWalletService.MIN_FEE_SATS);
+  }
+
+  /**
+   * Live fee rate in sat/vB for the target confirmation window.
+   */
+  async estimateFeeRate(targetConfirmations = 6) {
     try {
       // mempool.space returns real-time fee rates in sat/vB
-      const res = await fetch(`${this.apiEndpoints.mainnet}/v1/fees/recommended`);
+      const res = await ProxyService.fetch(`${this.apiEndpoints.mainnet}/v1/fees/recommended`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
       const fees = await res.json();
       // fastestFee ≈ next block, halfHourFee ≈ 3 blocks, hourFee ≈ 6 blocks
-      let feeRateSatPerVb;
-      if (targetConfirmations <= 1)      feeRateSatPerVb = fees.fastestFee;
-      else if (targetConfirmations <= 3) feeRateSatPerVb = fees.halfHourFee;
-      else                               feeRateSatPerVb = fees.hourFee;
+      let rate;
+      if (targetConfirmations <= 1)      rate = fees.fastestFee;
+      else if (targetConfirmations <= 3) rate = fees.halfHourFee;
+      else                               rate = fees.hourFee;
 
-      // P2WPKH SegWit 1-in 2-out transaction: overhead=10 + input=68 + output=31×2 = 140 vB
-      const txSizeVBytes = 141;
-      const feeSatoshis = Math.ceil(feeRateSatPerVb * txSizeVBytes);
-
-      console.log(`[BitcoinWalletService] Fee rate: ${feeRateSatPerVb} sat/vB → ${feeSatoshis} sats (${txSizeVBytes} vB)`);
-      return Math.max(feeSatoshis, 500);
+      if (!Number.isFinite(rate) || rate <= 0) throw new Error('no usable fee rate in response');
+      return rate;
     } catch (error) {
       console.error(`[BitcoinWalletService] Fee estimation error: ${error.message}`);
-      return 2000; // Fallback
+      return BitcoinWalletService.FALLBACK_FEE_RATE;
     }
   }
+
+  /**
+   * Virtual size of a P2WPKH transaction with the given shape:
+   * overhead 11 + 68 per input + 31 per output.
+   */
+  static virtualSize(inputCount, outputCount) {
+    return 11 + 68 * inputCount + 31 * outputCount;
+  }
+
+  /** Below this a change output is not worth creating; it becomes fee. */
+  static get DUST_SATS() { return 546; }
+  static get MIN_FEE_SATS() { return 500; }
+  static get FALLBACK_FEE_RATE() { return 15; } // sat/vB, deliberately generous
 
   /**
    * Parse and validate Bitcoin address
@@ -377,13 +436,24 @@ class BitcoinWalletService {
         throw new Error('No unspent outputs (UTXOs) available');
       }
 
-      const utxos = data;
-      const amountSatoshis = Math.floor(amount * 100000000); // Convert BTC to satoshis
-      const feeSatoshis = await this.estimateFee(6); // Fetch dynamic fee
-      const totalNeeded = amountSatoshis + feeSatoshis;
+      // Largest first, so the fewest inputs (and the least fee) cover the send.
+      const utxos = [...data].sort((a, b) => b.value - a.value);
+      // Round, not floor: 0.00000003 * 1e8 is 2.9999999999999996 in floating point, and
+      // about one exact 8-decimal amount in sixteen is short like that. A
+      // fixed-rate shift needs the exact figure it quoted.
+      const amountSatoshis = Math.round(Number(amount) * 100000000); // Convert BTC to satoshis
+      const feeRate = await this.estimateFeeRate(6);
 
+      // The fee depends on how many inputs are needed, and how many inputs are
+      // needed depends on the fee - so select until the total covers the amount
+      // plus the fee for the transaction as it currently stands. A flat
+      // one-input fee used to be charged whatever the shape, which underpaid
+      // (and could fall below the relay minimum) as soon as a wallet had
+      // collected a few deposits.
       let selectedUtxos = [];
       let totalValue = 0;
+      let feeSatoshis = 0;
+      let totalNeeded = amountSatoshis;
 
       for (const utxo of utxos) {
         selectedUtxos.push({
@@ -392,12 +462,26 @@ class BitcoinWalletService {
           value: utxo.value,
         });
         totalValue += utxo.value;
+        feeSatoshis = Math.max(
+          Math.ceil(feeRate * BitcoinWalletService.virtualSize(selectedUtxos.length, 2)),
+          BitcoinWalletService.MIN_FEE_SATS
+        );
+        totalNeeded = amountSatoshis + feeSatoshis;
         if (totalValue >= totalNeeded) break;
       }
 
       if (totalValue < totalNeeded) {
         throw new Error(`Insufficient funds: need ${totalNeeded} satoshis, have ${totalValue}`);
       }
+
+      // A change output below the dust limit would be rejected by the network;
+      // let it go to the miner instead.
+      let changeSatoshis = totalValue - totalNeeded;
+      if (changeSatoshis > 0 && changeSatoshis < BitcoinWalletService.DUST_SATS) {
+        feeSatoshis += changeSatoshis;
+        changeSatoshis = 0;
+      }
+      console.log(`[BitcoinWalletService] ${selectedUtxos.length} input(s), fee ${feeSatoshis} sats at ${feeRate} sat/vB, change ${changeSatoshis} sats`);
 
       // Build transaction
       const pubKey = ecc.pointFromScalar(privateKeyBuffer, true); // Compressed public key
@@ -466,10 +550,10 @@ class BitcoinWalletService {
       });
 
       // Add change output if needed
-      if (totalValue > totalNeeded) {
+      if (changeSatoshis > 0) {
         psbt.addOutput({
           script: Uint8Array.from(scriptOutput),
-          value: BigInt(totalValue - totalNeeded),
+          value: BigInt(changeSatoshis),
         });
       }
 
@@ -497,39 +581,76 @@ class BitcoinWalletService {
   }
 
   /**
-   * Broadcast a raw transaction via Bitcoin RPC
+   * Broadcast a signed transaction, trying each endpoint in turn.
+   *
+   * A rejection by the node (bad fee, dust, double spend) is final and is not
+   * retried elsewhere - the transaction is the problem, not the endpoint.
+   * Only transport failures and gateway errors move on to the next one.
    * @param {string} txHex - Signed transaction in hex format
    * @returns {Promise<string>} Transaction ID
    */
   async broadcastRawTransaction(txHex) {
-    try {
-      const response = await ProxyService.fetch(this.rpcEndpoints.mainnet, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          jsonrpc: '2.0',
-          id: 1,
-          method: 'sendrawtransaction',
-          params: [txHex],
-        }),
-      });
+    const failures = [];
 
-      if (!response.ok) {
-        throw new Error(`RPC error: ${response.status} ${response.statusText}`);
+    for (const endpoint of this.broadcastEndpoints) {
+      try {
+        if (endpoint.kind === 'rpc') {
+          return await this._broadcastViaRpc(endpoint.url, txHex);
+        }
+        return await this._broadcastViaExplorer(endpoint.url, txHex);
+      } catch (error) {
+        if (error.rejected) {
+          throw new Error(`Transaction rejected by the network: ${error.message}`);
+        }
+        failures.push(`${endpoint.url}: ${error.message}`);
+        console.warn(`[BitcoinWalletService] Broadcast via ${endpoint.url} failed, trying next: ${error.message}`);
       }
-
-      const data = await response.json();
-
-      if (data.error) {
-        throw new Error(`RPC error: ${data.error.message || JSON.stringify(data.error)}`);
-      }
-
-      return data.result; // txid
-    } catch (error) {
-      throw new Error(`Failed to broadcast transaction via RPC: ${error.message}`);
     }
+
+    throw new Error(`Failed to broadcast transaction on every endpoint: ${failures.join(' | ')}`);
+  }
+
+  async _broadcastViaRpc(url, txHex) {
+    const response = await ProxyService.fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'sendrawtransaction', params: [txHex] }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`RPC error: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    if (data.error) {
+      const error = new Error(data.error.message || JSON.stringify(data.error));
+      // -25/-26/-27: rejected by mempool policy or already known. Not retryable.
+      error.rejected = [-25, -26, -27].includes(data.error.code);
+      throw error;
+    }
+
+    return data.result; // txid
+  }
+
+  async _broadcastViaExplorer(url, txHex) {
+    const response = await ProxyService.fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: txHex,
+    });
+
+    const text = (await response.text()).trim();
+    if (!response.ok) {
+      const error = new Error(`explorer ${response.status}: ${text.slice(0, 200)}`);
+      // mempool.space answers 400 with the node's rejection reason.
+      error.rejected = response.status === 400;
+      throw error;
+    }
+
+    if (!/^[0-9a-f]{64}$/i.test(text)) {
+      throw new Error(`unexpected broadcast response: ${text.slice(0, 100)}`);
+    }
+    return text;
   }
 }
 

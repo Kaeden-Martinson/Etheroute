@@ -4,11 +4,31 @@ const SideshiftService = require('./SideshiftService')
 const BitcoinWalletService = require('./wallets/BitcoinWalletService');
 const SolanaWalletService = require('./wallets/SolanaWalletService');
 const LitecoinWalletService = require('./wallets/LitecoinWalletService');
+const { validateCryptoAddress } = require('../utils/validators');
+const { config } = require('../config/env');
+const EthereumProvider = require('./EthereumProvider');
+const GasEstimator = require('./GasEstimator');
+
+// Reserve this multiple of the estimated network fee, so a transaction is not
+// rejected if the fee market moves between the estimate and the broadcast.
+const GAS_SAFETY_MULTIPLIER = 1.5;
+
+// The least that must stay in a wallet after a send, regardless of the fee.
+//
+// Solana refuses a transfer that would leave the sender with a non-zero
+// balance below the rent-exempt minimum (890,880 lamports for a bare
+// account). The fee-based reserve is a hundred times smaller than that, so a
+// small SOL wallet passed every check here and then failed at broadcast with
+// "insufficient funds for rent". The platform fee left behind usually covers
+// it, but not for a wallet under about $3.
+const MIN_RESERVE_NATIVE = Object.fromEntries(
+  require('../config/chains').list().filter((c) => c.minReserveNative > 0).map((c) => [c.code, c.minReserveNative])
+);
 
 /**
  * SwapService - Handles token swaps using Sideshift
  * Simple order-based flow:
- * 1. Create order (BTC → ETH, SOL → ETH, LTC → ETH)
+ * 1. Create order between any two of BTC / ETH / LTC / SOL
  * 2. Get deposit address
  * 3. User sends tokens to deposit address
  * 4. Sideshift automatically swaps and sends to destination
@@ -17,8 +37,10 @@ const LitecoinWalletService = require('./wallets/LitecoinWalletService');
 
 class SwapService {
     constructor() {
+        // Providers come from the shared factory, which fails over between
+        // endpoints. Constructing one here pinned every call to a single URL.
         this.providers = {
-            mainnet: new ethers.JsonRpcProvider('https://ethereum-rpc.publicnode.com'),
+            get mainnet() { return EthereumProvider.getProvider(); },
         };
 
         this.priceService = PriceService;
@@ -107,140 +129,189 @@ class SwapService {
      * @returns {Promise<Object>} Swap order with deposit details
      */
     async executeSwap(params) {
-        const { chain, wallet, recipientAddress } = params;
+        const { chain, wallet, recipientAddress, payoutChain = 'ETH', nativeAmount = null } = params;
 
         try {
             if (!chain || !wallet || !recipientAddress) {
                 throw new Error('Missing required swap parameters');
             }
 
-            const ethAddressValid = /^0x[a-fA-F0-9]{40}$/.test(recipientAddress);
-            if (!ethAddressValid) {
-                throw new Error('Invalid Ethereum address');
+            if (!validateCryptoAddress(recipientAddress, payoutChain)) {
+                throw new Error(`Invalid ${payoutChain} address`);
             }
 
-            if (chain === 'ETH') {
+            // Source and destination on the same chain is a plain transfer:
+            // send straight to the recipient, no Sideshift order, no swap fee
+            // and no $5 swap minimum. This used to be an ETH-only path.
+            if (chain === payoutChain) {
                 return {
                     status: 'order_created',
-                    orderId: "direct_transfer_" + this.generateRandomId(),
+                    orderId: 'direct_transfer_' + this.generateRandomId(),
+                    direct: true,
                     sideshiftOrder: {
-                        depositAddress: recipientAddress,  // For direct ETH transfer, send to recipient
+                        depositAddress: recipientAddress,
                         expiresAt: new Date().toISOString(),
                         extraId: null,
                     }
                 };
             }
 
-            console.log(`\n[SwapService] Creating Sideshift order...`);
+            // Quote now, at execution, and create a fixed-rate shift from it.
+            // The preview's quote is minutes old by the time the client
+            // confirms, and a fixed shift only lives fifteen minutes from its
+            // quote, so it is taken fresh here and broadcast straight after.
+            let order = null;
+            if (nativeAmount && nativeAmount > 0) {
+                const quote = await this.sideshift.getGasQuote(chain, payoutChain, nativeAmount);
+                if (quote && quote.quoteId) {
+                    try {
+                        console.log(`\n[SwapService] Creating fixed Sideshift order ${chain} -> ${payoutChain} at rate ${quote.rate}...`);
+                        order = await this.sideshift.createOrder({
+                            fromChain: chain,
+                            toChain: payoutChain,
+                            destinationAddress: recipientAddress,
+                            refundAddress: wallet.address,
+                            quote,
+                        });
+                    } catch (error) {
+                        console.warn(`[SwapService] Fixed order failed (${error.message}); falling back to a variable-rate shift`);
+                    }
+                } else {
+                    console.warn(`[SwapService] No fixed quote for ${chain} -> ${payoutChain}; falling back to a variable-rate shift`);
+                }
+            }
 
-            const order = await this.sideshift.createOrder({
-                fromChain: chain,
-                toChain: 'ETH',
-                destinationAddress: recipientAddress,
-                refundAddress: wallet.address,
-            });
+            if (!order) {
+                console.log(`\n[SwapService] Creating variable Sideshift order ${chain} -> ${payoutChain}...`);
+                order = await this.sideshift.createOrder({
+                    fromChain: chain,
+                    toChain: payoutChain,
+                    destinationAddress: recipientAddress,
+                    refundAddress: wallet.address,
+                });
+            }
 
-            console.log(`\n[SwapService] ✓ Order created successfully!`);
+            console.log(`\n[SwapService] ✓ ${order.type} order ${order.orderId} created`);
 
             return {
                 status: 'order_created',
                 orderId: order.orderId,
+                direct: false,
                 sideshiftOrder: {
+                    type: order.type,
                     depositAddress: order.depositAddress,
                     expiresAt: order.expiresAt,
                     extraId: order.extraId,
+                    // Set on a fixed shift: the deposit it will settle, exactly.
+                    depositAmount: order.depositAmount,
+                    settleAmount: order.settleAmount,
+                    depositMin: order.depositMin,
+                    depositMax: order.depositMax,
+                    rate: order.rate,
+                    quoteId: order.quoteId,
                 }
             };
         } catch (error) {
-            throw new Error(`Failed to execute ${chain} to ETH swap via Sideshift: ${error.message}`);
+            throw new Error(`Failed to execute ${chain} to ${payoutChain} swap via Sideshift: ${error.message}`);
         }
     }
 
     /**
-     * Simulate a batch withdrawal where all wallets are swapped to ETH
-     * @param {Array} wallets - Array of wallet objects
-     * @param {number} amount - Amount in USD to withdraw
+     * Minimum USD a wallet must hold to be worth withdrawing from.
+     *
+     * A swap goes through Sideshift, which will not settle below about $5. A
+     * same-chain payout is just a transfer, so it only has to clear its own
+     * network fee.
+     *
+     * `gasUsd` is the live cost of a send on that chain. It used to come from a
+     * hardcoded table, which rejected withdrawable wallets when fees were low
+     * and under-reserved when they were high.
+     */
+    minimumBalanceUsd(walletChain, payoutChain, feeRate, gasUsd) {
+        const gas = Number.isFinite(gasUsd) ? gasUsd : 1.0;
+        const swapMinimum = walletChain === payoutChain ? 0 : 5;
+        // Reserve headroom above the bare cost so a wallet that only just
+        // qualifies does not end up sending dust.
+        return (swapMinimum + gas * 2) / (1 - feeRate);
+    }
+
+    /**
+     * Build a withdrawal plan converting each wallet into `payoutChain`.
+     *
+     * @param {Array} wallets - Source wallets
+     * @param {number} amount - Total USD across those wallets
+     * @param {string} payoutChain - Chain the client is cashing out in
      * @returns {Promise<Object>} Withdrawal plan
      */
-    async planBatchWithdrawal(wallets, amount) {
-        const plan = {
-            transfers: []
-        };
+    async planBatchWithdrawal(wallets, amount, payoutChain = 'ETH') {
+        const plan = { payoutChain, transfers: [] };
+        const feeRate = config.payouts.platformFeeRate;
 
-        // Get USD rates from PriceService, with fallback to wallet's balanceUSD
-        const priceRates = this.priceService.getAllRates();
-
-        // Per-chain gas buffer (USD) — mirrors PayoutService eligibility criteria
-        const GAS_BUFFER_USD = { ETH: .50, BTC: 1.00, SOL: 0.20, LTC: 0.50 };
+        // One live estimate per chain, shared across every wallet on it.
+        const gas = await GasEstimator.estimateMany(wallets.map((w) => w.chain));
 
         for (const wallet of wallets) {
-            const gasBudget = GAS_BUFFER_USD[wallet.chain.toUpperCase()] ?? 2;
-            const minBalanceUSD = (5 + gasBudget) / 0.95;
+            const chain = wallet.chain.toUpperCase();
+            const chainGas = gas[chain] || { native: 0, usd: 0 };
+            const minBalanceUSD = this.minimumBalanceUsd(chain, payoutChain, feeRate, chainGas.usd);
+
             if (wallet.balanceUSD < minBalanceUSD) {
-                console.log(`[SwapService] Skipping ${wallet.chain} - balance $${(wallet.balanceUSD||0).toFixed(2)} below $${minBalanceUSD.toFixed(2)} minimum`);
+                console.log(`[SwapService] Skipping ${chain} - balance $${(wallet.balanceUSD || 0).toFixed(2)} below $${minBalanceUSD.toFixed(2)} minimum for a ${payoutChain} payout`);
                 continue;
             }
 
-            const shareOfTotal = .90;
+            // Reserve the live network fee, with headroom in case the fee
+            // market moves between now and the broadcast - and never less than
+            // the chain's own floor for a funded account.
+            const reserved = Math.max(chainGas.native * GAS_SAFETY_MULTIPLIER, MIN_RESERVE_NATIVE[chain] || 0);
 
-            // Account for network fees
-            let transferBalance = wallet.balance;
-            if (wallet.chain === 'SOL') {
-                // Reserve 5000 lamports for fee (0.000005 SOL)
-                const feeInSol = 0.000005;
-                transferBalance = Math.max(0, wallet.balance - feeInSol);
-            } else if (wallet.chain === 'BTC') {
-                // Reserve small amount for BTC fees (typically 0.00001 BTC)
-                const feeInBtc = 0.00001;
-                transferBalance = Math.max(0, wallet.balance - feeInBtc);
-            } else if (wallet.chain === 'LTC') {
-                // Reserve small amount for LTC fees (typically 0.00001 LTC)
-                const feeInLtc = 0.00001;
-                transferBalance = Math.max(0, wallet.balance - feeInLtc);
+            // Everything above the reserve is swept. The platform fee is taken
+            // out of this amount rather than left sitting in the wallet, so the
+            // figure quoted to the client is the figure that is actually sent.
+            const sweepable = Math.max(0, wallet.balance - reserved);
+            const feeNative = sweepable * feeRate;
+            const nativeSendAmount = sweepable - feeNative;
+
+            if (nativeSendAmount <= 0) {
+                console.log(`[SwapService] Skipping ${chain} - nothing left after fees`);
+                continue;
             }
 
-            const nativeSwapAmount = transferBalance * shareOfTotal;
+            const isDirect = chain === payoutChain;
+            const quote = await this.sideshift.getGasQuote(chain, payoutChain, nativeSendAmount);
 
-            if (wallet.chain === 'ETH') {
-                const quote = await this.sideshift.getGasQuote('ETH', 'ETH', nativeSwapAmount);
-
-                const transfer = {
-                    type: 'DIRECT_TRANSFER',
-                    chain: 'ETH',
-                    fromAddress: wallet.address,
-                    nativeAmount: nativeSwapAmount,
-                    expectedEthAmount: quote.outputEth,
-                    walletValueUSD: wallet.balanceUSD * shareOfTotal,
-                    transactionValueUSD: quote.outputEth * this.priceService.ethToUsdRate,
-                    estimatedGas: quote.estimatedGasUsd,
-                    status: "PENDING"
-                };
-
-                plan.transfers.push(transfer);
-            } else {
-                // Swap to ETH for other chains
-                const quote = await this.sideshift.getGasQuote(wallet.chain, 'ETH', nativeSwapAmount);
-
-                const swap = {
-                    type: 'SWAP',
-                    chain: wallet.chain,
-                    fromAddress: wallet.address,
-                    nativeAmount: nativeSwapAmount,
-                    expectedEthAmount: quote.outputEth,
-                    walletValueUSD: wallet.balanceUSD * shareOfTotal,
-                    transactionValueUSD: quote.outputEth * this.priceService.ethToUsdRate,
-                    estimatedGas: quote.estimatedGasUsd,
-                    status: "PENDING"
-                };
-
-                plan.transfers.push(swap);
+            if (!quote) {
+                console.warn(`[SwapService] No quote for ${chain} -> ${payoutChain}; skipping ${wallet.address}`);
+                continue;
             }
+
+            const sourceRate = this.priceService[`${chain.toLowerCase()}ToUsdRate`] || 0;
+            const payoutRate = this.priceService[`${payoutChain.toLowerCase()}ToUsdRate`] || 0;
+
+            plan.transfers.push({
+                type: isDirect ? 'DIRECT_TRANSFER' : 'SWAP',
+                chain,
+                payoutChain,
+                fromAddress: wallet.address,
+                nativeAmount: nativeSendAmount,
+                expectedOutputAmount: quote.outputAmount,
+                // What this wallet contributes, gross of the platform fee.
+                walletValueUSD: sweepable * sourceRate,
+                platformFeeNative: feeNative,
+                platformFeeUSD: feeNative * sourceRate,
+                networkReserveNative: reserved,
+                transactionValueUSD: quote.outputAmount * payoutRate,
+                estimatedGas: quote.estimatedGasUsd,
+                gasIsLive: chainGas.live !== false,
+                status: 'PENDING',
+            });
         }
 
-        console.log(`\n[SwapService] Withdrawal plan complete:`);
+        console.log(`\n[SwapService] Withdrawal plan complete: ${plan.transfers.length} transfer(s) settling in ${payoutChain}`);
 
         return plan;
     }
 }
 
 module.exports = new SwapService();
+module.exports.MIN_RESERVE_NATIVE = MIN_RESERVE_NATIVE;

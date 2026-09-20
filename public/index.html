@@ -3,105 +3,173 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Secure, multi-chain cryptocurrency withdrawal platform supporting Ethereum, Bitcoin, Solana, and Litecoin.">
+    <meta name="description" content="Secure, multi-chain crypto payments platform supporting ten networks including Ethereum, Polygon, Base, Arbitrum, BNB Chain, Bitcoin, Litecoin and Solana.">
     <meta name="keywords" content="crypto, withdrawal, ethereum, bitcoin, solana, litecoin, blockchain">
     <title>Etheroute</title>
     <link rel="icon" type="image/svg+xml" href="/svg/favicon.svg">
+    <script src="/js/common/theme.js"></script>
+    <link rel="stylesheet" href="/css/tokens.css">
     <link rel="stylesheet" href="/css/index.css">
 
     <meta property="og:title" content="Etheroute - Multi-Chain Crypto Withdrawal Platform">
-    <meta property="og:description" content="Secure, multi-chain cryptocurrency withdrawal platform supporting Ethereum, Bitcoin, Solana, and Litecoin.">
+    <meta property="og:description" content="Accept and pay out crypto across ten blockchain networks.">
     <meta property="og:image" content="/img/etheroute.png">
     <meta property="og:url" content="https://etheroute.io">
     <meta property="og:site_name" content="Etheroute">
 </head>
 <body>
+    <script src="/js/common/actions.js"></script>
     <script src="/js/common/navbar.js"></script>
 
     <!-- Hero Section -->
-    <div class="hero">
+    <div class="hero hero--wordmark" id="hero">
+        <!-- Animated backdrop: a slow grid, drifting orbs, and the route network
+             (canvas) that carries packets from each chain into the word. -->
+        <div class="hero-bg" aria-hidden="true">
+            <div class="hero-grid"></div>
+            <div class="hero-orb hero-orb--1"></div>
+            <div class="hero-orb hero-orb--2"></div>
+            <div class="hero-orb hero-orb--3"></div>
+            <canvas id="routeCanvas" class="hero-canvas"></canvas>
+        </div>
         <div class="hero-content">
-            <h1>Multi-Chain Crypto Withdrawal</h1>
-            <p>Seamlessly withdraw your crypto across multiple chains. Direct transfers, automated conversions, and real-time updates all in one platform.</p>
-            <div class="hero-buttons">
+            <div class="hero-kicker hero-enter" style="--enter-delay: 0ms" aria-live="polite">
+                <span class="typed" id="heroTyped" data-phrases='["Developer friendly","Easy to use","Any chain, one payout","Built for merchants","Live in minutes"]'></span><span class="typed-cursor" aria-hidden="true">_</span>
+            </div>
+
+            <!-- The wordmark. Letters are spans so each can draw in on its own;
+                 the heading text is read once by assistive tech via aria-label. -->
+            <h1 class="wordmark" id="wordmark" aria-label="Etheroute">
+                <span class="wordmark__letters" aria-hidden="true"><span class="letter" style="--i:0">E</span><span class="letter" style="--i:1">T</span><span class="letter" style="--i:2">H</span><span class="letter" style="--i:3">E</span><span class="letter" style="--i:4">R</span><span class="letter" style="--i:5">O</span><span class="letter" style="--i:6">U</span><span class="letter" style="--i:7">T</span><span class="letter" style="--i:8">E</span></span>
+                <span class="wordmark__shine" aria-hidden="true">ETHEROUTE</span>
+            </h1>
+
+            <p class="hero-tagline hero-enter" style="--enter-delay: 900ms">Every chain. One route.</p>
+            <p class="hero-enter" style="--enter-delay: 1000ms">Accept payments across ten networks — Ethereum and its L2s, BNB Chain, Avalanche, Bitcoin, Litecoin and Solana — and cash out in whichever you like. Direct transfers, fixed-rate conversions and real-time confirmation, all in one place.</p>
+            <div class="hero-buttons hero-enter" style="--enter-delay: 1100ms">
                 <a href="#" id="heroGetStartedBtn" class="btn btn-primary">Get Started</a>
                 <a href="/dashboard" class="btn btn-primary" id="heroDashboardBtn" style="display: none;">Dashboard</a>
                 <a href="/about" class="btn btn-secondary">Learn More</a>
             </div>
         </div>
+        <a class="hero-scroll hero-enter" style="--enter-delay: 1600ms" href="#features" aria-label="Scroll to features">
+            <span class="hero-scroll__chev"></span>
+        </a>
     </div>
 
-    <!-- Features Section -->
-    <div class="container">
-        <div class="section-title">
-            <h2>Why Choose Us</h2>
-            <p>Fast, secure, and reliable crypto withdrawals with support for multiple blockchain networks</p>
+    <!-- Settlement section -->
+    <!-- The token is the subject and nothing crosses it: column 8 of the grid
+         is left empty as a gutter so the rail and the receipt stop at 7 and the
+         coin owns 9-12 outright. The receipt is indented one column from the
+         rail rather than flush, which is what keeps a left stack beside a right
+         figure from reading as a plain two-column split. -->
+    <section class="settle" id="features">
+        <header class="settle__head">
+            <span class="settle__eyebrow" data-reveal>Accept &middot; Confirm &middot; Settle</span>
+            <h2 data-reveal data-reveal-delay="70">Built for payments that settle</h2>
+            <p data-reveal data-reveal-delay="140">Ten chains behind one integration, confirmation you can
+                watch block by block, and a review screen whose total is the number that actually sends.</p>
+        </header>
+
+        <div class="settle__compose">
+            <!-- A definition list with a drawn accent rule, not cards. It is
+                 structurally a different object from a card grid, which is what
+                 stops it reading as one. -->
+            <dl class="settle-rail">
+                <div class="settle-rail__row" data-reveal data-reveal-delay="210">
+                    <dt>Networks</dt>
+                    <dd>
+                        <div class="settle-rail__chains" aria-label="Supported networks">
+                            <i>ETH</i><i>POL</i><i>BASE</i><i>ARB</i><i>OP</i><i>BNB</i><i>AVAX</i><i>BTC</i><i>LTC</i><i>SOL</i>
+                        </div>
+                        <p>One integration, one set of webhooks. Add a chain without touching your checkout.</p>
+                    </dd>
+                </div>
+                <div class="settle-rail__row" data-reveal data-reveal-delay="300">
+                    <dt>Confirmation</dt>
+                    <dd>
+                        <div class="settle-rail__ticks" role="img" aria-label="Three of three confirmations received on Ethereum">
+                            <i class="is-done"></i><i class="is-done"></i><i class="is-done"></i><i></i><i></i><i></i>
+                            <em>3 of 3 &middot; Ethereum</em>
+                        </div>
+                        <p>Counted to each chain&rsquo;s own threshold &mdash; 1 on Bitcoin, 3 on Ethereum,
+                            20 on Polygon &mdash; then a signed webhook.</p>
+                    </dd>
+                </div>
+                <div class="settle-rail__row" data-reveal data-reveal-delay="390">
+                    <dt>Routing</dt>
+                    <dd>
+                        <p class="settle-rail__route"><b>USDC</b><span aria-hidden="true">&rarr;</span><b>BTC</b></p>
+                        <p>Direct when the chains match. A fixed-rate swap when they don&rsquo;t, quoted
+                            before you confirm.</p>
+                    </dd>
+                </div>
+            </dl>
+
+            <!-- The coin, its orbit and the plane are built by /js/token.js.
+                 Without it this is an empty, harmless box. -->
+            <div class="settle__figure" data-reveal data-reveal-delay="180">
+                <div class="token-stage">
+                    <div class="token-scene" id="tokenScene">
+                        <div class="coin">
+                            <div class="coin__face coin__face--front" id="tokenFaceFront"></div>
+                            <div class="coin__face coin__face--back" id="tokenFaceBack"></div>
+                            <div class="coin__edge" id="tokenEdge"></div>
+                        </div>
+                        <div class="orbit">
+                            <div class="orbit__trail"></div>
+                            <div class="orbit__arm">
+                                <div class="plane">
+                                    <i class="plane__body"></i><i class="plane__fin"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="drops" id="tokenDrops"></div>
+                </div>
+            </div>
+
+            <!-- The one artefact with real weight, and the only place here that
+                 shows money - so the figures are the product's own.
+                 PLATFORM_FEE_RATE defaults to 0.05. -->
+            <figure class="settle-receipt" data-reveal data-reveal-delay="470">
+                <figcaption><span>Review screen</span><span>0.5 ETH payment</span></figcaption>
+                <div class="settle-receipt__body">
+                    <div><span>Payment</span><span>0.50000 ETH</span></div>
+                    <div><span>Network fee</span><span>&minus;0.00042 ETH</span></div>
+                    <div><span>Platform fee <i>5%</i></span><span>&minus;0.02500 ETH</span></div>
+                    <div class="settle-receipt__total"><span>You receive</span><span>0.47458 ETH</span></div>
+                </div>
+                <p class="settle-receipt__note">No spread added on top, and no rate that moves between
+                    review and send.</p>
+            </figure>
         </div>
 
-        <div class="cards-grid">
-            <div class="feature-card">
-                <div class="feature-icon" data-icon="lightning"></div>
-                <h3>Multi-Chain Support</h3>
-                <p>Withdraw from Ethereum, Bitcoin, Solana, and Litecoin all in one place.</p>
-            </div>
-            <div class="feature-card">
-                <div class="feature-icon" data-icon="checkmark"></div>
-                <h3>Secure & Safe</h3>
-                <p>Bank-grade security with real-time monitoring and automated validations.</p>
-            </div>
-            <div class="feature-card">
-                <div class="feature-icon" data-icon="smartRouting"></div>
-                <h3>Smart Routing</h3>
-                <p>Automatic fee optimization and intelligent transaction routing.</p>
-            </div>
-            <div class="feature-card">
-                <div class="feature-icon" data-icon="barChart"></div>
-                <h3>Real-Time Updates</h3>
-                <p>Live transaction tracking with instant status notifications.</p>
-            </div>
-            <div class="feature-card">
-                <div class="feature-icon" data-icon="userProfile"></div>
-                <h3>No Hidden Fees</h3>
-                <p>Transparent pricing with clear fee breakdown before confirmation.</p>
-            </div>
-            <div class="feature-card">
-                <div class="feature-icon" data-icon="globalCheck"></div>
-                <h3>Global Access</h3>
-                <p>Access your funds anytime, anywhere with our 24/7 platform.</p>
-            </div>
-        </div>
-    </div>
-
-    <!-- Quick Stats -->
-    <div class="container">
-        <div class="stats">
-            <div class="stat-box">
-                <div class="stat-number">4</div>
-                <div class="stat-label">Blockchain Networks</div>
-            </div>
-            <div class="stat-box">
-                <div class="stat-number">$1k+</div>
-                <div class="stat-label">Daily Volume</div>
-            </div>
-            <div class="stat-box">
-                <div class="stat-number">99.9%</div>
-                <div class="stat-label">Uptime</div>
-            </div>
-            <div class="stat-box">
-                <div class="stat-number">&lt;2min</div>
-                <div class="stat-label">Avg. Confirmation</div>
-            </div>
-        </div>
-    </div>
+        <!-- Not a stats band. The live figures are fetched from /api/status so
+             they cannot contradict the status page, and the strip ships empty:
+             if the call fails it stays empty rather than inventing one. The
+             network count is a build-time fact and is in the markup. -->
+        <a class="live-line" href="/status" data-reveal data-reveal-delay="560">
+            <span class="live-line__live" id="liveStatus"></span>
+            <span class="live-line__item"><b>10</b> networks</span>
+            <span class="live-line__go">Status <span aria-hidden="true">&rarr;</span></span>
+        </a>
+    </section>
 
     <!-- CTA Section -->
     <div class="cta-section">
         <div class="cta-content">
-            <h2>Ready to Get Started?</h2>
-            <p>Join thousands of users who trust Etheroute for secure multi-chain withdrawals</p>
+            <span class="cta-rule" data-reveal aria-hidden="true"></span>
+            <h2 data-reveal data-reveal-delay="90">Ready to get started?</h2>
+            <!-- Was "Join thousands of users who trust Etheroute". There are not
+                 thousands of users, and an unverifiable number in the closing
+                 line is the same problem the $1k+ volume stat had. These three
+                 are all things the product actually does. -->
+            <p data-reveal data-reveal-delay="170">Ten networks behind one integration, and no documents for a
+                basic account. Create one and take your first payment today.</p>
             <div class="cta-buttons">
-                <a href="#" id="ctaStartBtn" class="btn btn-primary btn-large">Start Withdrawing Now</a>
-                <a href="/docs" class="btn btn-secondary-large">Read Documentation</a>
+                <a href="#" id="ctaStartBtn" class="btn btn-primary btn-large" data-reveal data-reveal-delay="250">Start Withdrawing Now</a>
+                <a href="/docs" class="btn btn-secondary-large" data-reveal data-reveal-delay="320">Read Documentation</a>
             </div>
         </div>
     </div>
@@ -110,27 +178,32 @@
     <div class="footer">
         <div class="footer-content">
             <div class="footer-grid">
-                <div class="footer-section">
+                <div class="footer-brand" data-reveal>
+                    <div class="footer-logo"><span class="footer-mark" data-icon="logoOutline"></span>Etheroute</div>
+                    <p>Accept and pay out crypto across ten networks — Ethereum and its L2s, BNB Chain, Avalanche, Bitcoin, Litecoin and Solana — from one dashboard or API.</p>
+                    <div class="footer-chip">No KYC · Non-custodial keys · 24/7</div>
+                </div>
+                <div class="footer-section" data-reveal data-reveal-delay="80">
                     <h4>Support</h4>
                     <a href="/docs" class="footer-link">Documentation</a>
                     <a href="/api-reference" class="footer-link">API Reference</a>
                     <a href="/help" class="footer-link">Help Center</a>
                     <a href="/status" class="footer-link">System Status</a>
                 </div>
-                <div class="footer-section">
+                <div class="footer-section" data-reveal data-reveal-delay="160">
                     <h4>Company</h4>
                     <a href="/about" class="footer-link">About Us</a>
                     <a href="https://discord.gg" class="footer-link" target="_blank">Discord</a>
                     <a href="https://t.me/etheroute" class="footer-link" target="_blank">Telegram</a>
                 </div>
-                <div class="footer-section">
+                <div class="footer-section" data-reveal data-reveal-delay="240">
                     <h4>Legal</h4>
                     <a href="/privacy" class="footer-link">Privacy Policy</a>
                     <a href="/terms" class="footer-link">Terms of Service</a>
                     <a href="/compliance" class="footer-link">Compliance</a>
                 </div>
             </div>
-            <div class="footer-bottom">
+            <div class="footer-bottom" data-reveal data-reveal-delay="320">
                 <p>&copy; 2026 Etheroute. All rights reserved. | Secure Multi-Chain Withdrawal Platform</p>
             </div>
         </div>
@@ -138,5 +211,7 @@
 
     <script src="/js/common/icons.js"></script>
     <script src="/js/index.js"></script>
+    <script src="/js/token.js"></script>
+    <script src="/js/common/reveal.js"></script>
 </body>
 </html>

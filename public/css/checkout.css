@@ -1,0 +1,567 @@
+/* ── Checkout ─────────────────────────────────────────────────────────────
+   The page a customer pays on. One column at 480px on the sunken ground, no
+   card: the amount is the page, a three-step rail under it, and each step a
+   small-caps rule over hairlines - the same vocabulary as the dashboard's
+   forms. Everything paints from tokens.css, so both themes hold. */
+
+.hidden { display: none !important; }
+
+/* ── Header: its own, like the dashboard's; never navbar.js ─────────────── */
+.header {
+    width: 100%;
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 18px 20px 6px;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.header-left { display: flex; align-items: center; gap: 9px; min-width: 0; }
+
+/* The brand mark in --ink on the page itself, at the navbar's size. */
+.logo-mini {
+    display: inline-flex;
+    background: none;
+    color: var(--ink);
+    flex: none;
+}
+
+.logo-mini svg { width: 45px; height: 45px; display: block; }
+
+.brand { font-weight: 700; font-size: 15px; letter-spacing: -0.02em; color: var(--ink); }
+
+.secure-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    white-space: nowrap;
+}
+
+.secure-badge::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--ok);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 20%, transparent);
+}
+
+/* ── Main ────────────────────────────────────────────────────────────────── */
+.checkout-main {
+    width: 100%;
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 14px 20px 48px;
+    box-sizing: border-box;
+}
+
+.state { padding: 40px 0; text-align: center; color: var(--ink-3); font-size: 13px; }
+
+.loading-spinner {
+    width: 22px;
+    height: 22px;
+    margin: 0 auto 12px;
+    border-radius: 50%;
+    border: 2px solid var(--line);
+    border-top-color: var(--ink);
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.loading-text { margin: 0; }
+
+/* ── The amount is the page ─────────────────────────────────────────────── */
+.pay-head {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 12px 18px;
+    align-items: start;
+    padding-bottom: 18px;
+    border-bottom: 1px solid var(--line);
+}
+
+.eyebrow {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin-bottom: 10px;
+}
+
+.eyebrow::after { content: ""; height: 1px; width: 40px; background: var(--line-strong); }
+
+.amount {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 10px;
+    font-size: 34px;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    line-height: 1;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+}
+
+.amount__usd { font-size: 14px; font-weight: 500; color: var(--ink-3); letter-spacing: 0; }
+.amount__usd:not(:empty)::before { content: "\00b7\00a0"; }
+.amount .amount-copy { align-self: center; }
+
+.pay-head__mark {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    display: grid;
+    place-items: center;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    color: var(--ink);
+    margin-top: 22px;
+}
+
+.pay-head__mark:empty { display: none; }
+.chain-mark svg { width: 22px; height: 22px; display: block; }
+
+.pay-head__sub {
+    grid-column: 1 / -1;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    font-size: 12px;
+    color: var(--ink-3);
+    font-variant-numeric: tabular-nums;
+}
+
+.pay-head__sub b { color: var(--ink); font-weight: 600; }
+.countdown.expiring { color: var(--warn); }
+
+/* The clock as a hairline that drains. */
+.pay-head__clock {
+    grid-column: 1 / -1;
+    position: relative;
+    height: 2px;
+    margin-top: -6px;
+    border-radius: 2px;
+    background: var(--line);
+    overflow: hidden;
+}
+
+.pay-head__clock i {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    border-radius: 2px;
+    background: var(--ink);
+    transition: width 1s linear;
+}
+
+/* ── The rail ────────────────────────────────────────────────────────────── */
+.pay-rail {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    list-style: none;
+    margin: 18px 0 22px;
+    padding: 0;
+}
+
+.pay-rail li {
+    padding: 8px 0 0;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--ink-3);
+    border-top: 2px solid var(--line);
+    transition: color var(--dur) var(--ease-out), border-color var(--dur) var(--ease-out);
+}
+
+.pay-rail li span { display: block; font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 2px; }
+.pay-rail li.is-done { border-top-color: var(--ok); color: var(--ink-2); }
+.pay-rail li.is-now { border-top-color: var(--ink); color: var(--ink); }
+
+/* A finished step wears the site's dot. */
+.pay-rail li.is-done b::after {
+    content: "";
+    display: inline-block;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--ok);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 20%, transparent);
+    margin-left: 8px;
+    vertical-align: middle;
+    position: relative;
+    top: -1px;
+}
+
+/* ── Buttons: the dashboard's family ────────────────────────────────────── */
+.btn-small {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    box-sizing: border-box;
+    padding: 6px 12px;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: normal;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    text-decoration: none;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background var(--dur-fast) var(--ease-out), opacity var(--dur-fast) var(--ease-out);
+}
+
+.btn-primary { background: var(--ink); color: var(--surface); }
+.btn-primary:hover { opacity: 0.88; }
+.btn-small:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.btn-small[disabled] { opacity: 0.55; cursor: not-allowed; }
+.btn-small svg { width: 14px; height: 14px; flex: none; }
+.btn-small.btn-icon { padding: 6px; }
+.btn--wide { width: 100%; padding: 11px 16px; border-radius: 8px; }
+.btn__label { display: inline; }
+.btn__label strong { font-weight: 700; }
+
+/* ── Steps ───────────────────────────────────────────────────────────────── */
+.step { padding: 2px 0 0; }
+
+.fgroup__title {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 0 0 14px;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+}
+
+.fgroup__title em { font-style: normal; font-weight: 500; letter-spacing: 0; text-transform: none; }
+/* The separator is drawn, not typed, so it can go when the note drops to a
+   line of its own on a phone and would otherwise open that line with a dot. */
+.fgroup__title em::before { content: "\00b7\00a0"; }
+
+.fgroup__title .live {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 10.5px;
+    letter-spacing: 0.06em;
+}
+
+.fgroup__title .live::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--ok);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 20%, transparent);
+}
+
+.note { margin: 12px 0 0; font-size: 12px; color: var(--ink-3); line-height: 1.55; }
+.note b { color: var(--ink-2); font-weight: 600; }
+.note .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--ink-2); }
+
+.wallet-or {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 16px 0;
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+}
+
+.wallet-or::before, .wallet-or::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+
+/* What the wallet said: a line under its button. */
+.wallet-note {
+    margin: 10px 0 0;
+    padding: 9px 12px;
+    border-radius: var(--radius);
+    border: 1px solid var(--line);
+    background: var(--surface);
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--ink-2);
+}
+
+.wallet-note--ok { border-color: color-mix(in srgb, var(--ok) 40%, transparent); background: var(--ok-bg); color: var(--ok); }
+.wallet-note--warn { border-color: color-mix(in srgb, var(--warn) 40%, transparent); background: var(--warn-bg); color: var(--warn); }
+
+/* The address field. */
+.field { display: grid; gap: 6px; margin-bottom: 14px; }
+.field label { font-size: 13px; font-weight: 600; color: var(--ink); }
+
+.field input {
+    font: inherit;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 13.5px;
+    padding: 11px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--ink);
+    width: 100%;
+    box-sizing: border-box;
+    transition: border-color var(--dur) var(--ease-out);
+}
+
+.field input::placeholder { color: var(--ink-3); font-family: var(--font-sans); }
+.field input:focus { outline: none; border-color: var(--ink); box-shadow: var(--focus-ring); }
+.field input.error { border-color: var(--danger); }
+.field-hint { margin: 0; font-size: 11.5px; color: var(--ink-3); line-height: 1.5; }
+.form-error { margin: 10px 0 0; font-size: 12px; color: var(--danger); }
+
+/* ── Send: the QR beside the facts ──────────────────────────────────────── */
+.send { display: grid; grid-template-columns: 140px minmax(0, 1fr); gap: 18px; align-items: start; }
+.send > .facts { grid-column: 2; }
+.send > .qr-container.hidden + .facts { grid-column: 1 / -1; }
+
+/* A QR is black on white by definition; it does not follow the theme. */
+.qr-container { grid-column: 1; }
+
+.qr-code {
+    width: 140px;
+    height: 140px;
+    border-radius: 12px;
+    border: 1px solid var(--line);
+    background: #fff;
+    padding: 8px;
+    box-sizing: border-box;
+}
+
+.qr-code svg { width: 100%; height: 100%; display: block; }
+.qr-caption { margin: 6px 0 0; font-size: 11px; color: var(--ink-3); text-align: center; }
+
+/* The facts as a definition list: label, value, and a copy where it helps. */
+.facts { display: grid; gap: 0; font-size: 12.5px; min-width: 0; }
+
+.facts > div {
+    display: grid;
+    grid-template-columns: 78px minmax(0, 1fr) auto;
+    gap: 10px;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--line);
+}
+
+.facts > div:first-child { padding-top: 0; }
+.facts > div > span:first-child { color: var(--ink-3); }
+.facts > div > b { font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; min-width: 0; line-height: 1.5; }
+.facts .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; overflow-wrap: anywhere; }
+.facts .muted { color: var(--ink-3); font-weight: 500; }
+.step > .facts { margin-bottom: 18px; }
+
+/* The receiving address arriving: a short rise, like everything else here. */
+.copy-btn.copied { background: var(--ok); }
+
+/* ── Confirming: one tile per confirmation, carried over as it was ──────── */
+.block-chain {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    /* Thirty-two tiles do not fit any phone; they go to a second row
+       rather than off both edges of the screen. */
+    flex-wrap: wrap;
+    row-gap: 8px;
+    margin: 4px 0 12px;
+    min-height: 34px;
+}
+
+.block {
+    width: 30px;
+    height: 30px;
+    border-radius: 7px;
+    border: 2px solid var(--line-strong);
+    background: var(--surface);
+    color: var(--surface);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    flex: none;
+    transition: background var(--dur, 240ms) ease, border-color var(--dur, 240ms) ease;
+}
+
+.block svg { width: 14px; height: 14px; opacity: 0; transform: scale(0.4); }
+.block--confirmed { background: var(--ok); border-color: var(--ok); }
+.block--confirmed svg { opacity: 1; transform: scale(1); }
+.block--next { border-color: var(--ok); border-style: dashed; }
+
+.block--next::after {
+    content: "";
+    position: absolute;
+    inset: -6px;
+    border-radius: 11px;
+    border: 2px solid var(--ok-bg);
+}
+
+.block-link { width: 14px; height: 2px; background: var(--line-strong); flex: none; }
+.block-link--done { background: var(--ok); }
+
+/* Many confirmations (Solana's 32) get small tiles so the row still fits. */
+.block-chain--dense .block { width: 16px; height: 16px; border-radius: 4px; border-width: 1.5px; }
+.block-chain--dense .block svg { width: 9px; height: 9px; }
+.block-chain--dense .block-link { width: 5px; }
+.block-chain--dense .block--next::after { inset: -4px; border-radius: 7px; }
+
+.confirm-progress__track {
+    height: 2px;
+    border-radius: 2px;
+    background: var(--line);
+    overflow: hidden;
+    margin: 0 0 16px;
+}
+
+.confirm-progress__bar { height: 100%; width: 0; background: var(--ok); transition: width var(--dur-slow) var(--ease-out); }
+
+/* ── The endings: a dot in a disc, a line, one button ───────────────────── */
+.end { display: flex; align-items: center; gap: 12px; padding: 4px 0 16px; }
+
+.end__ic {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    flex: none;
+}
+
+.end__ic svg { width: 18px; height: 18px; }
+.end__ic--ok { background: var(--ok-bg); color: var(--ok); }
+.end__ic--warn { background: var(--warn-bg); color: var(--warn); }
+.end__ic--bad { background: var(--danger-bg); color: var(--danger); }
+.end__title { margin: 0; font-size: 17px; font-weight: 700; letter-spacing: -0.015em; color: var(--ink); }
+.end__sub { margin: 2px 0 0; font-size: 12.5px; color: var(--ink-3); line-height: 1.5; }
+.end__sub b { color: var(--ink); font-weight: 600; }
+.step > .note + .btn-small, .step > .facts + .btn-small { margin-top: 14px; }
+
+.pay-foot {
+    margin-top: 26px;
+    padding-top: 14px;
+    border-top: 1px solid var(--line);
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    font-size: 11px;
+    color: var(--ink-3);
+}
+
+.pay-foot a { color: var(--ink-3); }
+
+/* ── Toast — the same bottom-right notification used across the app ─────── */
+.toast-container {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    pointer-events: none;
+}
+
+.toast {
+    background: var(--surface);
+    color: var(--ink);
+    padding: 14px 18px;
+    border-radius: 8px;
+    min-width: 240px;
+    max-width: 420px;
+    font-size: 13px;
+    font-weight: 500;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--ok);
+    animation: slideInRight 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+    pointer-events: auto;
+    line-height: 1.5;
+}
+
+.toast.removing { animation: slideOutRight 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+
+@keyframes slideInRight { from { transform: translateX(440px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+@keyframes slideOutRight { from { transform: translateX(0); opacity: 1; } to { transform: translateX(440px); opacity: 0; } }
+
+/* ── Motion ──────────────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: no-preference) {
+    .block--confirmed {
+        animation: block-land 420ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+        animation-delay: var(--land-delay, 0ms);
+    }
+
+    .block--confirmed svg {
+        animation: block-tick 300ms ease-out both;
+        animation-delay: calc(var(--land-delay, 0ms) + 160ms);
+    }
+
+    .block--next { animation: block-breathe 1.6s ease-in-out infinite; }
+    .block--next::after { animation: block-ring 1.6s ease-out infinite; }
+
+    .block-link--done {
+        transform-origin: left center;
+        animation: link-grow 260ms ease-out both;
+        animation-delay: var(--land-delay, 0ms);
+    }
+
+    /* Already landed before this render: no replay. */
+    .block--settled, .block--settled svg { animation: none; }
+
+    .fgroup__title .live::before, .secure-badge::before { animation: live-pulse 2.6s ease-in-out infinite; }
+    #send-to-row.reveal { animation: row-rise var(--dur-slow) var(--ease-out) both; }
+    .step:not(.hidden) { animation: row-rise var(--dur-slow) var(--ease-out) both; }
+
+    @keyframes block-land { 0% { transform: scale(0.6); } 60% { transform: scale(1.12); } 100% { transform: scale(1); } }
+    @keyframes block-tick { from { opacity: 0; transform: scale(0.4); } to { opacity: 1; transform: scale(1); } }
+    @keyframes block-breathe { 0%, 100% { border-color: var(--ok); transform: scale(1); } 50% { border-color: var(--line-strong); transform: scale(0.94); } }
+    @keyframes block-ring { 0% { transform: scale(0.9); opacity: 0.9; } 100% { transform: scale(1.35); opacity: 0; } }
+    @keyframes link-grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+    @keyframes live-pulse { 0%, 100% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 20%, transparent); } 50% { box-shadow: 0 0 0 5px color-mix(in srgb, var(--ok) 8%, transparent); } }
+    @keyframes row-rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+}
+
+/* ── Phone ───────────────────────────────────────────────────────────────── */
+@media (max-width: 520px) {
+    .header { padding: 14px 16px 4px; }
+    .checkout-main { padding: 12px 16px 40px; }
+    /* Ten digits, the USD and the copy button on one line beside a 36px
+       mark: at 30px the button fell to a line of its own. */
+    .amount { font-size: 28px; gap: 8px; }
+    .pay-head { gap: 12px 14px; }
+    .pay-head__mark { width: 36px; height: 36px; margin-top: 24px; }
+    .fgroup__title em { flex-basis: 100%; }
+    .fgroup__title em::before { content: none; }
+    .block-chain--dense .block { width: 13px; height: 13px; border-radius: 3px; }
+    .block-chain--dense .block svg { width: 8px; height: 8px; }
+    .block-chain--dense .block-link { width: 4px; }
+    .send { grid-template-columns: 1fr; }
+    .qr-container { justify-self: center; }
+    .send > .facts { grid-column: 1; }
+    .pay-foot { flex-direction: column; gap: 6px; }
+    .toast-container { bottom: 16px; right: 16px; left: 16px; }
+    .toast { min-width: unset; max-width: none; }
+}

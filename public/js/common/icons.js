@@ -3,7 +3,108 @@
 const Icons = {
   // ========== LOGO ==========
 
-  logo: () => `<svg width="32" height="32" viewBox="-4.8 -4.8 33.60 33.60" fill="none" xmlns="http://www.w3.org/2000/svg" transform="rotate(0)matrix(1, 0, 0, 1, 0, 0)"><g id="SVGRepo_bgCarrier" stroke-width="0" transform="translate(0.2400000000000002,0.2400000000000002), scale(0.98)"><path transform="translate(-4.8, -4.8), scale(2.1)" fill="#e9eced" d="M9.166.33a2.25 2.25 0 00-2.332 0l-5.25 3.182A2.25 2.25 0 00.5 5.436v5.128a2.25 2.25 0 001.084 1.924l5.25 3.182a2.25 2.25 0 002.332 0l5.25-3.182a2.25 2.25 0 001.084-1.924V5.436a2.25 2.25 0 00-1.084-1.924L9.166.33z" strokewidth="0"></path></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round" stroke="#CCCCCC" stroke-width="0.9120000000000001"> <path fill-rule="evenodd" clip-rule="evenodd" d="M12 3.20798L6.97874 10.1605L12 12.8643L17.0213 10.1605L12 3.20798ZM11.0272 1.13901C11.5062 0.4758 12.4938 0.475796 12.9728 1.13901L19.1771 9.72952C19.6017 10.3175 19.4118 11.1448 18.7732 11.4887L12.5689 14.8294C12.2138 15.0207 11.7863 15.0207 11.4311 14.8294L5.22683 11.4887C4.58826 11.1448 4.3983 10.3175 4.82294 9.72952L11.0272 1.13901Z" fill="#0F0F0F"></path> <path fill-rule="evenodd" clip-rule="evenodd" d="M17.7098 13.5271C18.8691 12.9474 19.9967 14.3627 19.1728 15.3632L12.9263 22.9482C12.4463 23.5311 11.5537 23.5311 11.0737 22.9482L4.82719 15.3632C4.00325 14.3627 5.13091 12.9474 6.29016 13.5271L12 16.382L17.7098 13.5271ZM16 16.5L12.5367 18.3497C12.1988 18.5186 11.8012 18.5186 11.4633 18.3497L8 16.5L12 20.927L16 16.5Z" fill="#0F0F0F"></path> </g><g id="SVGRepo_iconCarrier"> <path fill-rule="evenodd" clip-rule="evenodd" d="M12 3.20798L6.97874 10.1605L12 12.8643L17.0213 10.1605L12 3.20798ZM11.0272 1.13901C11.5062 0.4758 12.4938 0.475796 12.9728 1.13901L19.1771 9.72952C19.6017 10.3175 19.4118 11.1448 18.7732 11.4887L12.5689 14.8294C12.2138 15.0207 11.7863 15.0207 11.4311 14.8294L5.22683 11.4887C4.58826 11.1448 4.3983 10.3175 4.82294 9.72952L11.0272 1.13901Z" fill="#0F0F0F"></path> <path fill-rule="evenodd" clip-rule="evenodd" d="M17.7098 13.5271C18.8691 12.9474 19.9967 14.3627 19.1728 15.3632L12.9263 22.9482C12.4463 23.5311 11.5537 23.5311 11.0737 22.9482L4.82719 15.3632C4.00325 14.3627 5.13091 12.9474 6.29016 13.5271L12 16.382L17.7098 13.5271ZM16 16.5L12.5367 18.3497C12.1988 18.5186 11.8012 18.5186 11.4633 18.3497L8 16.5L12 20.927L16 16.5Z" fill="#0F0F0F"></path> </g></svg>`,
+  /**
+   * The coin. A cylinder turned on its vertical axis and leaning 22 degrees:
+   * the face foreshortens to an ellipse, the thickness shows as a reeded
+   * crescent, and a bead ring rings the border. The E and its four bars are one
+   * skeleton — stroked wide for the body, stroked narrow inside a mask to punch
+   * the hollow — so a single continuous outline traces the letter and the bars
+   * together, with no seam where they meet.
+   *
+   * Everything is currentColor, so one mark serves the navbar, the footer and
+   * the favicon and follows the theme. The logo this replaces hardcoded its two
+   * fills (and shipped three duplicate copies of its own paths), which is why it
+   * could not invert.
+   *
+   * Detail this fine needs pixels: use logoSmall at 32px and below.
+   */
+  logo: () => `<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Etheroute">
+    <defs><mask id="etheroute-logo-hollow" maskUnits="userSpaceOnUse" x="-16" y="-16" width="64" height="64">
+      <rect x="-16" y="-16" width="64" height="64" fill="#fff"/>
+      <g transform="translate(13 16) scale(0.734 1) translate(-16 -16)" stroke="#000" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14.05 9.15V11.4M17.95 9.15V11.4M14.05 20.6V22.85M17.95 20.6V22.85" stroke-width="2"/>
+        <path d="M19.6 11.4H12.4V20.6H19.6" stroke-width="1.9"/>
+        <path d="M12.4 16H18.4" stroke-width="1.9"/>
+      </g>
+    </mask></defs>
+    <g transform="rotate(22 16 16) translate(16 16) scale(1.111) translate(-16 -16)" stroke="currentColor" stroke-linejoin="round">
+      <path d="M13 3.2H18.6A9.4 12.8 0 0 1 18.6 28.8H13A9.4 12.8 0 0 0 13 3.2Z" stroke-width="1.4"/>
+      <path d="M14.95 3.48h5.6M16.69 4.23h5.6M18.30 5.42h5.6M19.70 7.02h5.6M20.84 8.95h5.6M21.70 11.15h5.6M22.22 13.53h5.6M22.40 16h5.6M22.22 18.47h5.6M21.70 20.85h5.6M20.84 23.05h5.6M19.70 24.98h5.6M18.30 26.58h5.6M16.69 27.77h5.6M14.95 28.52h5.6" stroke-width="1"/>
+      <path d="M13 3.2A9.4 12.8 0 1 1 13 28.8A9.4 12.8 0 1 1 13 3.2Z" stroke-width="1.7"/>
+      <g fill="currentColor" stroke="none"><circle cx="21.18" cy="16" r=".42"/><circle cx="20.85" cy="19.14" r=".42"/><circle cx="19.88" cy="22.02" r=".42"/><circle cx="18.36" cy="24.42" r=".42"/><circle cx="16.40" cy="26.13" r=".42"/><circle cx="14.16" cy="27.02" r=".42"/><circle cx="11.84" cy="27.02" r=".42"/><circle cx="9.60" cy="26.13" r=".42"/><circle cx="7.64" cy="24.42" r=".42"/><circle cx="6.12" cy="22.02" r=".42"/><circle cx="5.15" cy="19.14" r=".42"/><circle cx="4.82" cy="16" r=".42"/><circle cx="5.15" cy="12.86" r=".42"/><circle cx="6.12" cy="9.98" r=".42"/><circle cx="7.64" cy="7.58" r=".42"/><circle cx="9.60" cy="5.87" r=".42"/><circle cx="11.84" cy="4.98" r=".42"/><circle cx="14.16" cy="4.98" r=".42"/><circle cx="16.40" cy="5.87" r=".42"/><circle cx="18.36" cy="7.58" r=".42"/><circle cx="19.88" cy="9.98" r=".42"/><circle cx="20.85" cy="12.86" r=".42"/></g>
+      <!-- The mask goes on a wrapper with no transform of its own. Put it on
+           the same element that carries the placement and the transform lands
+           on the hole a second time, because a mask resolves in the user space
+           the element's own transform establishes — the hollow then sits offset
+           from the letter it is supposed to be cut out of. -->
+      <g mask="url(#etheroute-logo-hollow)"><g transform="translate(13 16) scale(0.734 1) translate(-16 -16)" stroke-linecap="round">
+        <path d="M14.05 9.15V11.4M17.95 9.15V11.4M14.05 20.6V22.85M17.95 20.6V22.85" stroke-width="3.3"/>
+        <path d="M19.6 11.4H12.4V20.6H19.6" stroke-width="3.2"/>
+        <path d="M12.4 16H18.4" stroke-width="3.2"/>
+      </g></g>
+    </g>
+  </svg>`,
+
+  /**
+   * The navbar mark. The hollow letter of the full logo, on the simplified
+   * coin: no bead ring, and 6 ridges instead of 15.
+   *
+   * Size alone could not do this. The hollow rim is 0.65 of a 32-unit viewBox —
+   * a sub-pixel line until about 49px — and at the sizes where it finally
+   * resolves, 22 beads at 0.84 units and 15 ridges are still sub-pixel, so they
+   * grey out into a texture that sits right on top of the thing you are trying
+   * to read. Dropping them is what makes the outline legible, not the extra
+   * pixels.
+   *
+   * Full logo for display sizes, this in the header, logoSmall below ~40px.
+   */
+  logoOutline: () => `<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Etheroute">
+    <defs><mask id="etheroute-nav-hollow" maskUnits="userSpaceOnUse" x="-16" y="-16" width="64" height="64">
+      <rect x="-16" y="-16" width="64" height="64" fill="#fff"/>
+      <g transform="translate(13 16) scale(0.734 1) translate(-16 -16)" stroke="#000" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14.05 9.15V11.4M17.95 9.15V11.4M14.05 20.6V22.85M17.95 20.6V22.85" stroke-width="1.8"/>
+        <path d="M19.6 11.4H12.4V20.6H19.6" stroke-width="1.7"/>
+        <path d="M12.4 16H18.4" stroke-width="1.7"/>
+      </g>
+    </mask></defs>
+    <g transform="rotate(22 16 16) translate(16 16) scale(1.111) translate(-16 -16)" stroke="currentColor" stroke-linejoin="round">
+      <path d="M13 3.2H18.6A9.4 12.8 0 0 1 18.6 28.8H13A9.4 12.8 0 0 0 13 3.2Z" stroke-width="1.6"/>
+      <path d="M16.52 4.13h5.6M20.09 7.60h5.6M22.12 12.90h5.6M22.12 19.10h5.6M20.09 24.40h5.6M16.52 27.87h5.6" stroke-width="1.4"/>
+      <path d="M13 3.2A9.4 12.8 0 1 1 13 28.8A9.4 12.8 0 1 1 13 3.2Z" stroke-width="1.8"/>
+      <!-- The mask goes on a wrapper with no transform of its own. Put it on
+           the same element that carries the placement and the transform lands
+           on the hole a second time, because a mask resolves in the user space
+           the element's own transform establishes — the hollow then sits offset
+           from the letter it is supposed to be cut out of. -->
+      <g mask="url(#etheroute-nav-hollow)"><g transform="translate(13 16) scale(0.734 1) translate(-16 -16)" stroke-linecap="round">
+        <path d="M14.05 9.15V11.4M17.95 9.15V11.4M14.05 20.6V22.85M17.95 20.6V22.85" stroke-width="3.3"/>
+        <path d="M19.6 11.4H12.4V20.6H19.6" stroke-width="3.2"/>
+        <path d="M12.4 16H18.4" stroke-width="3.2"/>
+      </g></g>
+    </g>
+  </svg>`,
+
+  /**
+   * The same coin drawn for small sizes. Same silhouette, same 22 degree lean,
+   * but it stops rendering detail that the pixels cannot hold: the 22 beads go,
+   * reeding drops from 15 ridges to 6, the letter is solid rather than hollow,
+   * and the bars sit 1.6 apart instead of 0.6 — at 32px a 0.6 gap is 0.6px and
+   * the two bars merge into one.
+   *
+   * Used for the navbar tile, the footer mark and the favicon.
+   */
+  logoSmall: () => `<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Etheroute">
+    <g transform="rotate(22 16 16) translate(16 16) scale(1.111) translate(-16 -16)" stroke="currentColor" stroke-linejoin="round">
+      <path d="M13 3.2H18.6A9.4 12.8 0 0 1 18.6 28.8H13A9.4 12.8 0 0 0 13 3.2Z" stroke-width="1.8"/>
+      <path d="M16.52 4.13h5.6M20.09 7.60h5.6M22.12 12.90h5.6M22.12 19.10h5.6M20.09 24.40h5.6M16.52 27.87h5.6" stroke-width="1.5"/>
+      <path d="M13 3.2A9.4 12.8 0 1 1 13 28.8A9.4 12.8 0 1 1 13 3.2Z" stroke-width="2"/>
+      <g transform="translate(13 16) scale(0.734 1) translate(-16 -16)" stroke-linecap="round">
+        <path d="M13.55 9.15V11.4M18.45 9.15V11.4M13.55 20.6V22.85M18.45 20.6V22.85" stroke-width="3.3"/>
+        <path d="M19.6 11.4H12.4V20.6H19.6" stroke-width="3.4"/>
+        <path d="M12.4 16H18.4" stroke-width="3.4"/>
+      </g>
+    </g>
+  </svg>`,
 
 
   // ========== FEATURE CARD ICONS (Index Page) ==========
@@ -62,9 +163,19 @@ const Icons = {
     <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
   </svg>`,
 
+  book: () => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+  </svg>`,
+
   // ========== HELP PAGE SIDEBAR ICONS ==========
 
-  gettingStarted: () => `<svg fill="currentColor" viewBox="0 0 1920 1920" xmlns="http://www.w3.org/2000/svg" stroke="currentColor"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"> <path d="M903.53 56c273.204 0 528.338 121.412 699.896 333.29l-175.51 142.08c-128.528-158.57-319.737-249.488-524.387-249.488-373.722 0-677.647 303.925-677.647 677.647 0 373.723 303.925 677.647 677.647 677.647 204.65 0 395.86-90.917 524.386-249.487l175.51 142.08c-171.557 211.878-426.69 333.29-699.896 333.29C405.346 1863.059 0 1457.713 0 959.529 0 461.346 405.346 56 903.53 56Zm89.562 428.386 159.699 159.699-202.504 202.503H1920v225.883H950.287l202.504 202.503-159.7 159.699-475.143-475.144 475.144-475.143Z" fill-rule="evenodd"></path> </g></svg>`,
+  gettingStarted: () => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/>
+    <path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/>
+    <path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/>
+    <path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/>
+  </svg>`,
 
   security: () => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
     <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
@@ -122,6 +233,25 @@ const Icons = {
 
   alert: () => `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
     <path d="M1 21H23L12 2L1 21ZM13 18H11V16H13V18ZM13 14H11V10H13V14Z" fill="currentColor"/>
+  </svg>`,
+
+  edit: () => `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M12 20h9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>`,
+
+  search: () => `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/>
+    <path d="m20 20-3.5-3.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+  </svg>`,
+
+  chevronDown: () => `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="m6 9 6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>`,
+
+  clock: () => `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/>
+    <path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
   </svg>`,
 };
 

@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checkout - Etheroute</title>
+    <link rel="icon" type="image/svg+xml" href="/svg/favicon.svg">
+    <script src="/js/common/theme.js"></script>
+    <script src="/js/common/icons.js"></script>
+    <script src="/js/common/chain-logos.js"></script>
+    <link rel="stylesheet" href="/css/tokens.css">
+    <link rel="stylesheet" href="/css/checkout.css">
+</head>
+<body>
+    <!-- The page a customer pays on. One column on the sunken ground, no
+         card: the amount is the page, a three-step rail under it, and each
+         step a small-caps rule over hairlines. Every id checkout.js and
+         checkout-wallet.js write to is kept; the receiving address is still
+         withheld until the customer has given theirs. -->
+    <header class="header">
+        <div class="header-left">
+            <!-- The same brand mark as every other page, injected by icons.js -->
+            <div class="logo-mini" data-icon="logoOutline" aria-hidden="true"></div>
+            <span class="brand">Etheroute</span>
+        </div>
+        <span class="secure-badge">Secure checkout</span>
+    </header>
+
+    <main class="checkout-main">
+        <!-- Loading -->
+        <div id="state-loading" class="state">
+            <div class="loading-spinner"></div>
+            <p class="loading-text">Loading your payment&hellip;</p>
+        </div>
+
+        <!-- Error -->
+        <div id="state-error" class="state hidden">
+            <div class="end">
+                <span class="end__ic end__ic--bad"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/></svg></span>
+                <div>
+                    <h2 class="end__title">This link could not be opened</h2>
+                    <p id="error-message" class="end__sub"></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- The checkout -->
+        <div id="state-checkout" class="hidden">
+
+            <!-- The amount is the page -->
+            <header class="pay-head">
+                <div>
+                    <span class="eyebrow" data-reveal>Pay</span>
+                    <div class="amount" data-reveal data-reveal-delay="60">
+                        <span id="amount-value" class="amount__value">&mdash;</span>
+                        <span id="amount-usd" class="amount__usd"></span>
+                        <button type="button" class="btn-small btn-primary btn-icon amount-copy" data-on-click="copyAmount" aria-label="Copy amount" title="Copy amount">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                        </button>
+                    </div>
+                </div>
+                <span class="pay-head__mark chain-mark" id="chain-mark" data-reveal data-reveal-delay="100" aria-hidden="true"></span>
+                <div class="pay-head__sub" data-reveal data-reveal-delay="120">
+                    <span><span id="chain-badge">&mdash;</span> &middot; the amount is fixed for this link</span>
+                    <span id="countdown-row">Expires in <b id="countdown" class="countdown">&mdash;</b></span>
+                </div>
+                <!-- The clock as a hairline that drains; dashboard.js-style
+                     honesty: seen as well as read. Hidden with #countdown-row. -->
+                <div class="pay-head__clock" id="countdown-track" data-reveal data-reveal-delay="140"><i id="countdown-bar"></i></div>
+            </header>
+
+            <!-- The rail: checkout.js marks it as the steps change -->
+            <ol class="pay-rail" id="pay-rail" aria-label="Progress" data-reveal data-reveal-delay="180">
+                <li class="is-now" data-rail="1"><span>Step 1</span><b>Your address</b></li>
+                <li data-rail="2"><span>Step 2</span><b>Send</b></li>
+                <li data-rail="3"><span>Step 3</span><b>Confirmed</b></li>
+            </ol>
+
+            <!-- Step 1: where it comes from -->
+            <section id="step-address" class="step" data-reveal data-reveal-delay="220">
+                <h2 class="step-title fgroup__title">Where it comes from <em>so we can match your payment on-chain</em></h2>
+
+                <!-- Shown only when an EVM wallet extension is present and the chain supports it -->
+                <div id="wallet-connect-section" class="wallet-section hidden">
+                    <button type="button" class="btn-small btn-primary btn--wide" id="wallet-connect-btn" data-on-click="checkoutWalletConnect">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="6" width="20" height="13" rx="2"/><path d="M16 12h4M2 10h20"/></svg>
+                        <span class="btn__label">Connect wallet</span>
+                    </button>
+                    <p class="note">One click from <span id="wallet-name-display">your wallet</span>: your address is filled in, and the wallet shows you the exact amount before you approve.</p>
+                    <div id="wallet-note-address" class="wallet-note hidden"></div>
+                    <div class="wallet-or"><span>or paste an address</span></div>
+                </div>
+
+                <div id="manual-address-section">
+                    <form id="address-form" data-on-submit="submitWalletAddress" novalidate>
+                        <div class="field">
+                            <label for="client-address">Your <span id="chain-label">wallet</span> address</label>
+                            <input type="text" id="client-address" placeholder="Paste the address you will send from" autocomplete="off" spellcheck="false" required />
+                            <p class="field-hint">The <span id="chain-name-inline">crypto</span> address you will send from. It only has to match; nothing is charged from it.</p>
+                        </div>
+                        <button type="submit" class="btn-small btn-primary btn--wide" id="submit-address-btn">
+                            <span class="btn__label">Continue</span>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Shown for a wallet-pay-only chain (e.g. BNB) with no wallet present -->
+                <div id="wallet-required-note" class="wallet-note wallet-note--warn hidden"></div>
+            </section>
+
+            <!-- Step 2: send exactly this -->
+            <section id="step-watching" class="step hidden">
+                <h2 class="fgroup__title">Send exactly this <span class="live">Watching the chain</span></h2>
+
+                <div id="wallet-pay-section" class="wallet-section hidden">
+                    <button type="button" class="btn-small btn-primary btn--wide" id="wallet-pay-btn" data-on-click="checkoutWalletPay">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="6" width="20" height="13" rx="2"/><path d="M16 12h4M2 10h20"/></svg>
+                        <span class="btn__label">Pay <strong id="pay-amount-display">&mdash;</strong> with <span id="pay-wallet-name">wallet</span></span>
+                    </button>
+                    <p class="note">From <span class="mono" id="pay-from-display">&mdash;</span>. The wallet switches to the right network and shows you the exact amount before you approve.</p>
+                    <div id="wallet-note-pay" class="wallet-note hidden"></div>
+                    <div class="wallet-or"><span>or send manually</span></div>
+                </div>
+
+                <div class="send">
+                    <div id="qr-container" class="qr-container hidden">
+                        <div id="qr-code" class="qr-code"></div>
+                        <p class="qr-caption">Scan with your wallet</p>
+                    </div>
+                    <div class="facts">
+                        <div>
+                            <span>Amount</span>
+                            <b><span id="watch-amount">&mdash;</span> <span id="watch-chain">&mdash;</span></b>
+                            <button type="button" class="btn-small btn-primary btn-icon" data-on-click="copyAmount" aria-label="Copy amount" title="Copy amount"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
+                        </div>
+                        <!-- Revealed once the customer's address is on file. -->
+                        <div id="send-to-row" class="hidden">
+                            <span>To</span>
+                            <b class="mono" id="wallet-address">&mdash;</b>
+                            <button type="button" class="btn-small btn-primary btn-icon copy-btn" data-on-click="copyAddress" aria-label="Copy address" title="Copy address"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
+                        </div>
+                        <div>
+                            <span>From</span>
+                            <b class="mono"><span id="from-address-display">&mdash;</span> <span class="muted">&middot; the address you gave</span></b>
+                            <span></span>
+                        </div>
+                    </div>
+                </div>
+                <p class="note watch-hint">This page updates automatically. Do not close it until payment is confirmed.</p>
+            </section>
+
+            <!-- Step 2b: seen on the chain, gaining confirmations -->
+            <section id="step-verifying" class="step hidden">
+                <h2 class="fgroup__title">Payment seen <span class="live">Confirming</span></h2>
+                <div class="end">
+                    <span class="end__ic end__ic--ok"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span>
+                    <div>
+                        <div class="end__title">Your transaction is on the chain</div>
+                        <p class="end__sub"><span id="verify-chain">&mdash;</span> &middot; <b><span id="verify-confirmations">0</span> of <span id="verify-required">1</span></b> confirmations &middot; usually <span id="verify-eta">a few minutes</span></p>
+                    </div>
+                </div>
+                <!-- One tile per required confirmation: filled as blocks land, the next one pulsing -->
+                <div id="verify-blocks" class="block-chain" role="img" aria-live="polite" aria-label="0 confirmations"></div>
+                <div class="confirm-progress__track"><div id="verify-bar" class="confirm-progress__bar"></div></div>
+                <div class="facts">
+                    <div id="verify-tx-row" class="hidden">
+                        <span>Transaction</span>
+                        <b class="mono" id="verify-tx-hash">&mdash;</b>
+                        <span></span>
+                    </div>
+                </div>
+                <p class="note watch-hint">Safe to leave. The merchant is notified as soon as the last block lands.</p>
+            </section>
+
+            <!-- Step 3: paid -->
+            <section id="step-paid" class="step hidden">
+                <div class="end">
+                    <span class="end__ic end__ic--ok"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg></span>
+                    <div>
+                        <h2 class="end__title">Paid</h2>
+                        <p class="end__sub"><b><span id="paid-amount">&mdash;</span> <span id="paid-chain">&mdash;</span></b> received. Thank you.</p>
+                    </div>
+                </div>
+                <div class="facts">
+                    <div id="tx-hash-row" class="hidden">
+                        <span>Transaction</span>
+                        <b class="mono" id="tx-hash-display">&mdash;</b>
+                        <span></span>
+                    </div>
+                </div>
+                <a id="success-redirect-btn" href="#" class="btn-small btn-primary btn--wide">
+                    <span class="btn__label">Continue</span>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+                </a>
+            </section>
+
+            <!-- Underpaid -->
+            <section id="step-insufficient" class="step hidden">
+                <div class="end">
+                    <span class="end__ic end__ic--warn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg></span>
+                    <div>
+                        <h2 class="end__title">Not enough arrived</h2>
+                        <p class="end__sub"><b><span id="received-amount">&mdash;</span> <span id="received-chain">&mdash;</span></b> received; <b id="required-amount">&mdash;</b> was due.</p>
+                    </div>
+                </div>
+                <p class="note">A network fee taken out of the amount, or a rounded figure, usually explains it. The merchant can see what arrived and will be in touch.</p>
+                <a id="failure-redirect-btn-insuf" href="#" class="btn-small btn-primary btn--wide">
+                    <span class="btn__label">Return to the merchant</span>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+                </a>
+            </section>
+
+            <!-- Expired, or closed by the merchant -->
+            <section id="step-expired" class="step hidden">
+                <div class="end">
+                    <span class="end__ic end__ic--bad"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span>
+                    <div>
+                        <h2 class="step-title end__title">Session expired</h2>
+                        <p class="step-description end__sub">This checkout session has expired. Please contact the merchant to initiate a new payment.</p>
+                    </div>
+                </div>
+                <p class="note">If you already sent a payment, it is still matched to your address and the merchant will see it.</p>
+                <a id="failure-redirect-btn-exp" href="#" class="btn-small btn-primary btn--wide">
+                    <span class="btn__label">Return to the merchant</span>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+                </a>
+            </section>
+
+            <footer class="pay-foot">
+                <span>Payments settle on-chain. Etheroute never holds your keys.</span>
+                <a href="/help" target="_blank" rel="noopener">What is this?</a>
+            </footer>
+        </div>
+    </main>
+
+    <script src="/js/checkout.js"></script>
+    <script src="/js/checkout-wallet.js"></script>
+    <script src="/js/common/actions.js"></script>
+</body>
+</html>

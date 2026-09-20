@@ -5,29 +5,44 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Terms of Service - Etheroute</title>
     <link rel="icon" type="image/svg+xml" href="/svg/favicon.svg">
-    <link rel="stylesheet" href="/css/terms.css">
+    <script src="/js/common/theme.js"></script>
+    <link rel="stylesheet" href="/css/tokens.css">
+    <link rel="stylesheet" href="/css/legal.css">
 </head>
 <body>
+    <script src="/js/common/actions.js"></script>
     <script src="/js/common/navbar.js"></script>
 
-    <div class="container">
+    <div class="hero">
+        <span class="hero-pill">Legal</span>
         <h1>Terms of Service</h1>
-        <div class="last-updated">Last updated: May 22, 2026</div>
+        <p>The agreement that governs your use of Etheroute.</p>
+    </div>
 
-        <h2>1. Acceptance of Terms</h2>
+    <div class="legal">
+        <nav class="legal-toc" aria-label="On this page" hidden>
+            <h2>On this page</h2>
+            <ol id="legalToc"></ol>
+        </nav>
+
+        <article class="legal-doc" id="legalDoc">
+            <time class="last-updated" datetime="2026-05-22">Last updated 22 May 2026</time>
+
+
+        <h2 id="acceptance-of-terms" data-reveal>1. Acceptance of Terms</h2>
         <p>By accessing and using Etheroute ("the Service"), you agree to be bound by these Terms of Service. If you do not agree to abide by any part of these terms, please do not use this Service.</p>
 
-        <h2>2. Description of Service</h2>
-        <p>Etheroute is a multi-chain cryptocurrency withdrawal platform that allows users to withdraw crypto assets across multiple blockchain networks including Ethereum, Bitcoin, Solana, and Litecoin.</p>
+        <h2 id="description-of-service" data-reveal>2. Description of Service</h2>
+        <p>Etheroute is a multi-chain cryptocurrency withdrawal platform that allows users to withdraw crypto assets across multiple blockchain networks including Ethereum, Polygon, Base, Arbitrum, Optimism, BNB Chain, Avalanche, Bitcoin, Litecoin and Solana.</p>
 
-        <h2>3. User Accounts</h2>
+        <h2 id="user-accounts" data-reveal>3. User Accounts</h2>
         <h3>3.1 Account Registration</h3>
         <p>You are responsible for maintaining the confidentiality of your username and password. You agree to accept responsibility for all activities that occur under your account. You must notify us immediately of any unauthorized use of your account.</p>
         
         <h3>3.2 User Eligibility</h3>
         <p>By creating an account, you represent that you are at least 18 years of age and have the legal authority to enter into this agreement.</p>
 
-        <h2>4. Prohibited Activities</h2>
+        <h2 id="prohibited-activities" data-reveal>4. Prohibited Activities</h2>
         <p>You agree not to:</p>
         <ul>
             <li>Use the Service for any unlawful purpose or in violation of any laws or regulations</li>
@@ -38,7 +53,7 @@
             <li>Interfere with the operation of the Service</li>
         </ul>
 
-        <h2>5. Cryptocurrency Transactions</h2>
+        <h2 id="cryptocurrency-transactions" data-reveal>5. Cryptocurrency Transactions</h2>
         <h3>5.1 Transaction Accuracy</h3>
         <p>You are responsible for providing accurate wallet addresses and transaction details. The Service is not responsible for losses resulting from incorrect information provided by users.</p>
 
@@ -48,10 +63,8 @@
         <h3>5.3 No Guarantee of Reversibility</h3>
         <p>Cryptocurrency transactions are generally irreversible. Once a transaction is confirmed on the blockchain, we cannot cancel or reverse it.</p>
 
-        <h2>6. Risk Disclaimer</h2>
-        <div class="highlight">
-            <strong>CRYPTOCURRENCY VOLATILITY:</strong> Cryptocurrency markets are highly volatile. The value of digital assets can fluctuate significantly. We strongly recommend understanding the risks before using this Service.
-        </div>
+        <h2 id="risk-disclaimer" data-reveal>6. Risk Disclaimer</h2>
+        <div class="note"><p><strong>CRYPTOCURRENCY VOLATILITY:</strong> Cryptocurrency markets are highly volatile. The value of digital assets can fluctuate significantly. We strongly recommend understanding the risks before using this Service.</p></div>
 
         <p>The Service is provided "AS IS" without any warranties. We are not responsible for:</p>
         <ul>
@@ -61,68 +74,68 @@
             <li>Losses due to user error or negligence</li>
         </ul>
 
-        <h2>7. Limitation of Liability</h2>
+        <h2 id="limitation-of-liability" data-reveal>7. Limitation of Liability</h2>
         <p>To the maximum extent permitted by law, Etheroute shall not be liable for any indirect, incidental, special, consequential, or punitive damages, including but not limited to loss of profits, data, or business.</p>
 
-        <h2>8. Intellectual Property</h2>
+        <h2 id="intellectual-property" data-reveal>8. Intellectual Property</h2>
         <p>All content, features, and functionality of the Service are owned by Etheroute and are protected by copyright, trademark, and other intellectual property laws.</p>
 
-        <h2>9. Modifications to Service</h2>
+        <h2 id="modifications-to-service" data-reveal>9. Modifications to Service</h2>
         <p>We reserve the right to modify, suspend, or discontinue the Service at any time, with or without notice. We will not be liable to you or any third party for any modification, suspension, or discontinuation of the Service.</p>
 
-        <h2>10. Termination of Service</h2>
+        <h2 id="termination-of-service" data-reveal>10. Termination of Service</h2>
         <p>We may terminate or suspend your account at any time for violations of these Terms of Service or for any other reason at our sole discretion.</p>
 
-        <h2>11. Governing Law</h2>
+        <h2 id="governing-law" data-reveal>11. Governing Law</h2>
         <p>These Terms of Service are governed by and construed in accordance with applicable laws, and you irrevocably submit to the jurisdiction of the courts in that location.</p>
 
-        <h2>12. Dispute Resolution</h2>
+        <h2 id="dispute-resolution" data-reveal>12. Dispute Resolution</h2>
         <p>Any disputes arising out of or relating to these Terms of Service shall be resolved through good faith negotiation. If negotiation fails, disputes shall be resolved through binding arbitration.</p>
 
-        <h2>13. Changes to Terms</h2>
+        <h2 id="changes-to-terms" data-reveal>13. Changes to Terms</h2>
         <p>We reserve the right to modify these Terms of Service at any time. Changes will be effective immediately upon posting. Your continued use of the Service constitutes acceptance of the modified terms.</p>
 
-        <h2>14. Contact Information</h2>
+        <h2 id="contact-information" data-reveal>14. Contact Information</h2>
         <p>If you have any questions about these Terms of Service, please contact us on Telegram at <a href="https://t.me/etheroute" target="_blank">t.me/etheroute</a></p>
 
-        <h2>15. Severability</h2>
+        <h2 id="severability" data-reveal>15. Severability</h2>
         <p>If any provision of these Terms of Service is found to be invalid or unenforceable, the remaining provisions shall remain in effect.</p>
 
-        <div class="highlight">
-            <strong>IMPORTANT:</strong> By using Etheroute, you acknowledge that you have read these Terms of Service, understand them, and agree to be bound by them. If you do not agree, do not use this Service.
-        </div>
+        <div class="note"><p><strong>IMPORTANT:</strong> By using Etheroute, you acknowledge that you have read these Terms of Service, understand them, and agree to be bound by them. If you do not agree, do not use this Service.</p></div>
+        </article>
     </div>
 
     <!-- Footer -->
     <div class="footer">
         <div class="footer-content">
             <div class="footer-grid">
-                <div class="footer-section">
+                <div class="footer-section" data-reveal>
                     <h4>Support</h4>
                     <a href="/docs" class="footer-link">Documentation</a>
                     <a href="/api-reference" class="footer-link">API Reference</a>
                     <a href="/help" class="footer-link">Help Center</a>
                 </div>
-                <div class="footer-section">
+                <div class="footer-section" data-reveal data-reveal-delay="80">
                     <h4>Company</h4>
                     <a href="/about" class="footer-link">About Us</a>
-                    <a href="https://discord.gg" class="footer-link" target="_blank">Discord</a>
+                    <a href="https://discord.gg/etheroute" class="footer-link" target="_blank" rel="noopener">Discord</a>
                     <a href="https://t.me/etheroute" class="footer-link" target="_blank">Telegram</a>
                 </div>
-                <div class="footer-section">
+                <div class="footer-section" data-reveal data-reveal-delay="160">
                     <h4>Legal</h4>
                     <a href="/privacy" class="footer-link">Privacy Policy</a>
                     <a href="/terms" class="footer-link">Terms of Service</a>
                     <a href="/compliance" class="footer-link">Compliance</a>
                 </div>
             </div>
-            <div class="footer-bottom">
+            <div class="footer-bottom" data-reveal data-reveal-delay="240">
                 <p>&copy; 2026 Etheroute. All rights reserved. | Secure Multi-Chain Withdrawal Platform</p>
             </div>
         </div>
     </div>
 
-    <script src="/js/terms.js"></script>
     <script src="/js/common/icons.js"></script>
+    <script src="/js/legal.js"></script>
+    <script src="/js/common/reveal.js"></script>
 </body>
 </html>

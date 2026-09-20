@@ -5,22 +5,25 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sign In / Sign Up - Etheroute</title>
     <link rel="icon" type="image/svg+xml" href="/svg/favicon.svg">
+    <script src="/js/common/theme.js"></script>
+    <link rel="stylesheet" href="/css/tokens.css">
     <link rel="stylesheet" href="/css/auth.css">
 </head>
 <body>
+    <script src="/js/common/actions.js"></script>
     <script src="/js/common/navbar.js"></script>
 
     <!-- Auth Container -->
     <div class="auth-container">
         <!-- Tabs -->
         <div class="tabs">
-            <button class="tab active" id="signin-tab" onclick="switchTab('signin')">Sign In</button>
-            <button class="tab" id="signup-tab" onclick="switchTab('signup')">Sign Up</button>
+            <button class="tab active" id="signin-tab" data-on-click="switchTab" data-arg="signin">Sign In</button>
+            <button class="tab" id="signup-tab" data-on-click="switchTab" data-arg="signup">Sign Up</button>
         </div>
 
         <!-- Sign In Form -->
         <div class="form-content active" id="signin-form">
-            <form onsubmit="handleSignIn(event)">
+            <form data-on-submit="handleSignIn">
                 <div class="form-group">
                     <label for="signin-username">Username</label>
                     <input type="text" id="signin-username" placeholder="Choose your username" required />
@@ -36,6 +39,7 @@
                         <input type="checkbox" id="remember-me" />
                         <span>Remember me</span>
                     </label>
+                    <a href="#" data-on-click="switchTab" data-arg="reset">Forgot password?</a>
                 </div>
 
                 <div class="button-group">
@@ -43,14 +47,14 @@
                 </div>
 
                 <div class="footer-text">
-                    Don't have an account? <a href="#" onclick="switchTab('signup'); return false;">Sign up here</a>
+                    Don't have an account? <a href="#" data-on-click="switchTab" data-arg="signup">Sign up here</a>
                 </div>
             </form>
         </div>
 
         <!-- Sign Up Form -->
         <div class="form-content" id="signup-form">
-            <form onsubmit="handleSignUp(event)">
+            <form data-on-submit="handleSignUp">
                 <div class="form-group">
                     <label for="signup-username">Username</label>
                     <input type="text" id="signup-username" placeholder="Choose your username" required />
@@ -66,14 +70,14 @@
                     <input type="password" id="signup-confirm" placeholder="Confirm your password" required />
                 </div>
 
-                <div style="font-size: 12px; color: #999999; margin-bottom: 16px;">
-                    ✓ At least 8 characters<br>
+                <div style="font-size: 12px; color: var(--ink-3); margin-bottom: 16px;">
+                    ✓ At least 12 characters<br>
                     ✓ Mix of uppercase, lowercase, numbers
                 </div>
 
-                <label style="display: flex; align-items: flex-start; gap: 8px; font-size: 12px; color: #999999; margin-bottom: 16px; cursor: pointer;">
+                <label style="display: flex; align-items: flex-start; gap: 8px; font-size: 12px; color: var(--ink-3); margin-bottom: 16px; cursor: pointer;">
                     <input type="checkbox" id="terms" required style="margin-top: 2px;" />
-                    <span>I agree to the <a href="/terms" style="color: #1a1a1a; text-decoration: none; font-weight: 600;">Terms of Service</a> and <a href="/privacy" style="color: #1a1a1a; text-decoration: none; font-weight: 600;">Privacy Policy</a></span>
+                    <span>I agree to the <a href="/terms" style="color: var(--ink); text-decoration: none; font-weight: 600;">Terms of Service</a> and <a href="/privacy" style="color: var(--ink); text-decoration: none; font-weight: 600;">Privacy Policy</a></span>
                 </label>
 
                 <div class="button-group">
@@ -81,9 +85,53 @@
                 </div>
 
                 <div class="footer-text">
-                    Already have an account? <a href="#" onclick="switchTab('signin'); return false;">Sign in here</a>
+                    Already have an account? <a href="#" data-on-click="switchTab" data-arg="signin">Sign in here</a>
                 </div>
             </form>
+        </div>
+
+        <!-- Reset Password Form -->
+        <div class="form-content" id="reset-form">
+            <form data-on-submit="handleResetPassword">
+                <div style="font-size: 13px; color: var(--ink-3); margin-bottom: 16px; line-height: 1.5;">
+                    Enter your username and one of the recovery codes you saved when you created your account, then choose a new password.
+                </div>
+                <div class="form-group">
+                    <label for="reset-username">Username</label>
+                    <input type="text" id="reset-username" placeholder="Your username" required />
+                </div>
+                <div class="form-group">
+                    <label for="reset-code">Recovery code</label>
+                    <input type="text" id="reset-code" placeholder="xxxx-xxxx-xxxx" autocomplete="off" required />
+                </div>
+                <div class="form-group">
+                    <label for="reset-password">New password</label>
+                    <input type="password" id="reset-password" placeholder="At least 12 characters" required />
+                </div>
+                <div class="form-group">
+                    <label for="reset-confirm">Confirm new password</label>
+                    <input type="password" id="reset-confirm" placeholder="Re-enter new password" required />
+                </div>
+                <div class="button-group">
+                    <button type="submit" class="btn btn-primary">Reset password</button>
+                </div>
+                <div class="footer-text">
+                    Remembered it? <a href="#" data-on-click="switchTab" data-arg="signin">Back to sign in</a>
+                </div>
+            </form>
+        </div>
+
+        <!-- Recovery codes shown once after sign-up -->
+        <div class="form-content" id="recovery-panel">
+            <h2 style="font-size: 18px; margin-bottom: 8px; color: var(--ink);">Save your recovery codes</h2>
+            <div style="font-size: 13px; color: var(--ink-3); margin-bottom: 16px; line-height: 1.5;">
+                These are the <strong>only</strong> way to reset a forgotten password — there is no email recovery. Store them somewhere safe. Each code works once.
+            </div>
+            <ul id="recovery-codes-list" class="recovery-codes"></ul>
+            <div class="button-group" style="margin-top: 16px;">
+                <button type="button" class="btn btn-secondary" data-on-click="copyRecoveryCodes">Copy codes</button>
+                <button type="button" class="btn btn-primary" data-on-click="finishRecoverySetup">I've saved them — continue</button>
+            </div>
         </div>
 
         <div class="back-home">

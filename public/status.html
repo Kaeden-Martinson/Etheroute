@@ -6,117 +6,165 @@
     <meta name="description" content="Etheroute status page showing chain health, uptime, and recent incidents.">
     <title>System Status - Etheroute</title>
     <link rel="icon" type="image/svg+xml" href="/svg/favicon.svg">
+    <script src="/js/common/theme.js"></script>
+    <link rel="stylesheet" href="/css/tokens.css">
     <link rel="stylesheet" href="/css/status.css">
 </head>
 <body>
+    <script src="/js/common/actions.js"></script>
     <script src="/js/common/navbar.js"></script>
-    <div class="shell">
-        <main class="content">
-            <section class="hero-card">
-                <div class="hero-status" id="heroStatusPill">Loading status...</div>
-                <h1 id="heroTitle">Checking service health</h1>
-                <p id="heroCopy">We’re pulling the latest chain and platform status from the Etheroute status API.</p>
-                <div class="hero-meta">
-                    <div><span class="meta-label">Uptime</span><strong id="overallUptime">--</strong></div>
-                    <div><span class="meta-label">Operational</span><strong id="operationalCount">--</strong></div>
-                    <div><span class="meta-label">Updated</span><strong id="generatedAt">--</strong></div>
-                </div>
-            </section>
 
-            <section class="panel">
-                <div class="panel-header">
-                    <div>
-                        <h2>Service Status</h2>
-                        <p>Current health across chains and core platform services.</p>
-                    </div>
-                    <div class="window-chip">Last 30 days</div>
-                </div>
-                <div class="service-grid" id="serviceGrid"></div>
-            </section>
+    <!-- The same landing banner About, FAQ, Privacy, Terms and Compliance open
+         with, so this page arrives the way every other top-level page does. -->
+    <div class="hero">
+        <div class="status-pill" id="heroStatusPill">Loading status…</div>
+        <h1 id="heroTitle">System Status</h1>
+        <p id="heroCopy">Live health for the platform, refreshed from the Etheroute status API.</p>
+    </div>
 
-            <section class="panel split" data-dev-only="true">
+    <!-- Same shape as the home page's stats strip: one big tabular number over
+         a small-caps label, divided by hairlines. -->
+    <div class="status-strip">
+        <div class="status-strip__inner">
+            <div class="status-stat">
+                <div class="status-stat__num" id="overallUptime">--</div>
+                <div class="status-stat__label"><span id="uptimeWindow">30</span>-day uptime</div>
+            </div>
+            <div class="status-stat">
+                <div class="status-stat__num" id="operationalCount">--</div>
+                <div class="status-stat__label">Operational</div>
+            </div>
+            <div class="status-stat">
+                <div class="status-stat__num" id="generatedAt">--</div>
+                <div class="status-stat__label">Last checked</div>
+            </div>
+        </div>
+    </div>
+
+    <main class="container">
+        <section class="status-section">
+            <div class="status-section__head">
                 <div>
-                    <div class="panel-header compact">
-                        <div>
-                            <h2>Active Incidents</h2>
-                            <p>Open events that are still affecting services.</p>
-                        </div>
-                    </div>
-                    <div class="incident-list" id="activeIncidents"></div>
+                    <h2>Services</h2>
+                    <p>Each tick is one day. Hover a tick for that day's detail.</p>
                 </div>
-                <div>
-                    <div class="panel-header compact">
-                        <div>
-                            <h2>Recent History</h2>
-                            <p>Recent incidents and recoveries.</p>
-                        </div>
-                    </div>
-                    <div class="incident-list history" id="incidentHistory"></div>
-                </div>
-            </section>
+                <ul class="status-legend" aria-hidden="true">
+                    <li><i class="tick tick--operational"></i>Operational</li>
+                    <li><i class="tick tick--partial"></i>Partial</li>
+                    <li><i class="tick tick--down"></i>Outage</li>
+                </ul>
+            </div>
+            <div class="service-rows" id="serviceRows"></div>
+        </section>
 
-            <section class="panel admin-panel" data-dev-only="true">
-                <div class="panel-header compact">
-                    <div>
-                        <h2>Record Downtime</h2>
-                        <p>Internal control for tracking an outage or recovery event.</p>
-                    </div>
+        <section class="status-section" data-dev-only="true">
+            <div class="status-section__head">
+                <div>
+                    <h2>Active Incidents</h2>
+                    <p>Open events that are still affecting services.</p>
                 </div>
-                <form id="incidentForm" class="incident-form">
-                    <div class="form-row">
-                        <label>
-                            Scope
-                            <select id="incidentScope">
-                                <option value="chain">Chain</option>
-                                <option value="platform">Platform</option>
-                            </select>
-                        </label>
-                        <label>
-                            Target
-                            <select id="incidentKey"></select>
-                        </label>
-                        <label>
-                            Severity
-                            <select id="incidentSeverity">
-                                <option value="minor">Minor</option>
-                                <option value="major" selected>Major</option>
-                                <option value="critical">Critical</option>
-                            </select>
-                        </label>
-                    </div>
+            </div>
+            <div class="incident-list" id="activeIncidents"></div>
+        </section>
+
+        <section class="status-section" data-dev-only="true">
+            <div class="status-section__head">
+                <div>
+                    <h2>Recent History</h2>
+                    <p>Recent incidents and recoveries.</p>
+                </div>
+            </div>
+            <div class="incident-list" id="incidentHistory"></div>
+        </section>
+
+        <section class="status-section" data-dev-only="true">
+            <div class="status-section__head">
+                <div>
+                    <h2>Record Downtime</h2>
+                    <p>Internal control for tracking an outage or recovery event.</p>
+                </div>
+            </div>
+            <form id="incidentForm" class="incident-form">
+                <div class="form-row">
                     <label>
-                        Title
-                        <input id="incidentTitle" type="text" placeholder="Chain outage detected" />
+                        Scope
+                        <select id="incidentScope">
+                            <option value="chain">Chain</option>
+                            <option value="platform">Platform</option>
+                        </select>
                     </label>
                     <label>
-                        Message
-                        <textarea id="incidentMessage" rows="4" placeholder="Short summary of what happened"></textarea>
+                        Target
+                        <select id="incidentKey"></select>
                     </label>
-                    <div class="form-row">
-                        <label>
-                            Started At (optional)
-                            <input id="incidentStartedAt" type="datetime-local" />
-                        </label>
-                        <label>
-                            Resolved At (optional)
-                            <input id="incidentResolvedAt" type="datetime-local" />
-                        </label>
-                    </div>
-                    <div class="button-row">
-                        <button type="submit" class="primary-btn">Record Incident</button>
-                        <button type="button" class="secondary-btn" id="refreshStatusBtn">Refresh</button>
-                    </div>
-                    <div class="form-message" id="formMessage"></div>
-                </form>
-            </section>
-        </main>
+                    <label>
+                        Severity
+                        <select id="incidentSeverity">
+                            <option value="minor">Minor</option>
+                            <option value="major" selected>Major</option>
+                            <option value="critical">Critical</option>
+                        </select>
+                    </label>
+                </div>
+                <label>
+                    Title
+                    <input id="incidentTitle" type="text" placeholder="Chain outage detected" />
+                </label>
+                <label>
+                    Message
+                    <textarea id="incidentMessage" rows="4" placeholder="Short summary of what happened"></textarea>
+                </label>
+                <div class="form-row">
+                    <label>
+                        Started At (optional)
+                        <input id="incidentStartedAt" type="datetime-local" />
+                    </label>
+                    <label>
+                        Resolved At (optional)
+                        <input id="incidentResolvedAt" type="datetime-local" />
+                    </label>
+                </div>
+                <div class="button-row">
+                    <button type="submit" class="btn btn-primary">Record Incident</button>
+                    <button type="button" class="btn btn-secondary" id="refreshStatusBtn">Refresh</button>
+                </div>
+                <div class="form-message" id="formMessage"></div>
+            </form>
+        </section>
+    </main>
+
+    <div class="footer">
+        <div class="footer-content">
+            <div class="footer-grid">
+                <div class="footer-section" data-reveal>
+                    <h4>Support</h4>
+                    <a href="/docs" class="footer-link">Documentation</a>
+                    <a href="/api-reference" class="footer-link">API Reference</a>
+                    <a href="/help" class="footer-link">Help Center</a>
+                </div>
+                <div class="footer-section" data-reveal data-reveal-delay="80">
+                    <h4>Company</h4>
+                    <a href="/about" class="footer-link">About Us</a>
+                    <a href="/faq" class="footer-link">FAQ</a>
+                </div>
+                <div class="footer-section" data-reveal data-reveal-delay="160">
+                    <h4>Legal</h4>
+                    <a href="/privacy" class="footer-link">Privacy Policy</a>
+                    <a href="/terms" class="footer-link">Terms of Service</a>
+                    <a href="/compliance" class="footer-link">Compliance</a>
+                </div>
+            </div>
+            <div class="footer-bottom" data-reveal data-reveal-delay="240">
+                <p>&copy; 2026 Etheroute. All rights reserved. | Secure Multi-Chain Withdrawal Platform</p>
+            </div>
+        </div>
     </div>
 
     <div class="modal" id="incidentDeleteModal">
         <div class="modal-content status-modal-content">
-            <div class="modal-header" style="position: relative; display: flex; align-items: center; justify-content: space-between;">
+            <div class="modal-header">
                 <h2 class="modal-title">Remove Incident</h2>
-                <button class="close-btn" type="button" id="closeIncidentDeleteModal" style="position: relative; top: 0; right: 0; padding: 8px; margin: 0;">
+                <button class="close-btn" type="button" id="closeIncidentDeleteModal" aria-label="Close">
                     <span data-icon="close"></span>
                 </button>
             </div>
@@ -139,5 +187,6 @@
 
     <script src="/js/common/icons.js"></script>
     <script src="/js/status.js"></script>
+    <script src="/js/common/reveal.js"></script>
 </body>
 </html>

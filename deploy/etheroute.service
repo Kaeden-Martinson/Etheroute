@@ -1,0 +1,24 @@
+# systemd unit — install to /etc/systemd/system/etheroute.service
+# then: sudo systemctl daemon-reload && sudo systemctl enable --now etheroute
+[Unit]
+Description=Etheroute API
+After=network.target
+
+[Service]
+Type=simple
+User=etheroute
+WorkingDirectory=/opt/etheroute
+# Secrets live here, not in the unit. Mode 600, owned by the service user.
+EnvironmentFile=/opt/etheroute/.env
+ExecStart=/usr/bin/node src/app.js
+Restart=on-failure
+RestartSec=3
+# Hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/etheroute/data /opt/etheroute/logs
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

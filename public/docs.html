@@ -6,445 +6,75 @@
     <meta name="description" content="Complete documentation for Etheroute, a secure multi-chain cryptocurrency withdrawal platform.">
     <title>Documentation - Etheroute</title>
     <link rel="icon" type="image/svg+xml" href="/svg/favicon.svg">
+    <script src="/js/common/theme.js"></script>
+    <link rel="stylesheet" href="/css/tokens.css">
     <link rel="stylesheet" href="/css/docs.css">
 </head>
 <body>
+    <script src="/js/common/actions.js"></script>
     <script src="/js/common/navbar.js"></script>
 
     <div class="mobile-nav-bar">
-        <button class="mobile-sidebar-toggle" id="mobileSidebarToggle">
+        <button class="mobile-sidebar-toggle" id="mobileSidebarToggle" data-on-click="docsToggleSidebar">
             <span>Contents</span>
             <svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
         </button>
     </div>
 
-    <!-- Main Documentation Container -->
     <div class="docs-container">
-        <!-- Sidebar Navigation -->
-        <div class="docs-sidebar">
+        <aside class="docs-sidebar" id="docsSidebarWrap">
             <div class="docs-sidebar-content">
-                <!-- Getting Started -->
-                <div class="sidebar-section">
-                    <div class="sidebar-section-title">Getting Started</div>
-                    <a href="#introduction" class="sidebar-link active" data-section="introduction">
-                        <div class="sidebar-icon" data-icon="overview"></div>
-                        Introduction
-                    </a>
-                    <a href="#account-setup" class="sidebar-link" data-section="account-setup">
-                        <div class="sidebar-icon" data-icon="security"></div>
-                        Account Setup
-                    </a>
-                    <a href="#first-withdrawal" class="sidebar-link" data-section="first-withdrawal">
-                        <div class="sidebar-icon" data-icon="lightning"></div>
-                        First Withdrawal
-                    </a>
-                </div>
-
-                <!-- Wallets & Funds -->
-                <div class="sidebar-section">
-                    <div class="sidebar-section-title">Wallets & Funds</div>
-                    <a href="#wallet-management" class="sidebar-link" data-section="wallet-management">
-                        <div class="sidebar-icon" data-icon="walletIcon"></div>
-                        Wallet Management
-                    </a>
-                    <a href="#multi-chain" class="sidebar-link" data-section="multi-chain">
-                        <div class="sidebar-icon" data-icon="smartRouting"></div>
-                        Multi-Chain Support
-                    </a>
-                    <a href="#transaction-history" class="sidebar-link" data-section="transaction-history">
-                        <div class="sidebar-icon" data-icon="transactionsIcon"></div>
-                        Transaction History
-                    </a>
-                </div>
-
-                <!-- Withdrawals -->
-                <div class="sidebar-section">
-                    <div class="sidebar-section-title">Withdrawals</div>
-                    <a href="#withdrawal-process" class="sidebar-link" data-section="withdrawal-process">
-                        <div class="sidebar-icon" data-icon="withdraw"></div>
-                        Withdrawal Process
-                    </a>
-                    <a href="#fees-limits" class="sidebar-link" data-section="fees-limits">
-                        <div class="sidebar-icon" data-icon="barChart"></div>
-                        Fees & Limits
-                    </a>
-                    <a href="#security-checks" class="sidebar-link" data-section="security-checks">
-                        <div class="sidebar-icon" data-icon="lock"></div>
-                        Security Checks
-                    </a>
-                </div>
-
-                <!-- Resources -->
-                <div class="sidebar-section">
-                    <div class="sidebar-section-title">Resources</div>
-                    <a href="#faq" class="sidebar-link" data-section="faq">
-                        <div class="sidebar-icon" data-icon="faq"></div>
-                        FAQ
-                    </a>
-                    <a href="#api-access" class="sidebar-link" data-section="api-access">
-                        <div class="sidebar-icon" data-icon="apiKeys"></div>
-                        API Access
-                    </a>
-                    <a href="#support" class="sidebar-link" data-section="support">
-                        <div class="sidebar-icon" data-icon="support"></div>
-                        Get Support
-                    </a>
-                </div>
+                <label class="docs-search" for="docsSearch">
+                    <span class="docs-search__icon" data-icon="search" aria-hidden="true"></span>
+                    <input type="search" id="docsSearch" placeholder="Search the docs" autocomplete="off" spellcheck="false" aria-label="Search the docs" />
+                    <kbd class="docs-search__kbd" aria-hidden="true">/</kbd>
+                </label>
+                <div class="docs-search__meta" id="docsSearchMeta" aria-live="polite"></div>
+                <nav id="docsSidebar" aria-label="Documentation sections"></nav>
             </div>
-        </div>
+        </aside>
 
-        <!-- Main Content -->
-        <div class="docs-main">
-            <!-- Introduction -->
-            <div id="introduction" class="doc-section">
+        <main class="docs-main">
+            <div class="docs-header" data-reveal>
                 <h1>Documentation</h1>
-                <p>Welcome to Etheroute documentation. Learn how to get started, manage your wallets, and execute secure withdrawals across multiple blockchain networks.</p>
-
-                <div class="docs-toc">
-                    <h4>Quick Navigation</h4>
-                    <ul>
-                        <li><a href="#account-setup">Account Setup</a></li>
-                        <li><a href="#first-withdrawal">First Withdrawal</a></li>
-                        <li><a href="#wallet-management">Wallet Management</a></li>
-                        <li><a href="#withdrawal-process">Withdrawal Process</a></li>
-                        <li><a href="#api-access">API Access</a></li>
-                    </ul>
-                </div>
+                <p>How to take payments and move crypto with Etheroute — from a first account to a live API integration.</p>
             </div>
-
-            <div class="section-divider"></div>
-
-            <!-- Account Setup -->
-            <div id="account-setup" class="doc-section">
-                <h2>Account Setup</h2>
-                <p>Getting started with Etheroute is quick and secure. Follow these steps to create your account and begin managing your cryptocurrency.</p>
-
-                <h3>Creating Your Account</h3>
-                <p>To begin using Etheroute, create an account with a username and password. No personal information or KYC is required for basic account creation.</p>
-                <ol>
-                    <li>Visit the <a href="/auth">Sign In page</a></li>
-                    <li>Click "Get Started" to create a new account</li>
-                    <li>Choose a secure username and password</li>
-                    <li>Verify your email address (if enabled)</li>
-                    <li>Access your dashboard</li>
-                </ol>
-
-                <h3>Security Best Practices</h3>
-                <ul>
-                    <li>Use a strong, unique password with mixed characters</li>
-                    <li>Enable two-factor authentication for additional security</li>
-                    <li>Never share your API keys or authentication tokens</li>
-                    <li>Review login activity regularly</li>
-                </ul>
-            </div>
-
-            <div class="section-divider"></div>
-
-            <!-- First Withdrawal -->
-            <div id="first-withdrawal" class="doc-section">
-                <h2>First Withdrawal</h2>
-                <p>Ready to withdraw your cryptocurrency? Here's a step-by-step guide to execute your first withdrawal.</p>
-
-                <h3>Prerequisites</h3>
-                <ul>
-                    <li>Active Etheroute account</li>
-                    <li>At least one funded wallet</li>
-                    <li>Recipient address on your chosen blockchain</li>
-                </ul>
-
-                <h3>Step-by-Step Process</h3>
-                <ol>
-                    <li>Log into your <a href="/dashboard">Etheroute Dashboard</a></li>
-                    <li>Navigate to the Withdrawal section</li>
-                    <li>Select the blockchain and amount to withdraw</li>
-                    <li>Enter your recipient wallet address</li>
-                    <li>Review the transaction details and fees</li>
-                    <li>Confirm the withdrawal</li>
-                    <li>Monitor transaction status in real-time</li>
-                </ol>
-
-                <h3>Minimum Requirements</h3>
-                <ul>
-                    <li>Minimum withdrawal: $5 USD equivalent</li>
-                    <li>Supported networks: Ethereum, Bitcoin, Solana, Litecoin</li>
-                </ul>
-            </div>
-
-            <div class="section-divider"></div>
-
-            <!-- Wallet Management -->
-            <div id="wallet-management" class="doc-section">
-                <h2>Wallet Management</h2>
-                <p>Manage your cryptocurrency wallets across multiple blockchain networks efficiently.</p>
-
-                <h3>Creating Wallets</h3>
-                <p>You can create wallets for the following blockchain networks:</p>
-                <div class="feature-list">
-                    <div class="feature-item">
-                        <div class="feature-item-icon" data-icon="walletIcon"></div>
-                        <h4>Ethereum</h4>
-                        <p>Create and manage ETH wallets for ERC-20 token support</p>
-                    </div>
-                    <div class="feature-item">
-                        <div class="feature-item-icon" data-icon="walletIcon"></div>
-                        <h4>Bitcoin</h4>
-                        <p>Secure Bitcoin (BTC) storage and transaction management</p>
-                    </div>
-                    <div class="feature-item">
-                        <div class="feature-item-icon" data-icon="walletIcon"></div>
-                        <h4>Solana</h4>
-                        <p>Fast and efficient Solana (SOL) wallet operations</p>
-                    </div>
-                    <div class="feature-item">
-                        <div class="feature-item-icon" data-icon="walletIcon"></div>
-                        <h4>Litecoin</h4>
-                        <p>Litecoin (LTC) storage with quick confirmation times</p>
-                    </div>
-                </div>
-
-                <h3>Managing Multiple Wallets</h3>
-                <p>Each wallet is independently managed with its own balance and transaction history. You can create as many wallets as needed across different chains.</p>
-
-                <h3>Deleting Wallets</h3>
-                <p>Use the delete option in your wallet settings to remove it from your account. Confirm the action when prompted. Note: You cannot recover a deleted wallet.</p>
-            </div>
-
-            <div class="section-divider"></div>
-
-            <!-- Multi-Chain Support -->
-            <div id="multi-chain" class="doc-section">
-                <h2>Multi-Chain Support</h2>
-                <p>Etheroute enables seamless cryptocurrency management across multiple blockchain networks.</p>
-
-                <h3>Supported Blockchains</h3>
-                <ul>
-                    <li><strong>Ethereum:</strong> EVM-compatible smart contract platform</li>
-                    <li><strong>Bitcoin:</strong> Original and most secure blockchain network</li>
-                    <li><strong>Solana:</strong> High-speed, low-cost transaction network</li>
-                    <li><strong>Litecoin:</strong> Fast peer-to-peer digital currency</li>
-                </ul>
-
-                <h3>Network Advantages</h3>
-                <p>Our intelligent routing system analyzes network conditions and automatically recommends the best blockchain for your transaction based on:</p>
-                <ul>
-                    <li>Current network fees and congestion</li>
-                    <li>Transaction confirmation time</li>
-                    <li>Your liquidity on each network</li>
-                </ul>
-            </div>
-
-            <div class="section-divider"></div>
-
-            <!-- Transaction History -->
-            <div id="transaction-history" class="doc-section">
-                <h2>Transaction History</h2>
-                <p>Track all your cryptocurrency transactions in real-time with detailed status updates.</p>
-
-                <h3>Transaction Statuses</h3>
-                <ul>
-                    <li><strong>Pending:</strong> Transaction awaiting confirmation on the blockchain</li>
-                    <li><strong>Processing:</strong> Transaction is being broadcasted to the network</li>
-                    <li><strong>Confirmed:</strong> Transaction has been verified and included in a block</li>
-                    <li><strong>Completed:</strong> Transaction is fully settled</li>
-                    <li><strong>Failed:</strong> Transaction could not be completed</li>
-                </ul>
-
-                <h3>Transaction Details</h3>
-                <p>For each transaction, you can view:</p>
-                <ul>
-                    <li>Amount and denomination</li>
-                    <li>Source and destination addresses</li>
-                    <li>Network fees paid</li>
-                    <li>Transaction hash for blockchain verification</li>
-                    <li>Timestamp and confirmation count</li>
-                </ul>
-            </div>
-
-            <div class="section-divider"></div>
-
-            <!-- Withdrawal Process -->
-            <div id="withdrawal-process" class="doc-section">
-                <h2>Withdrawal Process</h2>
-                <p>Our withdrawal process is designed for security, efficiency, and user control.</p>
-
-                <h3>Complete Withdrawal Flow</h3>
-                <ol>
-                    <li><strong>Initiation:</strong> Enter withdrawal details including amount and recipient address</li>
-                    <li><strong>Review:</strong> Verify all transaction details and fees</li>
-                    <li><strong>Confirmation:</strong> Confirm the withdrawal (optional 2FA)</li>
-                    <li><strong>Processing:</strong> Transaction is queued and broadcasted</li>
-                    <li><strong>Monitoring:</strong> Track real-time transaction status</li>
-                    <li><strong>Settlement:</strong> Transaction confirmed on blockchain</li>
-                </ol>
-
-                <h3>Security Validations</h3>
-                <p>Every withdrawal undergoes multiple security checks:</p>
-                <ul>
-                    <li>Address format validation</li>
-                    <li>Sufficient balance verification</li>
-                    <li>Network health checks</li>
-                    <li>Fraud detection algorithms</li>
-                </ul>
-            </div>
-
-            <div class="section-divider"></div>
-
-            <!-- Fees & Limits -->
-            <div id="fees-limits" class="doc-section">
-                <h2>Fees & Limits</h2>
-                <p>Transparent pricing with clear fee breakdown before every transaction.</p>
-
-                <h3>Withdrawal Limits</h3>
-                <ul>
-                    <li>Minimum per transaction: $5 USD equivalent</li>
-                    <li>Maximum per transaction: Varies by blockchain and account tier</li>
-                    <li>Daily limit: Subject to account verification level</li>
-                </ul>
-
-                <h3>Fee Structure</h3>
-                <p>Etheroute charges:</p>
-                <ul>
-                    <li><strong>Service Fee:</strong> 1.5% of withdrawal amount</li>
-                    <li><strong>Network Fee:</strong> Varies by blockchain and congestion (displayed before confirmation)</li>
-                    <li>No hidden fees – all costs shown upfront</li>
-                </ul>
-
-                <h3>Fee Transparency</h3>
-                <p>You'll see a complete breakdown of all fees before confirming any transaction. This includes platform fees and network gas fees.</p>
-            </div>
-
-            <div class="section-divider"></div>
-
-            <!-- Security Checks -->
-            <div id="security-checks" class="doc-section">
-                <h2>Security & Safety</h2>
-                <p>Your security is our top priority. We implement multiple layers of protection for all transactions.</p>
-
-                <h3>Security Features</h3>
-                <ul>
-                    <li><strong>Bank-Grade Encryption:</strong> SSL/TLS encryption for all data transmission</li>
-                    <li><strong>Real-Time Monitoring:</strong> Automated fraud detection systems</li>
-                    <li><strong>Multi-Signature Support:</strong> Enhanced security for large transactions</li>
-                    <li><strong>Address Whitelisting:</strong> Add trusted addresses for repeated withdrawals</li>
-                </ul>
-
-                <h3>Best Practices</h3>
-                <ol>
-                    <li>Always double-check recipient addresses before confirming</li>
-                    <li>Use unique, strong passwords</li>
-                    <li>Enable two-factor authentication</li>
-                    <li>Keep your browser and device software updated</li>
-                    <li>Verify SSL certificates when accessing Etheroute</li>
-                </ol>
-            </div>
-
-            <div class="section-divider"></div>
-
-            <!-- FAQ -->
-            <div id="faq" class="doc-section">
-                <h2>Frequently Asked Questions</h2>
-                <p>Find answers to common questions about Etheroute's features and services.</p>
-
-                <h3>How long does a withdrawal take?</h3>
-                <p>Withdrawal times vary by blockchain:</p>
-                <ul>
-                    <li>Ethereum: 1-5 minutes</li>
-                    <li>Solana: Less than 1 minute</li>
-                    <li>Bitcoin: 10-30 minutes</li>
-                    <li>Litecoin: 2-5 minutes</li>
-                </ul>
-
-                <h3>Can I cancel a withdrawal?</h3>
-                <p>Once a transaction is broadcasted to the blockchain, it cannot be cancelled. However, pending transactions can sometimes be accelerated or modified depending on the network.</p>
-
-                <h3>What happens if a withdrawal fails?</h3>
-                <p>If a withdrawal fails, your funds are returned to your wallet automatically. You'll be notified immediately with details about the failure reason.</p>
-
-                <h3>Is there KYC required?</h3>
-                <p>Basic account creation requires only a username and password. Enhanced features and higher limits may require identity verification depending on local regulations.</p>
-            </div>
-
-            <div class="section-divider"></div>
-
-            <!-- API Access -->
-            <div id="api-access" class="doc-section">
-                <h2>API Access</h2>
-                <p>For programmatic access to your Etheroute account, visit our comprehensive <a href="/api-reference">API Reference</a> documentation.</p>
-
-                <h3>API Key Management</h3>
-                <p>Generate and manage API keys in your account settings. Use these keys to:</p>
-                <ul>
-                    <li>Automate wallet operations</li>
-                    <li>Execute programmatic withdrawals</li>
-                    <li>Monitor transactions in real-time</li>
-                    <li>Build custom integrations</li>
-                </ul>
-
-                <h3>API Security</h3>
-                <ul>
-                    <li>Never share your API keys</li>
-                    <li>Rotate keys periodically</li>
-                    <li>Use HTTPS for all requests</li>
-                    <li>Implement rate limiting on your end</li>
-                </ul>
-            </div>
-
-            <div class="section-divider"></div>
-
-            <!-- Support -->
-            <div id="support" class="doc-section">
-                <h2>Get Support</h2>
-                <p>Need help? We're here to assist you with any questions or issues.</p>
-
-                <h3>Support Channels</h3>
-                <ul>
-                    <li><strong>Email:</strong> support@etheroute.io</li>
-                    <li><strong>Help Center:</strong> <a href="/help">Visit our Help Center</a></li>
-                    <li><strong>Documentation:</strong> <a href="/docs">Comprehensive guides and tutorials</a></li>
-                    <li><strong>Community:</strong> Join our Telegram for community support</li>
-                </ul>
-
-                <h3>Additional Resources</h3>
-                <ul>
-                    <li><a href="/api-reference">API Reference</a> – Complete API documentation</li>
-                    <li><a href="/help">Help Center</a> – Common issues and solutions</li>
-                    <li><a href="/about">About Us</a> – Learn more about Etheroute</li>
-                    <li><a href="/compliance">Compliance</a> – Security and regulatory information</li>
-                </ul>
-            </div>
-        </div>
+            <div id="docsMain"></div>
+        </main>
     </div>
 
-     <!-- Footer -->
     <div class="footer">
         <div class="footer-content">
             <div class="footer-grid">
-                <div class="footer-section">
+                <div class="footer-section" data-reveal>
                     <h4>Support</h4>
                     <a href="/docs" class="footer-link">Documentation</a>
                     <a href="/api-reference" class="footer-link">API Reference</a>
                     <a href="/help" class="footer-link">Help Center</a>
                 </div>
-                <div class="footer-section">
+                <div class="footer-section" data-reveal data-reveal-delay="80">
                     <h4>Company</h4>
                     <a href="/about" class="footer-link">About Us</a>
                     <a href="https://discord.gg" class="footer-link" target="_blank">Discord</a>
                     <a href="https://t.me/etheroute" class="footer-link" target="_blank">Telegram</a>
                 </div>
-                <div class="footer-section">
+                <div class="footer-section" data-reveal data-reveal-delay="160">
                     <h4>Legal</h4>
                     <a href="/privacy" class="footer-link">Privacy Policy</a>
                     <a href="/terms" class="footer-link">Terms of Service</a>
                     <a href="/compliance" class="footer-link">Compliance</a>
                 </div>
             </div>
-            <div class="footer-bottom">
+            <div class="footer-bottom" data-reveal data-reveal-delay="240">
                 <p>&copy; 2026 Etheroute. All rights reserved. | Secure Multi-Chain Withdrawal Platform</p>
             </div>
         </div>
     </div>
 
     <script src="/js/common/icons.js"></script>
+    <script src="/js/docs-content.js"></script>
     <script src="/js/docs.js"></script>
+    <script src="/js/common/reveal.js"></script>
 </body>
+
 </html>

@@ -1,630 +1,390 @@
-const endpointCodeTemplates = {};
-const languageLabels = {
-    curl: 'cURL',
-    nodejs: 'Node.js',
-    python: 'Python',
-    cpp: 'C++',
-    csharp: 'C#'
-};
-const languageSyntaxClasses = {
-    curl: 'language-bash',
-    nodejs: 'language-javascript',
-    python: 'language-python',
-    cpp: 'language-cpp',
-    csharp: 'language-csharp'
-};
+/**
+ * API reference page.
+ *
+ * Everything on the page is rendered from window.API_SPEC (api-spec.js):
+ * the sidebar, each section, every endpoint card, and the code samples,
+ * which are generated from the endpoint's method, path and body so they
+ * cannot disagree with the request they describe.
+ *
+ * Search filters endpoints as you type - by path, method, summary or any
+ * field name in the request or response - and the sidebar follows scroll.
+ */
+(() => {
+  const spec = window.API_SPEC;
+  if (!spec) return;
 
-// Toast Notification System
-function showToast(message, type = 'success', duration = 2500) {
-    let container = document.getElementById('toastContainer');
+  const sidebar = document.getElementById('apiSidebar');
+  const main = document.getElementById('apiMain');
+  const searchInput = document.getElementById('apiSearch');
+  const searchMeta = document.getElementById('apiSearchMeta');
+  if (!sidebar || !main) return;
 
-    if (!container) {
-        container = document.createElement('div');
-        container.id = 'toastContainer';
-        container.className = 'toast-container';
-        document.body.appendChild(container);
+  const origin = window.location.origin;
+  const baseUrl = `${origin}${spec.baseUrl}`;
+
+  // ── helpers ──────────────────────────────────────────────────────────────
+
+  const esc = (value) => String(value == null ? '' : value)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+  const json = (value) => JSON.stringify(value, null, 2);
+
+  function samplePath(path) {
+    // :param -> a readable placeholder
+    return path.replace(/:([a-zA-Z]+)/g, (_, name) => `{${name}}`);
+  }
+
+  function curlSample(ep) {
+    const lines = [`curl -X ${ep.method} "${baseUrl}${samplePath(ep.path)}"`];
+    if (ep.auth !== 'public') lines.push('  -H "Authorization: Bearer YOUR_API_KEY"');
+    for (const [name, note] of ep.headers || []) lines.push(`  -H "${name}: ${name === 'Idempotency-Key' ? '3f2b1c…' : note}"`);
+    if (ep.body) {
+      lines.push('  -H "Content-Type: application/json"');
+      lines.push(`  -d '${JSON.stringify(ep.body)}'`);
     }
+    return lines.join(' \\\n');
+  }
 
-    const toast = document.createElement('div');
-    toast.className = `toast ${type}`;
-    toast.textContent = message;
+  function nodeSample(ep) {
+    const headers = [];
+    if (ep.auth !== 'public') headers.push("    'Authorization': `Bearer ${process.env.ETHEROUTE_API_KEY}`");
+    for (const [name] of ep.headers || []) headers.push(`    '${name}': ${name === 'Idempotency-Key' ? 'crypto.randomUUID()' : "'…'"}`);
+    if (ep.body) headers.push("    'Content-Type': 'application/json'");
+    const opts = [`  method: '${ep.method}'`];
+    if (headers.length) opts.push(`  headers: {\n${headers.join(',\n')}\n  }`);
+    if (ep.body) opts.push(`  body: JSON.stringify(${json(ep.body).replace(/\n/g, '\n  ')})`);
+    const pre = (ep.headers || []).some(([n]) => n === 'Idempotency-Key') ? "const crypto = require('crypto');\n\n" : '';
+    return `${pre}const response = await fetch('${baseUrl}${samplePath(ep.path)}', {\n${opts.join(',\n')}\n});\nconst data = await response.json();\nif (!response.ok) throw new Error(data.message);\nconsole.log(data);`;
+  }
 
-    container.appendChild(toast);
+  function pythonSample(ep) {
+    const headers = [];
+    if (ep.auth !== 'public') headers.push("    'Authorization': f'Bearer {API_KEY}'");
+    for (const [name] of ep.headers || []) headers.push(`    '${name}': ${name === 'Idempotency-Key' ? 'str(uuid.uuid4())' : "'…'"}`);
+    const pre = (ep.headers || []).some(([n]) => n === 'Idempotency-Key') ? 'import uuid\n' : '';
+    const kwargs = [];
+    if (headers.length) kwargs.push(`    headers={\n${headers.join(',\n')}\n    }`);
+    if (ep.body) kwargs.push(`    json=${json(ep.body).replace(/\n/g, '\n    ').replace(/: true/g, ': True').replace(/: false/g, ': False').replace(/: null/g, ': None')}`);
+    return `${pre}import requests\n\nresponse = requests.${ep.method.toLowerCase()}(\n    '${baseUrl}${samplePath(ep.path)}',\n${kwargs.join(',\n')}\n)\nresponse.raise_for_status()\nprint(response.json())`;
+  }
 
-    setTimeout(() => {
-        toast.classList.add('removing');
-        setTimeout(() => {
-            toast.remove();
-        }, 300);
-    }, duration);
-}
+  // Shared header list for the compiled / other-language samples: [name, value].
+  function sampleHeaders(ep) {
+    const headers = [];
+    if (ep.auth !== 'public') headers.push(['Authorization', 'Bearer YOUR_API_KEY']);
+    for (const [name] of ep.headers || []) headers.push([name, name === 'Idempotency-Key' ? '<generate-a-uuid>' : '...']);
+    if (ep.body) headers.push(['Content-Type', 'application/json']);
+    return headers;
+  }
 
-// Load SVG icons and highlight code on page load
-window.addEventListener('load', () => {
-    loadSVGIcons();
-    
-    // Update all code examples with the actual API URL
-    updateCodeExamplesWithAPIURL();
+  const NL = String.fromCharCode(10);
 
-    // Keep one code block per endpoint and swap content by language.
-    consolidateLanguageCodeBlocks();
-    
-    // Add copy buttons to all code blocks
-    addCopyButtonsToCodeBlocks();
+  function goSample(ep) {
+    const url = baseUrl + samplePath(ep.path);
+    const imports = ['"fmt"', '"io"', '"net/http"'];
+    if (ep.body) imports.unshift('"strings"');
+    const out = ['package main', '', 'import (', ...imports.map((i) => '\t' + i), ')', '', 'func main() {'];
+    if (ep.body) out.push('\tbody := strings.NewReader(`' + JSON.stringify(ep.body) + '`)');
+    out.push('\treq, _ := http.NewRequest("' + ep.method + '", "' + url + '", ' + (ep.body ? 'body' : 'nil') + ')');
+    for (const [name, value] of sampleHeaders(ep)) out.push('\treq.Header.Set("' + name + '", "' + value + '")');
+    out.push('\tresp, err := http.DefaultClient.Do(req)', '\tif err != nil {', '\t\tpanic(err)', '\t}', '\tdefer resp.Body.Close()', '\tout, _ := io.ReadAll(resp.Body)', '\tfmt.Println(string(out))', '}');
+    return out.join(NL);
+  }
 
-    // Keep all endpoint cards expanded at all times.
-    forceExpandedEndpoints();
-    
-    // Setup dynamic code updates for input changes
-    setupDynamicCodeUpdates();
-    
-    // Highlight all code blocks with highlight.js
-    document.querySelectorAll('pre code').forEach(el => {
-        hljs.highlightElement(el);
-    });
-});
+  function rubySample(ep) {
+    const url = baseUrl + samplePath(ep.path);
+    const verb = ep.method[0] + ep.method.slice(1).toLowerCase();
+    const out = ["require 'net/http'", "require 'uri'", "require 'json'", '', "uri = URI('" + url + "')", 'req = Net::HTTP::' + verb + '.new(uri)'];
+    for (const [name, value] of sampleHeaders(ep)) out.push("req['" + name + "'] = '" + value + "'");
+    if (ep.body) out.push('req.body = ' + JSON.stringify(ep.body) + '.to_json');
+    out.push("res = Net::HTTP.start(uri.hostname, uri.port, use_ssl: uri.scheme == 'https') do |http|", '  http.request(req)', 'end', 'puts res.body');
+    return out.join(NL);
+  }
 
-function forceExpandedEndpoints() {
-    document.querySelectorAll('.endpoint-item').forEach((item) => {
-        item.classList.add('active');
-    });
-}
+  function cppSample(ep) {
+    const url = baseUrl + samplePath(ep.path);
+    const out = ['#include <curl/curl.h>', '', 'int main() {', '    CURL* curl = curl_easy_init();', '    struct curl_slist* headers = nullptr;'];
+    for (const [name, value] of sampleHeaders(ep)) out.push('    headers = curl_slist_append(headers, "' + name + ': ' + value + '");');
+    out.push('    curl_easy_setopt(curl, CURLOPT_URL, "' + url + '");');
+    out.push('    curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "' + ep.method + '");');
+    out.push('    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);');
+    if (ep.body) out.push('    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, R"(' + JSON.stringify(ep.body) + ')");');
+    out.push('    curl_easy_perform(curl);', '    curl_slist_free_all(headers);', '    curl_easy_cleanup(curl);', '    return 0;', '}');
+    return out.join(NL);
+  }
 
-function consolidateLanguageCodeBlocks() {
-    document.querySelectorAll('.language-select').forEach((select) => {
-        const endpoint = select.getAttribute('data-endpoint');
-        if (!endpoint) return;
+  function cSample(ep) {
+    const url = baseUrl + samplePath(ep.path);
+    const out = ['#include <curl/curl.h>', '', 'int main(void) {', '    CURL *curl = curl_easy_init();', '    struct curl_slist *headers = NULL;'];
+    for (const [name, value] of sampleHeaders(ep)) out.push('    headers = curl_slist_append(headers, "' + name + ': ' + value + '");');
+    out.push('    curl_easy_setopt(curl, CURLOPT_URL, "' + url + '");');
+    out.push('    curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "' + ep.method + '");');
+    out.push('    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);');
+    if (ep.body) out.push('    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, ' + JSON.stringify(JSON.stringify(ep.body)) + ');');
+    out.push('    curl_easy_perform(curl);', '    curl_slist_free_all(headers);', '    curl_easy_cleanup(curl);', '    return 0;', '}');
+    return out.join(NL);
+  }
 
-        moveLanguageSelectorToHeader(select, endpoint);
+  const LANGS = [
+    { id: 'curl', label: 'cURL', hl: 'bash', make: curlSample },
+    { id: 'node', label: 'Node.js', hl: 'javascript', make: nodeSample },
+    { id: 'python', label: 'Python', hl: 'python', make: pythonSample },
+    { id: 'go', label: 'Go', hl: 'go', make: goSample },
+    { id: 'ruby', label: 'Ruby', hl: 'ruby', make: rubySample },
+    { id: 'cpp', label: 'C++', hl: 'cpp', make: cppSample },
+    { id: 'c', label: 'C', hl: 'c', make: cSample },
+  ];
 
-        ensureLanguageOption(select, 'cpp', languageLabels.cpp);
-        ensureLanguageOption(select, 'csharp', languageLabels.csharp);
+  // ── render ───────────────────────────────────────────────────────────────
 
-        const languageBlocks = ['curl', 'nodejs', 'python']
-            .map((lang) => ({ lang, block: document.getElementById(`${endpoint}-${lang}`) }))
-            .filter(({ block }) => !!block);
+  function facts(rows) {
+    return `<dl class="facts">${rows.map(([k, v]) => `<div class="facts__row"><dt>${k}</dt><dd>${v}</dd></div>`).join('')}</dl>`;
+  }
 
-        if (!languageBlocks.length) return;
+  function table(t) {
+    return `<div class="table-scroll"><table class="spec-table"><thead><tr>${t.head.map((h) => `<th>${h}</th>`).join('')}</tr></thead><tbody>${t.rows.map((r) => `<tr>${r.map((c) => `<td>${c}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+  }
 
-        endpointCodeTemplates[endpoint] = {};
-        languageBlocks.forEach(({ lang, block }) => {
-            const code = block.querySelector('code');
-            endpointCodeTemplates[endpoint][lang] = {
-                content: code ? code.textContent : '',
-                className: code ? code.className : ''
-            };
-        });
+  function paramTable(rows, cols) {
+    return `<div class="table-scroll"><table class="spec-table spec-table--params"><thead><tr>${cols.map((c) => `<th>${c}</th>`).join('')}</tr></thead><tbody>${rows.map((r) => `<tr>${r.map((c, i) => `<td>${i === 0 ? `<code>${c}</code>` : c}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+  }
 
-        ensureExtendedLanguageTemplates(endpoint);
+  function codeBlock(code, lang, id) {
+    return `<div class="code-block" data-code-id="${esc(id)}">
+      <div class="code-block__bar"><span class="code-block__lang">${esc(lang)}</span><button type="button" class="code-block__copy" data-on-click="apiCopyCode" data-arg="${esc(id)}">Copy</button></div>
+      <pre><code class="language-${esc(lang)}" id="${esc(id)}">${esc(code)}</code></pre>
+    </div>`;
+  }
 
-        const preferredLanguage = endpointCodeTemplates[endpoint][select.value]
-            ? select.value
-            : languageBlocks[0].lang;
+  function endpointCard(ep) {
+    const authPill = ep.auth === 'public'
+      ? '<span class="auth-pill auth-pill--public">Public</span>'
+      : (ep.auth === 'developer' ? '<span class="auth-pill auth-pill--dev">Developer</span>' : '<span class="auth-pill">Bearer</span>');
 
-        const placeholder = document.getElementById(`${endpoint}-${preferredLanguage}`) || languageBlocks[0].block;
-        placeholder.id = `${endpoint}-code`;
-        placeholder.setAttribute('data-endpoint', endpoint);
-        placeholder.style.display = 'block';
+    const samples = LANGS.map((lang, i) => `
+      <div class="sample${i === 0 ? '' : ' hidden'}" data-lang="${lang.id}">
+        ${codeBlock(lang.make(ep), lang.hl, `${ep.id}-${lang.id}`)}
+      </div>`).join('');
 
-        languageBlocks.forEach(({ block }) => {
-            if (block !== placeholder) {
-                block.remove();
-            }
-        });
+    const langTabs = `<div class="lang-tabs" role="tablist">${LANGS.map((lang, i) => `<button type="button" role="tab" class="lang-tab${i === 0 ? ' is-active' : ''}" data-on-click="apiPickLang" data-arg="${ep.id}" data-arg2="${lang.id}">${lang.label}</button>`).join('')}</div>`;
 
-        select.value = preferredLanguage;
-        applyLanguageToPlaceholder(endpoint, preferredLanguage);
-    });
-}
+    return `
+      <article class="endpoint" id="${esc(ep.id)}" data-search="${esc(searchText(ep))}">
+        <button type="button" class="endpoint__head" data-on-click="apiToggleEndpoint" data-arg="${esc(ep.id)}" aria-expanded="false">
+          <span class="method method--${ep.method.toLowerCase()}">${ep.method}</span>
+          <code class="endpoint__path">${esc(ep.path)}</code>
+          <span class="endpoint__summary">${esc(ep.summary)}</span>
+          ${authPill}
+          <span class="endpoint__chev" aria-hidden="true"></span>
+        </button>
+        <div class="endpoint__body">
+          <div class="endpoint__inner">
+            ${ep.description ? `<p class="endpoint__desc">${ep.description}</p>` : ''}
+            ${ep.headers ? `<h4>Headers</h4>${paramTable(ep.headers, ['Header', 'Value'])}` : ''}
+            ${ep.query ? `<h4>Query parameters</h4>${paramTable(ep.query, ['Parameter', 'Meaning'])}` : ''}
+            ${ep.bodyDoc ? `<h4>Request body</h4>${paramTable(ep.bodyDoc, ['Field', 'Type', 'Meaning'])}` : ''}
+            <h4>Example request</h4>
+            ${langTabs}
+            ${samples}
+            <h4>Response${ep.status ? ` <span class="status-code">${ep.status}</span>` : ''}</h4>
+            ${codeBlock(json(ep.response), 'json', `${ep.id}-response`)}
+            ${ep.notes ? `<p class="endpoint__note">${ep.notes}</p>` : ''}
+            <a class="endpoint__link" href="#${esc(ep.id)}">Link to this endpoint</a>
+          </div>
+        </div>
+      </article>`;
+  }
 
-function ensureLanguageOption(select, value, label) {
-    if (select.querySelector(`option[value="${value}"]`)) return;
-    const option = document.createElement('option');
-    option.value = value;
-    option.textContent = label;
-    select.appendChild(option);
-}
+  function searchText(ep) {
+    const keys = (obj) => (obj && typeof obj === 'object' ? Object.keys(Array.isArray(obj) ? obj[0] || {} : obj) : []);
+    return [ep.method, ep.path, ep.summary, ep.id, ...keys(ep.body), ...keys(ep.response), ...(ep.bodyDoc || []).map((r) => r[0])].join(' ').toLowerCase();
+  }
 
-function moveLanguageSelectorToHeader(select, endpoint) {
-    const endpointItem = select.closest('.endpoint-item');
-    if (!endpointItem) return;
+  function section(s) {
+    const parts = [];
+    parts.push(`<section class="section" id="${esc(s.id)}" data-reveal>`);
+    // Header icons live in the sidebar only, matching the docs and help pages.
+    parts.push(`<h2 class="section-title">${esc(s.title)}</h2>`);
+    for (const p of s.intro || []) parts.push(`<p class="section-intro">${p}</p>`);
+    if (s.facts && s.id !== 'errors') parts.push(facts(s.facts));
+    if (s.table) parts.push(table(s.table));
+    if (s.events) parts.push(`<h4>Events</h4>${paramTable(s.events, ['Event', 'Sent when'])}`);
+    if (s.payload) parts.push(`<h4>${s.id === 'errors' ? 'Error body' : 'Payload'}</h4>${codeBlock(json(s.payload), 'json', `${s.id}-payload`)}`);
+    if (s.verify) parts.push(`<h4>Verifying a signature (Node.js)</h4>${codeBlock(s.verify, 'javascript', `${s.id}-verify`)}`);
+    if (s.facts && s.id === 'errors') parts.push('<h4>Rate limits</h4>' + facts(s.facts));
+    if (s.endpoints) parts.push(`<div class="endpoints">${s.endpoints.map(endpointCard).join('')}</div>`);
+    parts.push('</section>');
+    return parts.join('');
+  }
 
-    let slot = endpointItem.querySelector('.endpoint-language-slot');
-    if (!slot) {
-        slot = document.createElement('div');
-        slot.className = 'endpoint-language-slot';
-        const header = endpointItem.querySelector('.endpoint-header');
-        if (!header) return;
-        header.appendChild(slot);
-    }
+  function renderSidebar() {
+    sidebar.innerHTML = spec.sections.map((s) => `
+      <div class="sidebar-section">
+        <a href="#${esc(s.id)}" class="sidebar-link" data-section="${esc(s.id)}"><span class="sidebar-icon" data-icon="${esc(s.icon)}"></span>${esc(s.title)}</a>
+        ${(s.endpoints || []).map((ep) => `<a href="#${esc(ep.id)}" class="sidebar-sub" data-endpoint="${esc(ep.id)}"><span class="method method--mini method--${ep.method.toLowerCase()}">${ep.method}</span>${esc(ep.path)}</a>`).join('')}
+      </div>`).join('');
+  }
 
-    const selectorContainer = select.closest('.language-selector');
-    if (!selectorContainer) return;
+  function renderMain() {
+    main.innerHTML = spec.sections.map(section).join('');
+    if (window.loadSVGIcons) window.loadSVGIcons();
+    if (window.hljs) main.querySelectorAll('pre code').forEach((el) => window.hljs.highlightElement(el));
+  }
 
-    selectorContainer.classList.add('language-selector-inline');
-    selectorContainer.setAttribute('data-endpoint', endpoint);
-    slot.appendChild(selectorContainer);
-}
+  // ── behaviour ────────────────────────────────────────────────────────────
 
-function ensureExtendedLanguageTemplates(endpoint) {
-    const templates = endpointCodeTemplates[endpoint];
-    if (!templates) return;
+  window.apiToggleEndpoint = (id) => {
+    const card = document.getElementById(id);
+    if (!card) return;
+    const open = !card.classList.contains('is-open');
+    card.classList.toggle('is-open', open);
+    card.querySelector('.endpoint__head').setAttribute('aria-expanded', open ? 'true' : 'false');
+  };
 
-    const requestInfo = extractRequestInfo(templates);
+  window.apiPickLang = (epId, langId) => {
+    const card = document.getElementById(epId);
+    if (!card) return;
+    card.querySelectorAll('.lang-tab').forEach((tab) => tab.classList.toggle('is-active', tab.getAttribute('data-arg2') === langId));
+    card.querySelectorAll('.sample').forEach((s) => s.classList.toggle('hidden', s.dataset.lang !== langId));
+    try { localStorage.setItem('apiLang', langId); } catch { /* ignore */ }
+  };
 
-    if (!templates.cpp) {
-        templates.cpp = {
-            content: buildCppTemplate(requestInfo),
-            className: 'language-cpp'
-        };
-    }
-
-    if (!templates.csharp) {
-        templates.csharp = {
-            content: buildCSharpTemplate(requestInfo),
-            className: 'language-csharp'
-        };
-    }
-}
-
-function extractRequestInfo(templates) {
-    const curl = templates.curl ? templates.curl.content : '';
-    const nodejs = templates.nodejs ? templates.nodejs.content : '';
-
-    let method = 'GET';
-    let url = `${API_URL}/`;
-    let body = '';
-
-    const curlMatch = curl.match(/curl\s+-X\s+([A-Z]+)\s+([^\s\\]+)/);
-    if (curlMatch) {
-        method = curlMatch[1];
-        url = curlMatch[2];
-    }
-
-    const nodeMethodMatch = nodejs.match(/method:\s*'([A-Z]+)'/);
-    if (nodeMethodMatch) {
-        method = nodeMethodMatch[1];
-    }
-
-    const nodeUrlMatch = nodejs.match(/fetch\('([^']+)'/);
-    if (nodeUrlMatch) {
-        url = nodeUrlMatch[1];
-    }
-
-    const curlBodyMatch = curl.match(/-d\s+'([\s\S]*?)'/);
-    if (curlBodyMatch) {
-        body = curlBodyMatch[1].trim();
-    }
-
-    const nodeBodyMatch = nodejs.match(/body:\s*JSON\.stringify\((\{[\s\S]*?\})\)/);
-    if (!body && nodeBodyMatch) {
-        body = nodeBodyMatch[1].trim();
-    }
-
-    return { method, url, body };
-}
-
-function buildCppTemplate({ method, url, body }) {
-    const hasBody = !!body && method !== 'GET';
-    const requestMethod = method === 'DELETE' ? 'Delete' : method === 'PUT' ? 'Put' : method === 'POST' ? 'Post' : 'Get';
-    const bodyLine = hasBody
-        ? `,\n        cpr::Body{R"(${body})"}`
-        : '';
-    const contentTypeHeader = hasBody
-        ? `,\n        {"Content-Type", "application/json"}`
-        : '';
-
-    return `#include <iostream>\n#include <cpr/cpr.h>\n\nint main() {\n    auto response = cpr::${requestMethod}(\n        cpr::Url{"${url}"},\n        cpr::Header{\n            {"Authorization", "Bearer YOUR_API_KEY"}${contentTypeHeader}\n        }${bodyLine}\n    );\n\n    std::cout << response.text << std::endl;\n    return 0;\n}`;
-}
-
-function buildCSharpTemplate({ method, url, body }) {
-    const hasBody = !!body && method !== 'GET';
-    const httpMethod = method === 'DELETE' ? 'Delete' : method === 'PUT' ? 'Put' : method === 'POST' ? 'Post' : 'Get';
-    const bodyEscaped = body.replace(/"/g, '\\"');
-    const contentSetup = hasBody
-        ? `\nrequest.Content = new StringContent("${bodyEscaped}", Encoding.UTF8, "application/json");`
-        : '';
-
-    return `using System;\nusing System.Net.Http;\nusing System.Net.Http.Headers;\nusing System.Text;\nusing System.Threading.Tasks;\n\nclass Program\n{\n    static async Task Main()\n    {\n        using var client = new HttpClient();\n        using var request = new HttpRequestMessage(HttpMethod.${httpMethod}, "${url}");\n\n        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", "YOUR_API_KEY");${contentSetup}\n\n        var response = await client.SendAsync(request);\n        var content = await response.Content.ReadAsStringAsync();\n        Console.WriteLine(content);\n    }\n}`;
-}
-
-function applyLanguageToPlaceholder(endpoint, language) {
-    const placeholder = document.getElementById(`${endpoint}-code`);
-    const template = endpointCodeTemplates[endpoint] && endpointCodeTemplates[endpoint][language];
-
-    if (!placeholder || !template) return;
-
-    const code = placeholder.querySelector('code');
+  window.apiCopyCode = async (id) => {
+    const code = document.getElementById(id);
     if (!code) return;
+    try {
+      await navigator.clipboard.writeText(code.textContent);
+      const button = document.querySelector(`[data-code-id="${CSS.escape(id)}"] .code-block__copy`);
+      if (button) { button.textContent = 'Copied'; setTimeout(() => { button.textContent = 'Copy'; }, 1400); }
+    } catch { /* clipboard unavailable */ }
+  };
 
-    code.className = languageSyntaxClasses[language] || template.className || 'language-plaintext';
-    code.textContent = template.content;
+  function applyPreferredLang() {
+    let lang = null;
+    try { lang = localStorage.getItem('apiLang'); } catch { /* ignore */ }
+    if (!lang || !LANGS.some((l) => l.id === lang)) return;
+    for (const s of spec.sections) for (const ep of s.endpoints || []) window.apiPickLang(ep.id, lang);
+  }
 
-    // Ensure highlight.js reparses when switching languages.
-    code.removeAttribute('data-highlighted');
-    code.classList.remove('hljs');
-
-    updateCodeEditorLanguageLabel(endpoint, language);
-
-    if (window.hljs) {
-        hljs.highlightElement(code);
+  function openFromHash() {
+    const id = decodeURIComponent(window.location.hash.slice(1));
+    if (!id) return;
+    const card = document.getElementById(id);
+    if (card && card.classList.contains('endpoint')) {
+      card.classList.add('is-open');
+      card.querySelector('.endpoint__head').setAttribute('aria-expanded', 'true');
+      card.scrollIntoView({ block: 'start', behavior: 'smooth' });
     }
-}
+  }
 
-// Add copy buttons to all code blocks
-function addCopyButtonsToCodeBlocks() {
-    document.querySelectorAll('pre').forEach(pre => {
-        // Skip if already has a copy button
-        if (pre.querySelector('.code-copy-btn')) return;
-        
-        // Create wrapper
-        const wrapper = document.createElement('div');
-        wrapper.className = 'code-block-wrapper';
-
-        const codeElement = pre.querySelector('code');
-        if (codeElement && codeElement.classList.contains('language-json')) {
-            wrapper.classList.add('json-code-block');
-        }
-
-        const endpoint = pre.getAttribute('data-endpoint') || getEndpointFromCodeBlock(pre);
-        if (endpoint) {
-            wrapper.setAttribute('data-endpoint', endpoint);
-            wrapper.appendChild(createCodeEditorHeader(endpoint));
-        }
-        
-        // Wrap the pre element
-        pre.parentNode.insertBefore(wrapper, pre);
-        wrapper.appendChild(pre);
-        
-        // Create copy button
-        const copyBtn = document.createElement('button');
-        copyBtn.className = 'code-copy-btn';
-        copyBtn.type = 'button';
-        copyBtn.title = 'Copy code';
-        copyBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 2H7C5.9 2 5 2.9 5 4V20C5 21.1 5.9 22 7 22H17C18.1 22 19 21.1 19 20V12M9 7H15M9 12H15M9 17H13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
-        
-        // Add click handler
-        copyBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            const codeElement = pre.querySelector('code');
-            const codeToCopy = codeElement.textContent;
-            
-            navigator.clipboard.writeText(codeToCopy).then(() => {
-                copyBtn.classList.add('copied');
-                copyBtn.title = 'Copied!';
-                showToast('Code copied', 'success', 800);
-                setTimeout(() => {
-                    copyBtn.classList.remove('copied');
-                    copyBtn.title = 'Copy code';
-                }, 800);
-            }).catch(() => {
-                showToast('Copy failed', 'error', 1000);
-            });
-        });
-        
-        // Add button to wrapper
-        wrapper.appendChild(copyBtn);
+  function search() {
+    const query = (searchInput ? searchInput.value : '').trim().toLowerCase();
+    const terms = query.split(/\s+/).filter(Boolean);
+    let shown = 0;
+    let total = 0;
+    main.querySelectorAll('.endpoint').forEach((card) => {
+      total += 1;
+      const match = terms.every((t) => card.dataset.search.includes(t));
+      card.classList.toggle('hidden', !match);
+      if (match) shown += 1;
+      // A search hit opens itself so the answer is on screen.
+      if (query && match) card.classList.add('is-open');
     });
-}
-
-function getEndpointFromCodeBlock(pre) {
-    if (!pre.id || !pre.id.endsWith('-code')) return '';
-    return pre.id.replace(/-code$/, '');
-}
-
-function createCodeEditorHeader(endpoint) {
-    const header = document.createElement('div');
-    header.className = 'code-editor-header';
-
-    const dots = document.createElement('div');
-    dots.className = 'code-editor-dots';
-    dots.innerHTML = '<span></span><span></span><span></span>';
-
-    const language = document.createElement('div');
-    language.className = 'code-editor-language';
-    const select = document.querySelector(`.language-select[data-endpoint="${endpoint}"]`);
-    const langValue = select ? select.value : 'curl';
-    language.textContent = languageLabels[langValue] || 'Code';
-
-    header.appendChild(dots);
-    header.appendChild(language);
-    return header;
-}
-
-function updateCodeEditorLanguageLabel(endpoint, language) {
-    const wrapper = document.querySelector(`.code-block-wrapper[data-endpoint="${endpoint}"]`);
-    if (!wrapper) return;
-    const label = wrapper.querySelector('.code-editor-language');
-    if (!label) return;
-    label.textContent = languageLabels[language] || language;
-}
-
-// Setup dynamic code updates when input values change
-function setupDynamicCodeUpdates() {
-    const testInputs = document.querySelectorAll('.test-input');
-    testInputs.forEach(input => {
-        input.addEventListener('input', function() {
-            const endpoint = this.getAttribute('data-endpoint');
-            const param = this.getAttribute('data-param');
-            const value = this.value;
-            
-            updateCodeExamplesForEndpoint(endpoint, param, value);
-        });
+    main.querySelectorAll('.section').forEach((sec) => {
+      const hasCards = sec.querySelector('.endpoint');
+      const anyShown = sec.querySelector('.endpoint:not(.hidden)');
+      // Prose-only sections hide during a search; sections with no matches too.
+      sec.classList.toggle('hidden', Boolean(query) && (!hasCards || !anyShown));
     });
-}
-
-// Update code examples for a specific endpoint and parameter
-function updateCodeExamplesForEndpoint(endpoint, param, value) {
-    // Get all code blocks for this endpoint
-    const codeBlocks = document.querySelectorAll(`[id^="${endpoint}-"]`);
-    
-    codeBlocks.forEach(codeBlock => {
-        if (!codeBlock.id.includes('-response')) {
-            const code = codeBlock.querySelector('code');
-            if (code) {
-                let content = code.textContent;
-                
-                // Handle different parameter types
-                if (param === 'apiKey') {
-                    // Replace API key placeholder
-                    content = content.replace(/Bearer [^ \n,"}]*/g, `Bearer ${value || 'YOUR_API_KEY'}`);
-                    content = content.replace(/'Authorization': 'Bearer [^']*'/g, `'Authorization': 'Bearer ${value || 'YOUR_API_KEY'}'`);
-                } else if (param === 'chain') {
-                    // Replace chain placeholder
-                    content = content.replace(/["']chain["']:\s*["'][A-Z]+["']/g, `"chain": "${value || 'ETH'}"`);
-                    content = content.replace(/chain:[^,\n}]*/g, `chain: '${value || 'ETH'}'`);
-                } else if (param === 'walletId') {
-                    // Replace wallet ID placeholder
-                    content = content.replace(/wallet_id/g, value || 'wallet_id');
-                    content = content.replace(/wallet_\d+/g, value || 'wallet_id');
-                } else if (param === 'transactionId') {
-                    // Replace transaction ID placeholder
-                    content = content.replace(/transaction_id/g, value || 'transaction_id');
-                    content = content.replace(/txn_\d+/g, value || 'transaction_id');
-                } else if (param === 'payoutId') {
-                    // Replace payout ID placeholder
-                    content = content.replace(/payout_id/g, value || 'payout_id');
-                    content = content.replace(/payout_\d+/g, value || 'payout_id');
-                } else if (param === 'recipientAddress') {
-                    // Replace recipient address
-                    content = content.replace(/0x[a-fA-F0-9]{20,}/g, value || '0x742d35Cc6634C0532925a3b844Bc122e5d6F0fA6');
-                    content = content.replace(/["']recipient[Aa]ddress["']:\s*["'][^"']*["']/g, `"recipientAddress": "${value || '0x742d35...'}"`);
-                } else if (param === 'selectedWallets') {
-                    // Replace selected wallets
-                    content = content.replace(/selectedWallets=[^&\s"]*/g, `selectedWallets=${value || '0xAbc123...'}`);
-                } else if (param === 'clientId') {
-                    // Replace client ID placeholder where present
-                    content = content.replace(/your-client-id/g, value || 'your-client-id');
-                }
-                
-                code.textContent = content;
-                
-                // Re-highlight if visible
-                if (codeBlock.style.display !== 'none' && window.hljs) {
-                    hljs.highlightElement(code);
-                }
-            }
-        }
+    sidebar.querySelectorAll('.sidebar-sub').forEach((link) => {
+      const card = document.getElementById(link.dataset.endpoint);
+      link.classList.toggle('hidden', Boolean(card && card.classList.contains('hidden')));
     });
-}
+    if (searchMeta) searchMeta.textContent = query ? `${shown} of ${total} endpoints` : '';
+  }
 
-// Function to update code examples with actual API URL from config
-function updateCodeExamplesWithAPIURL() {
-    // Update Base URL display
-    const baseUrlDisplay = document.getElementById('base-url-display');
-    if (baseUrlDisplay) {
-        baseUrlDisplay.textContent = API_URL;
+  // Scroll the sidebar (and only the sidebar, never the page) so the active
+  // link stays visible as you read down the page.
+  function keepLinkInView(link) {
+    const container = link.closest('.sidebar');
+    if (!container || container.scrollHeight <= container.clientHeight) return;
+    const c = container.getBoundingClientRect();
+    const l = link.getBoundingClientRect();
+    const margin = 16;
+    if (l.top < c.top + margin) {
+      container.scrollTop -= (c.top + margin) - l.top;
+    } else if (l.bottom > c.bottom - margin) {
+      container.scrollTop += l.bottom - (c.bottom - margin);
     }
-    
-    document.querySelectorAll('pre code').forEach(codeBlock => {
-        // Replace placeholder URLs with actual API URL from config
-        let content = codeBlock.textContent;
-        content = content.replace(/https:\/\/api\.etheroute\.io\/api/g, API_URL);
-        content = content.replace(/http:\/\/localhost:3000\/api/g, API_URL);
-        codeBlock.textContent = content;
+  }
+
+  function scrollSpy() {
+    const sections = [...main.querySelectorAll('.section:not(.hidden)')];
+    const links = [...sidebar.querySelectorAll('.sidebar-link')];
+    if (sections.length === 0) return;
+    const setActive = (id) => links.forEach((l) => {
+      const on = l.dataset.section === id;
+      l.classList.toggle('active', on);
+      if (on) keepLinkInView(l);
     });
-}
+    // The page opens on its first section (or the one the hash names) before
+    // anything has scrolled: the observer's band sits a way down the viewport,
+    // so on load nothing was in it and no link was lit.
+    const named = location.hash && sections.find((s) => `#${s.id}` === location.hash);
+    setActive((named || sections[0]).id);
+    if (!('IntersectionObserver' in window)) return;
+    // The observer's first report can arrive before the browser has jumped to
+    // the hash, with the page still at the top; it would light the first
+    // section over the named one. Reports count once the page has loaded.
+    let armed = document.readyState === 'complete';
+    if (!armed) window.addEventListener('load', () => { armed = true; }, { once: true });
+    const observer = new IntersectionObserver((entries) => {
+      if (!armed) return;
+      const visible = entries.filter((e) => e.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
+      if (visible) setActive(visible.target.id);
+    }, { rootMargin: '-15% 0px -70% 0px', threshold: 0 });
+    sections.forEach((s) => observer.observe(s));
+  }
 
-// Accordion behavior intentionally disabled: endpoint cards are always expanded.
+  // "/" focuses search from anywhere on the page.
+  document.addEventListener('keydown', (event) => {
+    if (event.key === '/' && searchInput && document.activeElement !== searchInput && !/input|textarea/i.test(document.activeElement.tagName)) {
+      event.preventDefault();
+      searchInput.focus();
+    }
+    if (event.key === 'Escape' && document.activeElement === searchInput) {
+      searchInput.value = '';
+      search();
+      searchInput.blur();
+    }
+  });
 
-// Sidebar navigation with smooth scroll
-const sidebarLinks = document.querySelectorAll('.sidebar-link');
+  window.apiToggleSidebar = () => {
+    const wrap = document.getElementById('apiSidebarWrap');
+    const button = document.getElementById('mobileSidebarToggle');
+    if (!wrap) return;
+    const open = wrap.classList.toggle('mobile-open');
+    if (button) button.classList.toggle('open', open);
+  };
 
-function setActiveSidebarLink(targetLink, smooth = true) {
-    if (!targetLink) return;
+  // On mobile the section list is an overlay; picking a section closes it.
+  sidebar.addEventListener('click', (event) => {
+    if (!event.target.closest('.sidebar-link')) return;
+    const wrap = document.getElementById('apiSidebarWrap');
+    const button = document.getElementById('mobileSidebarToggle');
+    if (wrap) wrap.classList.remove('mobile-open');
+    if (button) button.classList.remove('open');
+  });
 
-    sidebarLinks.forEach(link => {
-        link.classList.toggle('active', link === targetLink);
-    });
+  if (searchInput) searchInput.addEventListener('input', search);
+  window.addEventListener('hashchange', openFromHash);
 
-    // Keep the active link visible in the scrollable sidebar.
-    targetLink.scrollIntoView({
-        behavior: smooth ? 'smooth' : 'auto',
-        block: 'nearest',
-        inline: 'nearest'
-    });
-}
+  const base = document.getElementById('base-url-display');
+  if (base) base.textContent = baseUrl;
 
-sidebarLinks.forEach(link => {
-    link.addEventListener('click', (e) => {
-        e.preventDefault();
-
-        setActiveSidebarLink(link);
-        
-        // Smooth scroll to target section with 50px offset for navbar
-        const href = link.getAttribute('href');
-        if (href && href.startsWith('#')) {
-            const targetId = href.substring(1);
-            const targetElement = document.getElementById(targetId);
-            if (targetElement) {
-                const elementPosition = targetElement.getBoundingClientRect().top + window.pageYOffset;
-                const offsetPosition = elementPosition - 60;
-                window.scrollTo({
-                    top: offsetPosition,
-                    behavior: 'smooth'
-                });
-            }
-        }
-    });
-});
-
-// Update active sidebar link while scrolling the content.
-const sectionObserver = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-        if (entry.isIntersecting) {
-            const id = entry.target.id;
-            const matchedLink = Array.from(sidebarLinks).find(
-                link => link.getAttribute('data-section') === id
-            );
-            setActiveSidebarLink(matchedLink);
-        }
-    });
-}, {
-    root: null,
-    rootMargin: '-100px 0px -66%',
-    threshold: 0
-});
-
-document.querySelectorAll('.section[id]').forEach(section => {
-    sectionObserver.observe(section);
-});
-
-// Language selector for code examples
-document.querySelectorAll('.language-select').forEach(select => {
-    select.addEventListener('change', function() {
-        const endpoint = this.getAttribute('data-endpoint');
-        const selectedLanguage = this.value;
-
-        applyLanguageToPlaceholder(endpoint, selectedLanguage);
-    });
-});
-
-// Test Request functionality
-document.querySelectorAll('.test-button').forEach(button => {
-    button.addEventListener('click', async function() {
-        const endpoint = this.getAttribute('data-endpoint');
-        const method = this.getAttribute('data-method');
-        const urlTemplate = this.getAttribute('data-url');
-        
-        // Collect input values
-        const inputs = {};
-        const controls = this.closest('.test-controls');
-        controls.querySelectorAll('.test-input').forEach(input => {
-            const param = input.getAttribute('data-param');
-            const inputEndpoint = input.getAttribute('data-endpoint');
-            if (inputEndpoint === endpoint) {
-                inputs[param] = input.value;
-            }
-        });
-        
-        // Validate required inputs
-        const hasApiKey = !!(inputs.apiKey && inputs.apiKey.trim());
-        const hasClientId = !!(inputs.clientId && inputs.clientId.trim());
-
-        if (!hasApiKey && !(method !== 'GET' && hasClientId)) {
-            alert('Provide either API Key or clientId in body for non-GET requests');
-            return;
-        }
-
-        const hasBodyOnlyGetInputs = method === 'GET' && Object.keys(inputs).some((param) => {
-            if (param === 'apiKey') return false;
-            const value = inputs[param];
-            return !!value && !urlTemplate.includes(`{${param}}`);
-        });
-
-        if (hasBodyOnlyGetInputs) {
-            alert('This GET endpoint expects body fields. Browser fetch cannot send GET bodies. Use the cURL example or change this endpoint to POST.');
-            return;
-        }
-        
-        // Build URL with parameters using API_URL from config
-        let url = API_URL + urlTemplate;
-        for (const param in inputs) {
-            if (param !== 'apiKey') {
-                url = url.replace(`{${param}}`, inputs[param]);
-            }
-        }
-        
-        // Set button to loading state
-        const originalText = this.textContent;
-        this.textContent = 'Testing...';
-        this.disabled = true;
-        
-        try {
-            const options = {
-                method: method,
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            };
-
-            if (hasApiKey) {
-                options.headers.Authorization = `Bearer ${inputs.apiKey}`;
-            }
-            
-            // Build request body for POST/PUT/DELETE methods
-            if (method !== 'GET') {
-                const body = {};
-                for (const param in inputs) {
-                    if (param !== 'apiKey' && inputs[param] !== '') {
-                        body[param] = inputs[param];
-                    }
-                }
-                options.body = JSON.stringify(body);
-            }
-            
-            const response = await fetch(url, options);
-            const data = await response.json();
-            
-            // Display response
-            const responseDiv = document.getElementById(`${endpoint}-response`);
-            const responseCode = document.getElementById(`${endpoint}-response-code`);
-            
-            if (responseDiv && responseCode) {
-                responseDiv.style.display = 'block';
-                responseCode.textContent = JSON.stringify(data, null, 2);
-                
-                // Highlight the JSON response
-                if (window.hljs) {
-                    hljs.highlightElement(responseCode);
-                }
-                
-                // Scroll to response
-                setTimeout(() => {
-                    responseDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                }, 100);
-            }
-        } catch (error) {
-            alert('Error: ' + error.message);
-            const responseDiv = document.getElementById(`${endpoint}-response`);
-            const responseCode = document.getElementById(`${endpoint}-response-code`);
-            
-            if (responseDiv && responseCode) {
-                responseDiv.style.display = 'block';
-                responseCode.textContent = 'Error: ' + error.message;
-            }
-        } finally {
-            // Reset button
-            this.textContent = originalText;
-            this.disabled = false;
-        }
-    });
-});
-
-// Mobile sidebar toggle
-(function () {
-    var toggleBtn = document.getElementById('mobileSidebarToggle');
-    var sidebar = document.querySelector('.sidebar');
-    if (!toggleBtn || !sidebar) return;
-    toggleBtn.addEventListener('click', function () {
-        var isOpen = sidebar.classList.toggle('mobile-open');
-        toggleBtn.classList.toggle('open', isOpen);
-    });
-    sidebar.addEventListener('click', function (e) {
-        if (e.target.closest('a')) {
-            sidebar.classList.remove('mobile-open');
-            toggleBtn.classList.remove('open');
-        }
-    });
-}());
-
+  renderSidebar();
+  renderMain();
+  applyPreferredLang();
+  openFromHash();
+  scrollSpy();
+})();

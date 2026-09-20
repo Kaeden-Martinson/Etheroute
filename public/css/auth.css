@@ -4,163 +4,43 @@
     box-sizing: border-box;
 }
 
+/**
+ * A column, not a centred row.
+ *
+ * This was `display: flex; align-items: center; justify-content: center` back
+ * when the card was the only thing on the page. navbar.js now injects a header
+ * as its first sibling, which made the header a flex *item*: it shrank to the
+ * width of its own contents and was centred with the card, so the bar stopped
+ * short of both edges. As a column it spans the page and the card centres in
+ * what is left via `margin: auto`.
+ */
 body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', sans-serif;
-    background: #f8f8f8;
-    color: #1a1a1a;
+    font-family: var(--font-sans);
+    background: var(--surface-sunken);
+    color: var(--ink);
     line-height: 1.6;
     min-height: 100vh;
     display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 20px;
-}
-
-.header {
-    background: #ffffff;
-    border-bottom: 1px solid #e5e5e5;
-    padding: 16px 24px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    position: absolute;
-    top: 0;
-    width: 100%;
-    z-index: 100;
-}
-
-.header-left {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    cursor: pointer;
-    transition: opacity 0.2s;
-}
-
-.logo-mini {
-    width: 32px;
-    height: 32px;
-    background: #1a1a1a;
-    border-radius: 6px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.header-left:hover {
-    opacity: 0.8;
-}
-
-.brand {
-    font-size: 16px;
-    font-weight: 600;
-    color: #1a1a1a;
-}
-
-.brand-name {
-    text-decoration: none;
-}
-
-.nav-link {
-    text-decoration: none;
-    color: #666666;
-    font-size: 13px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    position: relative;
-    padding-bottom: 4px;
-    transition: color 0.2s;
-    cursor: pointer;
-}
-
-.nav-link::after {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    width: 0;
-    height: 2px;
-    background: #1a1a1a;
-    transition: width 0.3s ease;
-}
-
-.nav-link:hover {
-    color: #1a1a1a;
-}
-
-.nav-link:hover::after {
-    width: 100%;
-}
-
-.auth-buttons {
-    display: flex;
-    gap: 12px;
-    align-items: center;
-}
-
-.nav-link.login-btn {
-    padding: 8px 16px;
-    background: #ffffff;
-    border: 1px solid #e5e5e5;
-    border-radius: 4px;
-    text-decoration: none;
-    color: #1a1a1a;
-    font-size: 12px;
-    font-weight: 600;
-    transition: all 0.2s;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    display: inline-block;
-}
-
-.nav-link.login-btn:hover {
-    background: #f5f5f5;
-    border-color: #1a1a1a;
-}
-
-.nav-link.signup-btn {
-    padding: 8px 16px;
-    background: #1a1a1a;
-    border: 1px solid #1a1a1a;
-    border-radius: 4px;
-    text-decoration: none;
-    color: #ffffff;
-    font-size: 12px;
-    font-weight: 600;
-    transition: all 0.2s;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    display: inline-block;
-}
-
-.nav-link.signup-btn:hover {
-    background: #333333;
-    border-color: #333333;
-}
-
-.nav-links {
-    display: flex;
-    gap: 24px;
-    align-items: center;
+    flex-direction: column;
 }
 
 .auth-container {
-    background: #ffffff;
-    border: 1px solid #e5e5e5;
+    background: var(--surface);
+    border: 1px solid var(--line);
     border-radius: 8px;
     width: 100%;
     max-width: 400px;
     padding: 40px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-    margin-top: 60px;
+    /* Centres in the space the header leaves, horizontally and vertically. */
+    margin: auto;
 }
 
 .tabs {
     display: flex;
     gap: 16px;
     margin-bottom: 32px;
-    border-bottom: 1px solid #e5e5e5;
+    border-bottom: 1px solid var(--line);
     padding-bottom: 16px;
 }
 
@@ -170,7 +50,7 @@ body {
     background: none;
     font-size: 14px;
     font-weight: 600;
-    color: #999999;
+    color: var(--ink-3);
     cursor: pointer;
     transition: all 0.2s;
     text-transform: uppercase;
@@ -180,8 +60,8 @@ body {
 }
 
 .tab.active {
-    color: #1a1a1a;
-    border-bottom-color: #1a1a1a;
+    color: var(--ink);
+    border-bottom-color: var(--ink);
 }
 
 .form-group {
@@ -193,7 +73,7 @@ body {
     margin-bottom: 8px;
     font-size: 12px;
     font-weight: 600;
-    color: #1a1a1a;
+    color: var(--ink);
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
@@ -201,22 +81,22 @@ body {
 .form-group input {
     width: 100%;
     padding: 10px 12px;
-    border: 1px solid #e5e5e5;
+    border: 1px solid var(--line);
     border-radius: 4px;
     font-size: 13px;
     font-family: inherit;
-    background: #f8f8f8;
+    background: var(--surface-sunken);
     transition: all 0.2s;
 }
 
 .form-group input:focus {
     outline: none;
-    background: #ffffff;
-    border-color: #1a1a1a;
+    background: var(--surface);
+    border-color: var(--ink);
 }
 
 .form-group input::placeholder {
-    color: #999999;
+    color: var(--ink-3);
 }
 
 .button-group {
@@ -237,12 +117,22 @@ body {
 }
 
 .btn-primary {
-    background: #1a1a1a;
-    color: #ffffff;
+    background: var(--ink);
+    color: var(--surface);
 }
 
 .btn-primary:hover {
-    background: #333333;
+    background: var(--ink-hover);
+}
+
+.btn-secondary {
+    background: var(--surface-sunken);
+    color: var(--ink);
+    border: 1px solid var(--line);
+}
+
+.btn-secondary:hover {
+    background: var(--line);
 }
 
 .btn:hover {
@@ -250,8 +140,8 @@ body {
 }
 
 .btn-primary:disabled {
-    background: #e5e5e5;
-    color: #999999;
+    background: var(--line);
+    color: var(--ink-3);
     cursor: not-allowed;
 }
 
@@ -259,7 +149,7 @@ body {
     display: flex;
     align-items: center;
     margin: 24px 0;
-    color: #999999;
+    color: var(--ink-3);
     font-size: 12px;
 }
 
@@ -268,7 +158,7 @@ body {
     content: '';
     flex: 1;
     height: 1px;
-    background: #e5e5e5;
+    background: var(--line);
 }
 
 .divider span {
@@ -283,10 +173,10 @@ body {
 
 .social-btn {
     padding: 10px;
-    border: 1px solid #e5e5e5;
+    border: 1px solid var(--line);
     border-radius: 4px;
-    background: #f8f8f8;
-    color: #1a1a1a;
+    background: var(--surface-sunken);
+    color: var(--ink);
     font-size: 12px;
     font-weight: 600;
     cursor: pointer;
@@ -300,19 +190,19 @@ body {
 }
 
 .social-btn:hover {
-    background: #f0f0f0;
-    border-color: #d0d0d0;
+    background: var(--line);
+    border-color: var(--line-strong);
 }
 
 .footer-text {
     text-align: center;
     margin-top: 24px;
     font-size: 12px;
-    color: #999999;
+    color: var(--ink-3);
 }
 
 .footer-text a {
-    color: #1a1a1a;
+    color: var(--ink);
     text-decoration: none;
     font-weight: 600;
     transition: color 0.2s;
@@ -331,15 +221,15 @@ body {
 }
 
 .alert-error {
-    background: #fef5f5;
-    color: #721c24;
-    border-color: #f5c6cb;
+    background: var(--danger-bg);
+    color: var(--danger);
+    border-color: var(--danger-bg);
 }
 
 .alert-success {
-    background: #f0fdf4;
-    color: #155724;
-    border-color: #c3e6cb;
+    background: var(--ok-bg);
+    color: var(--ok);
+    border-color: var(--ok-bg);
 }
 
 .form-content {
@@ -360,11 +250,11 @@ body {
 
 .remember-forgot input[type="checkbox"] {
     cursor: pointer;
-    accent-color: #1a1a1a;
+    accent-color: var(--ink);
 }
 
 .remember-forgot a {
-    color: #1a1a1a;
+    color: var(--ink);
     text-decoration: none;
     font-weight: 600;
     transition: color 0.2s;
@@ -380,7 +270,7 @@ body {
 }
 
 .back-home a {
-    color: #1a1a1a;
+    color: var(--ink);
     text-decoration: none;
     font-size: 12px;
     font-weight: 600;
@@ -406,8 +296,8 @@ body {
 }
 
 .toast {
-    background: #ffffff;
-    color: #1a1a1a;
+    background: var(--surface);
+    color: var(--ink);
     padding: 16px 20px;
     border-radius: 8px;
     min-width: 300px;
@@ -420,26 +310,26 @@ body {
     display: flex;
     align-items: center;
     gap: 12px;
-    border-left: 4px solid #1a1a1a;
+    border-left: 4px solid var(--ink);
     line-height: 1.5;
 }
 
 .toast.success {
-    background: #f0fdf4;
-    color: #166534;
-    border-left-color: #27ae60;
+    background: var(--ok-bg);
+    color: var(--ok);
+    border-left-color: var(--ok);
 }
 
 .toast.error {
-    background: #fef5f5;
-    color: #a92d2d;
-    border-left-color: #e74c3c;
+    background: var(--danger-bg);
+    color: var(--danger);
+    border-left-color: var(--danger);
 }
 
 .toast.info {
-    background: #f0f9ff;
-    color: #0c5a99;
-    border-left-color: #3498db;
+    background: var(--info-bg);
+    color: var(--info);
+    border-left-color: var(--info);
 }
 
 @keyframes slideInRight {
@@ -468,21 +358,50 @@ body {
     animation: slideOutRight 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
 
+/* The side gutter belongs to the card, not to <body>: body padding would inset
+   the full-bleed header along with it. */
 @media (max-width: 768px) {
     .auth-container {
         padding: 32px 24px;
-        margin-top: 80px;
+        margin: 24px auto;
+        width: calc(100% - 32px);
     }
-    body { padding: 16px; padding-top: 24px; }
 }
 
 @media (max-width: 480px) {
     .auth-container {
         padding: 28px 20px;
-        margin-top: 72px;
+        margin: 16px auto;
+        width: calc(100% - 24px);
     }
-    body { padding: 12px; padding-top: 16px; }
     .tabs { gap: 12px; }
     .toast { min-width: unset; max-width: calc(100vw - 32px); }
     .toast-container { bottom: 16px; right: 16px; left: 16px; }
+}
+
+/* Recovery codes shown once after sign-up */
+.recovery-codes {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+.recovery-codes li {
+    font-family: 'SFMono-Regular', Consolas, monospace;
+    font-size: 14px;
+    letter-spacing: 0.5px;
+    background: var(--surface-sunken);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 8px 10px;
+    text-align: center;
+    color: var(--ink);
+    user-select: all;
+}
+
+@media (max-width: 480px) {
+    .recovery-codes { grid-template-columns: 1fr; }
 }

@@ -1,244 +1,331 @@
+/**
+ * FAQ.
+ *
+ * The page opens with the shared .hero from tokens.css — the same banner the
+ * status page uses, gradient ground and slow diagonal sheen — and everything
+ * below it is left-aligned and enters from the left, matching the landing
+ * page's settlement section.
+ *
+ * Two things here are corrections rather than restyling:
+ *
+ *  - Each question is a <button> with real expanded state. The markup this
+ *    replaces used <div class="faq-question" data-on-click="toggleFaq">: a div
+ *    is not focusable, carries no role and exposes no aria-expanded, so the
+ *    whole FAQ was unreachable by keyboard and a screen reader announced
+ *    seventeen unlabelled headings with no sign that anything opened.
+ *
+ *  - The panel animates grid-template-rows 0fr -> 1fr, which resolves to the
+ *    content's real height. The old rule animated max-height 0 -> 500px, so a
+ *    short answer reached its height early and the rest of the motion ran
+ *    against nothing (it stopped dead rather than easing out), and any answer
+ *    taller than 500px was silently clipped.
+ */
+
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
 }
 
-body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', sans-serif;
-    background: #f8f8f8;
-    color: #1a1a1a;
-    line-height: 1.6;
-}
-
-.header {
-    background: #ffffff;
-    border-bottom: 1px solid #e5e5e5;
-    padding: 16px 24px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    position: sticky;
-    top: 0;
-    z-index: 100;
-}
-
-.header-left {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    cursor: pointer;
-    transition: opacity 0.2s;
-}
-
-.logo-mini {
-    width: 32px;
-    height: 32px;
-    background: #1a1a1a;
-    border-radius: 6px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.header-left:hover {
-    opacity: 0.8;
-}
-
-.brand {
-    font-size: 16px;
-    font-weight: 600;
-    color: #1a1a1a;
-}
-
-.nav-links {
-    display: flex;
-    gap: 24px;
-    align-items: center;
-}
-
-.nav-link {
-    text-decoration: none;
-    color: #666666;
-    font-size: 13px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    position: relative;
-    padding-bottom: 4px;
-    transition: color 0.2s;
-}
-
-.nav-link::after {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    width: 0;
-    height: 2px;
-    background: #1a1a1a;
-    transition: width 0.3s ease;
-}
-
-.nav-link:hover {
-    color: #1a1a1a;
-}
-
-.nav-link:hover::after {
-    width: 100%;
-}
-
-.nav-link.active {
-    color: #1a1a1a;
-}
-
-.nav-link.active::after {
-    width: 100%;
-}
-
 .container {
     max-width: 900px;
     margin: 0 auto;
-    padding: 60px 24px;
+    padding: 56px 24px 88px;
 }
 
-h1 {
-    font-size: 36px;
-    font-weight: 700;
-    margin-bottom: 12px;
-    color: #1a1a1a;
+@media (prefers-reduced-motion: no-preference) {
+    .container [data-reveal] { transform: translateX(-26px); }
+    .container [data-reveal].is-revealed { transform: none; }
 }
 
-.subtitle {
-    color: #999999;
-    font-size: 16px;
-    margin-bottom: 48px;
+/* ── Filter ───────────────────────────────────────────────────────────────
+   Seventeen questions in four groups: without this you scroll past all of them
+   to reach one. Sticky, so the categories stay reachable deep in the list.
+   The background is opaque rather than inherited — a translucent sticky bar
+   lets the questions show through as they pass under it. */
+.faq-filter {
+    position: sticky;
+    /* The site header is sticky too, 66px tall on every width (navbar.js);
+       pinned at 0 the bar slid under it and the search box vanished. The
+       same 65px the docs and API Contents bars use - one pixel of overlap
+       rather than a hairline of page showing between the two. */
+    top: 65px;
+    z-index: 5;
+    padding: 18px 0 14px;
+    margin-bottom: 4px;
+    /* The page ground, not --surface: the bar has to be opaque so questions do
+       not show through as they scroll under it, and it has to be the SAME
+       opaque colour as the page or it reads as a panel sitting on top. */
+    background: var(--surface-sunken);
+    border-bottom: 1px solid var(--line);
 }
 
-.faq-section {
-    margin-bottom: 32px;
+.faq-search {
+    position: relative;
+    max-width: 420px;
 }
 
-.faq-category {
-    font-size: 18px;
-    font-weight: 700;
-    color: #1a1a1a;
-    margin-top: 40px;
-    margin-bottom: 20px;
-    padding-bottom: 12px;
-    border-bottom: 2px solid #e5e5e5;
+.faq-search svg {
+    position: absolute;
+    left: 13px;
+    top: 50%;
+    margin-top: -8px;
+    width: 16px;
+    height: 16px;
+    color: var(--ink-3);
+    pointer-events: none;
 }
 
-.faq-item {
-    margin-bottom: 16px;
-    background: #ffffff;
-    border: 1px solid #e5e5e5;
-    border-radius: 6px;
-    overflow: hidden;
+.faq-search input {
+    width: 100%;
+    box-sizing: border-box;
+    font: inherit;
+    font-size: var(--text-base);
+    padding: 11px 14px 11px 38px;
+    border-radius: var(--radius);
+    color: var(--ink);
+    border: 1px solid var(--line);
+    background: var(--surface);
+    transition: border-color var(--dur) var(--ease-out);
 }
 
-.faq-question {
-    padding: 16px;
-    cursor: pointer;
+.faq-search input:focus {
+    outline: none;
+    border-color: var(--ink);
+    box-shadow: var(--focus-ring);
+}
+
+.faq-search input::placeholder { color: var(--ink-3); }
+
+.faq-cats {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    transition: background 0.2s;
-    user-select: none;
+    flex-wrap: wrap;
+    gap: 7px;
+    margin-top: 13px;
 }
 
-.faq-question:hover {
-    background: #f8f8f8;
-}
-
-.faq-question h3 {
-    font-size: 14px;
+.faq-cats button {
+    font: inherit;
+    font-size: 11.5px;
     font-weight: 600;
-    color: #1a1a1a;
-    margin: 0;
-    flex: 1;
+    letter-spacing: 0.02em;
+    padding: 6px 12px;
+    border-radius: var(--radius-pill);
+    cursor: pointer;
+    color: var(--ink-2);
+    border: 1px solid var(--line);
+    background: var(--surface);
+    transition: border-color var(--dur) var(--ease-out), color var(--dur) var(--ease-out);
 }
 
-.faq-toggle {
-    width: 24px;
-    height: 24px;
+.faq-cats button:hover { border-color: var(--line-strong); color: var(--ink); }
+.faq-cats button:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.faq-cats button[aria-pressed="true"] { border-color: var(--ink); color: var(--ink); }
+
+.faq-count {
+    margin: 12px 0 0;
+    font-size: var(--text-sm);
+    color: var(--ink-3);
+    font-variant-numeric: tabular-nums;
+}
+
+/* ── Groups ───────────────────────────────────────────────────────────────
+   A hairline label, not a boxed category card. */
+.qa-group { margin-top: 42px; }
+.qa-group[hidden] { display: none; }
+
+.qa-group__title {
+    margin: 0 0 4px;
+    font-size: var(--text-xs);
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+}
+
+/* ── The accordion ──────────────────────────────────────────────────────── */
+.qa { border-top: 1px solid var(--line); }
+.qa[hidden] { display: none; }
+
+.qa__q {
+    width: 100%;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 18px;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    color: var(--ink);
+    background: none;
+    border: 0;
+    padding: 19px 2px 19px 0;
+}
+
+.qa__q:focus-visible {
+    outline: 2px solid var(--ink);
+    outline-offset: 3px;
+    border-radius: var(--radius-sm);
+}
+
+.qa__q h3 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    line-height: 1.45;
+}
+
+.qa__chev {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    color: var(--ink-3);
+    margin-top: 2px;
+    transition: transform var(--dur) var(--ease-out), color var(--dur) var(--ease-out);
+}
+
+.qa__q:hover .qa__chev { color: var(--ink); }
+.qa__q[aria-expanded="true"] .qa__chev { transform: rotate(180deg); color: var(--ink); }
+
+/* 0fr -> 1fr resolves to the content's own height, so every answer eases
+   correctly and none can be cut off.
+
+   The resting state is OPEN, and only a page that has scripting collapses it.
+   Without faq.js the buttons cannot toggle anything, so a closed-by-default
+   accordion would leave a visitor with seventeen headings and no answers; this
+   way the page is simply long instead. The .js class is set by theme.js from
+   inside <head>, so the collapse lands on the first paint rather than after a
+   flash of everything open.
+
+   :not([aria-expanded="true"]) rather than [aria-expanded="false"]: the
+   attribute is stamped on by faq.js, so before it runs there is nothing to
+   match, and an unscripted page never claims a collapsed state it does not
+   have. */
+.qa__a {
+    display: grid;
+    grid-template-rows: 1fr;
+    transition: grid-template-rows 0.34s var(--ease-out);
+}
+
+.js .qa__q:not([aria-expanded="true"]) + .qa__a { grid-template-rows: 0fr; }
+
+.qa__inner { overflow: hidden; }
+
+.qa__a p {
+    margin: 0 0 15px;
+    padding-right: 40px;
+    color: var(--ink-2);
+    font-size: var(--text-base);
+    line-height: 1.7;
+}
+
+.qa__a strong { color: var(--ink); }
+
+.qa__a ul {
+    margin: 0 0 15px;
+    padding-left: 20px;
+    color: var(--ink-2);
+    font-size: var(--text-base);
+    line-height: 1.7;
+}
+
+.qa__a li { margin-bottom: 6px; }
+
+.qa__note {
+    border-left: 2px solid var(--ink);
+    padding: 2px 0 2px 15px;
+    margin: 0 0 17px;
+}
+
+.qa__note p { margin: 0; color: var(--ink); font-size: 13.5px; }
+
+.faq-empty {
+    padding: 46px 0;
+    margin: 0;
+    color: var(--ink-3);
+    font-size: var(--text-base);
+    border-top: 1px solid var(--line);
+}
+
+.faq-empty[hidden] { display: none; }
+.faq-empty b { color: var(--ink); }
+
+/* ── Still have questions ─────────────────────────────────────────────────
+   The Help Center's block, same markup and same rules. */
+.contact {
+    margin-top: 72px;
+    padding-top: 36px;
+    border-top: 1px solid var(--line);
+}
+
+.contact h2 {
+    margin: 0 0 8px;
+    font-size: var(--text-xl);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+}
+
+.contact > p {
+    margin: 0;
+    color: var(--ink-2);
+    font-size: 14.5px;
+    line-height: 1.65;
+    max-width: 58ch;
+}
+
+.channels-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+    margin: 22px 0 0;
+}
+
+.channel {
     display: flex;
     align-items: center;
-    justify-content: center;
-    font-size: 18px;
-    transition: transform 0.3s;
-    color: #666666;
+    gap: 12px;
+    padding: 16px 18px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    color: var(--ink);
+    font-weight: 600;
+    font-size: var(--text-base);
+    text-decoration: none;
+    transition: border-color var(--dur-fast) var(--ease-out),
+                transform var(--dur-fast) var(--ease-out),
+                box-shadow var(--dur-fast) var(--ease-out);
 }
 
-.faq-item.active .faq-toggle {
-    transform: rotate(180deg);
+.channel:hover {
+    border-color: var(--ink);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-sm);
 }
 
-.faq-answer {
-    max-height: 0;
-    overflow: hidden;
-    transition: max-height 0.3s ease;
-    border-top: 1px solid #e5e5e5;
+.channel svg {
+    width: 22px;
+    height: 22px;
+    flex-shrink: 0;
+    color: var(--ink-2);
 }
 
-.faq-item.active .faq-answer {
-    max-height: 500px;
+.channel:hover svg { color: var(--ink); }
+
+@media (max-width: 560px) {
+    .container { padding: 40px 16px 64px; }
+    .qa__a p { padding-right: 0; }
+    .qa__q h3 { font-size: 14px; }
 }
 
-.faq-answer-content {
-    padding: 16px;
-    color: #333333;
-    font-size: 14px;
-    line-height: 1.8;
-}
-
-.faq-answer-content p {
-    margin-bottom: 12px;
-}
-
-.faq-answer-content ul {
-    margin-left: 20px;
-    margin-bottom: 12px;
-}
-
-.faq-answer-content li {
-    margin-bottom: 8px;
-}
-
-.highlight {
-    background: #f8f8f8;
-    padding: 12px;
-    border-left: 3px solid #1a1a1a;
-    border-radius: 4px;
-    margin: 12px 0;
-    font-size: 13px;
-}
-
-.contact-section {
-    background: #ffffff;
-    border: 1px solid #e5e5e5;
-    border-radius: 6px;
-    padding: 32px;
-    margin-top: 60px;
-    text-align: center;
-}
-
-.contact-section h2 {
-    font-size: 20px;
-    font-weight: 700;
-    margin-bottom: 12px;
-}
-
-.contact-section p {
-    color: #999999;
-    margin-bottom: 16px;
-}
-
+/* ── Footer ─────────────────────────────────────────────────────────────── */
 .footer {
-    background: #1a1a1a;
-    color: #ffffff;
+    background: var(--surface-sunken);
+    color: var(--ink);
     padding: 40px 24px;
-    border-top: 1px solid #333333;
+    border-top: 1px solid var(--line);
 }
 
 .footer-content {
@@ -254,93 +341,37 @@ h1 {
 }
 
 .footer-section h4 {
-    font-size: 14px;
+    font-size: var(--text-base);
     font-weight: 600;
     margin-bottom: 16px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    color: var(--ink);
 }
 
 .footer-link {
-    color: #999999;
+    color: var(--ink-2);
     text-decoration: none;
     font-size: 13px;
     margin-bottom: 8px;
     display: block;
-    transition: color 0.2s;
+    transition: color var(--dur) var(--ease-out);
 }
 
-.footer-link:hover {
-    color: #ffffff;
-}
+.footer-link:hover { color: var(--ink); }
 
 .footer-bottom {
-    border-top: 1px solid #333333;
+    border-top: 1px solid var(--line);
     padding-top: 24px;
     text-align: center;
-    color: #999999;
+    color: var(--ink-3);
     font-size: 13px;
 }
 
-.auth-buttons {
-    display: flex;
-    gap: 12px;
-    align-items: center;
-}
-
-.nav-link.login-btn {
-    padding: 8px 16px;
-    background: #ffffff;
-    border: 1px solid #e5e5e5;
-    border-radius: 4px;
-    text-decoration: none;
-    color: #1a1a1a;
-    font-size: 12px;
-    font-weight: 600;
-    transition: all 0.2s;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    display: inline-block;
-}
-
-.nav-link.login-btn:hover {
-    background: #f5f5f5;
-    border-color: #1a1a1a;
-}
-
-.nav-link.signup-btn {
-    padding: 8px 16px;
-    background: #1a1a1a;
-    border: 1px solid #1a1a1a;
-    border-radius: 4px;
-    text-decoration: none;
-    color: #ffffff;
-    font-size: 12px;
-    font-weight: 600;
-    transition: all 0.2s;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    display: inline-block;
-}
-
-.nav-link.signup-btn:hover {
-    background: #333333;
-    border-color: #333333;
-}
-
 @media (max-width: 768px) {
-    .container { padding: 40px 20px; }
-    h1 { font-size: 24px; }
-    .subtitle { font-size: 14px; margin-bottom: 32px; }
-    .faq-category { margin-top: 28px; font-size: 16px; }
-    .faq-question h3 { font-size: 13px; }
-    .contact-section { padding: 24px 20px; }
     .footer-grid { grid-template-columns: repeat(2, 1fr); gap: 24px; }
 }
 
 @media (max-width: 480px) {
-    h1 { font-size: 20px; }
     .footer-grid { grid-template-columns: 1fr; }
-    .faq-question { padding: 12px 14px; }
-    .faq-answer-content { padding: 12px 14px; }
 }

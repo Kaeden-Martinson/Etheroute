@@ -2,12 +2,15 @@
   "name": "etheroute-api",
   "version": "1.0.0",
   "description": "Cryptocurrency SaaS platform for accepting invoices and processing payouts",
-  "main": "dist/app.js",
+  "main": "src/app.js",
   "scripts": {
+    "start": "node src/app.js",
+    "dev": "node --watch src/app.js",
     "build": "node scripts/build.js",
-    "dev": "node src/app.js",
-    "start": "node dist/app.js",
-    "test": "node --test 'tests/**/*.js'"
+    "build:vendor": "node scripts/build-vendor.js",
+    "migrate": "node scripts/migrate.js",
+    "migrate:dry": "node scripts/migrate.js --dry-run",
+    "test": "node --test tests/*.test.js"
   },
   "keywords": [
     "crypto",
@@ -28,14 +31,27 @@
     "bip32": "^5.0.1",
     "bip39": "^3.1.0",
     "bitcoinjs-lib": "^7.0.1",
+    "chart.js": "^4.4.0",
+    "cors": "^2.8.6",
     "dotenv": "^16.3.1",
     "ed25519-hd-key": "^2.0.0",
     "ethers": "^6.16.0",
     "express": "^4.18.2",
+    "express-rate-limit": "^8.7.0",
+    "helmet": "^8.3.0",
+    "highlight.js": "^11.9.0",
     "http-proxy-agent": "^7.0.0",
     "https-proxy-agent": "^7.0.0",
+    "jsonwebtoken": "^9.0.3",
+    "qrcode": "^1.5.4",
     "tiny-secp256k1": "^2.2.4",
     "tweetnacl": "^1.0.3",
     "uuid": "^9.0.1"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2"
   }
 }

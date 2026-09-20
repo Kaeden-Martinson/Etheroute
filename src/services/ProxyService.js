@@ -5,10 +5,31 @@ const http = require('http');
 const { HttpProxyAgent } = require('http-proxy-agent');
 const { HttpsProxyAgent } = require('https-proxy-agent');
 
+// Node's built-in fetch (undici) ignores the `agent` option entirely, so the
+// proxies configured here were never used - every explorer and RPC call left
+// from the server's own address, and shared that address's rate limit.
+// node-fetch honours agents, so proxied requests go through it.
+const nodeFetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
+
+// How long a proxy is skipped after it fails to connect or refuses our
+// credentials. Long enough not to hammer a dead one; short enough to pick it
+// back up when it recovers.
+const PROXY_COOLDOWN_MS = 10 * 60 * 1000;
+
+// Per-attempt timeout through a proxy. A proxy that is slow is a proxy that
+// is not helping.
+const PROXY_TIMEOUT_MS = 15_000;
+
+// Set PROXY_MODE=off to bypass the proxy list entirely without deleting it.
+const PROXIES_ENABLED = (process.env.PROXY_MODE || 'on').toLowerCase() !== 'off';
+
 class ProxyService {
   constructor() {
     this.proxies = [];
     this.currentIndex = 0;
+    // proxy "ip:port" -> timestamp it may be tried again
+    this.cooldowns = new Map();
+    this.agentCache = new Map();
     this.loadProxies();
   }
 
@@ -45,13 +66,42 @@ class ProxyService {
    * @returns {Object|null} Proxy object or null if no proxies configured
    */
   getNextProxy() {
-    if (this.proxies.length === 0) {
+    if (!PROXIES_ENABLED || this.proxies.length === 0) {
       return null;
     }
 
-    const proxy = this.proxies[this.currentIndex];
-    this.currentIndex = (this.currentIndex + 1) % this.proxies.length;
-    return proxy;
+    // Skip proxies that recently failed. If every one is cooling down, go
+    // direct rather than wait.
+    const now = Date.now();
+    for (let i = 0; i < this.proxies.length; i++) {
+      const proxy = this.proxies[this.currentIndex];
+      this.currentIndex = (this.currentIndex + 1) % this.proxies.length;
+
+      const until = this.cooldowns.get(this.proxyKey(proxy)) || 0;
+      if (until <= now) return proxy;
+    }
+    return null;
+  }
+
+  proxyKey(proxy) {
+    return `${proxy.ip}:${proxy.port}`;
+  }
+
+  markBad(proxy, reason) {
+    this.cooldowns.set(this.proxyKey(proxy), Date.now() + PROXY_COOLDOWN_MS);
+    console.warn(`[ProxyService] Proxy ${this.proxyKey(proxy)} sidelined for ${PROXY_COOLDOWN_MS / 60000} min: ${reason}`);
+  }
+
+  agentsFor(proxy) {
+    const key = this.proxyKey(proxy);
+    if (!this.agentCache.has(key)) {
+      const url = this.buildProxyUrl(proxy);
+      this.agentCache.set(key, {
+        httpAgent: new HttpProxyAgent(url),
+        httpsAgent: new HttpsProxyAgent(url),
+      });
+    }
+    return this.agentCache.get(key);
   }
 
   /**
@@ -96,19 +146,34 @@ class ProxyService {
    * @returns {Promise<Response>} Response object
    */
   async fetch(url, options = {}) {
-    const { httpAgent, httpsAgent } = this.getAgents();
-    
-    // Add proxy agents to fetch options if proxies are configured
-    if (httpAgent || httpsAgent) {
-      options = {
-        ...options,
-        agent: (parsedUrl) => {
-          return parsedUrl.protocol === 'https:' ? httpsAgent : httpAgent;
-        },
-      };
+    const proxy = this.getNextProxy();
+    if (!proxy) {
+      return fetch(url, options);
     }
-    
-    return fetch(url, options);
+
+    const { httpAgent, httpsAgent } = this.agentsFor(proxy);
+    const proxied = {
+      ...options,
+      agent: (parsedUrl) => (parsedUrl.protocol === 'https:' ? httpsAgent : httpAgent),
+      signal: options.signal || AbortSignal.timeout(PROXY_TIMEOUT_MS),
+    };
+
+    try {
+      const response = await nodeFetch(url, proxied);
+
+      // 407 is the proxy refusing us, not the target refusing the request.
+      if (response.status === 407) {
+        this.markBad(proxy, 'proxy authentication failed');
+        return fetch(url, options);
+      }
+
+      return response;
+    } catch (error) {
+      // Could not get through the proxy at all. Sideline it and go direct so
+      // one dead proxy does not fail the balance check or broadcast behind it.
+      this.markBad(proxy, error.message);
+      return fetch(url, options);
+    }
   }
 
   /**
@@ -154,7 +219,7 @@ class ProxyService {
    * @returns {string} Proxy info or 'No proxy'
    */
   getCurrentProxyInfo() {
-    if (this.proxies.length === 0) {
+    if (!PROXIES_ENABLED || this.proxies.length === 0) {
       return 'No proxy configured';
     }
 
@@ -168,10 +233,14 @@ class ProxyService {
    * @returns {Object} Stats object
    */
   getStats() {
+    const now = Date.now();
+    const coolingDown = [...this.cooldowns.values()].filter((until) => until > now).length;
     return {
+      enabled: PROXIES_ENABLED,
       totalProxies: this.proxies.length,
+      coolingDown,
       currentRotationIndex: this.currentIndex,
-      proxiesConfigured: this.proxies.length > 0,
+      proxiesConfigured: PROXIES_ENABLED && this.proxies.length > 0,
     };
   }
 }

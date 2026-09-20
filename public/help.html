@@ -3,363 +3,79 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Answers to common questions about Etheroute, the multi-chain crypto payments platform.">
     <title>Help Center - Etheroute</title>
     <link rel="icon" type="image/svg+xml" href="/svg/favicon.svg">
+    <script src="/js/common/theme.js"></script>
+    <link rel="stylesheet" href="/css/tokens.css">
+    <link rel="stylesheet" href="/css/docs.css">
     <link rel="stylesheet" href="/css/help.css">
 </head>
 <body>
+    <script src="/js/common/actions.js"></script>
     <script src="/js/common/navbar.js"></script>
 
     <div class="mobile-nav-bar">
-        <button class="mobile-sidebar-toggle" id="mobileSidebarToggle">
+        <button class="mobile-sidebar-toggle" id="mobileSidebarToggle" data-on-click="helpToggleSidebar">
             <span>Contents</span>
             <svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
         </button>
     </div>
 
-    <div class="container">
-        <!-- Sidebar -->
-        <aside class="sidebar">
-            <div class="sidebar-title">Topics</div>
-            <ul class="sidebar-nav">
-                <li><a href="#getting-started" class="active" data-section="getting-started">
-                    <span class="sidebar-icon" data-icon="gettingStarted"></span>
-                    Getting Started
-                </a></li>
-                <li><a href="#wallets" data-section="wallets">
-                    <span class="sidebar-icon" data-icon="walletIcon"></span>
-                    Wallets
-                </a></li>
-                <li><a href="#transactions" data-section="transactions">
-                    <span class="sidebar-icon" data-icon="transactionsIcon"></span>
-                    Transactions
-                </a></li>
-                <li><a href="#security" data-section="security">
-                    <span class="sidebar-icon" data-icon="security"></span>
-                    Security
-                </a></li>
-                <li><a href="#api" data-section="api">
-                    <span class="sidebar-icon" data-icon="apiKeys"></span>
-                    API & Developers
-                </a></li>
-                <li><a href="#support" data-section="support">
-                    <span class="sidebar-icon" data-icon="support"></span>
-                    Support
-                </a></li>
-            </ul>
+    <div class="docs-container">
+        <aside class="docs-sidebar" id="helpSidebarWrap">
+            <div class="docs-sidebar-content">
+                <label class="docs-search" for="helpSearch">
+                    <span class="docs-search__icon" data-icon="search" aria-hidden="true"></span>
+                    <input type="search" id="helpSearch" placeholder="Search for help" autocomplete="off" spellcheck="false" aria-label="Search the Help Center" />
+                    <kbd class="docs-search__kbd" aria-hidden="true">/</kbd>
+                </label>
+                <div class="docs-search__meta" id="helpSearchMeta" aria-live="polite"></div>
+                <nav id="helpSidebar" aria-label="Help Center topics"></nav>
+            </div>
         </aside>
 
-        <!-- Main Content -->
-        <main class="main-content">
-            <div class="page-header">
+        <main class="docs-main">
+            <div class="docs-header" data-reveal>
                 <h1>Help Center</h1>
-                <p>Find answers to common questions and get help using Etheroute</p>
+                <p>Find answers to common questions and get help using Etheroute.</p>
             </div>
-
-            <!-- Search -->
-            <div class="search-box">
-                <span class="search-icon" data-icon="search"></span>
-                <input type="text" id="searchInput" placeholder="Search for help...">
-            </div>
-
-            <!-- Getting Started Section -->
-            <section class="section" id="getting-started" data-section="getting-started">
-                <h2 class="section-title">
-                    <span class="section-icon" data-icon="gettingStarted"></span>
-                    Getting Started
-                </h2>
-
-                <div class="faq-item" data-keywords="account create signup registration">
-                    <button class="faq-question">
-                        <span>How do I create an account?</span>
-                        <span class="faq-chevron" data-icon="faqChevron"></span>
-                    </button>
-                    <div class="faq-answer">
-                        <p>Visit the sign-up page, enter your desired username and password, and click "Create Account". No personal information is required. Your account will be ready to use immediately.</p>
-                    </div>
-                </div>
-
-                <div class="faq-item" data-keywords="first steps getting started login dashboard">
-                    <button class="faq-question">
-                        <span>What can I do after creating an account?</span>
-                        <span class="faq-chevron" data-icon="faqChevron"></span>
-                    </button>
-                    <div class="faq-answer">
-                        <p>Once you've created an account and logged in, you can create wallets across multiple blockchain networks, view your portfolio, manage API keys, and initiate cryptocurrency withdrawals.</p>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Wallets Section -->
-            <section class="section" id="wallets" data-section="wallets">
-                <h2 class="section-title">
-                    <span class="section-icon" data-icon="walletIcon"></span>
-                    Wallets
-                </h2>
-
-                <div class="faq-item" data-keywords="create wallet add blockchain network">
-                    <button class="faq-question">
-                        <span>How do I create a wallet?</span>
-                        <span class="faq-chevron" data-icon="faqChevron"></span>
-                    </button>
-                    <div class="faq-answer">
-                        <p>Log in to your account, navigate to the Wallets section, and click "Add Wallet". Select your desired blockchain network (Ethereum, Bitcoin, Solana, or Litecoin), and a new wallet address will be generated for you automatically.</p>
-                    </div>
-                </div>
-
-                <div class="faq-item" data-keywords="chains supported blockchain ethereum bitcoin solana litecoin">
-                    <button class="faq-question">
-                        <span>What blockchain networks are supported?</span>
-                        <span class="faq-chevron" data-icon="faqChevron"></span>
-                    </button>
-                    <div class="faq-answer">
-                        <p>We currently support four major blockchain networks: Ethereum (ETH), Bitcoin (BTC), Solana (SOL), and Litecoin (LTC). You can create wallets on any of these networks.</p>
-                    </div>
-                </div>
-
-                <div class="faq-item" data-keywords="multiple wallets manage across chains portfolio">
-                    <button class="faq-question">
-                        <span>Can I manage multiple wallets?</span>
-                        <span class="faq-chevron" data-icon="faqChevron"></span>
-                    </button>
-                    <div class="faq-answer">
-                        <p>Yes, you can create and manage multiple wallets across different blockchains. Each wallet is independently managed with its own balance and transaction history. You can organize them all from your dashboard.</p>
-                    </div>
-                </div>
-
-                <div class="faq-item" data-keywords="delete wallet remove funds">
-                    <button class="faq-question">
-                        <span>How do I delete a wallet?</span>
-                        <span class="faq-chevron" data-icon="faqChevron"></span>
-                    </button>
-                    <div class="faq-answer">
-                        <p>In the Wallets section, find the wallet you want to delete and click the delete button. You'll be asked to confirm the deletion. Once deleted, the wallet cannot be recovered, so make sure to transfer any remaining funds first.</p>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Transactions Section -->
-            <section class="section" id="transactions" data-section="transactions">
-                <h2 class="section-title">
-                    <span class="section-icon" data-icon="transactionsIcon"></span>
-                    Transactions
-                </h2>
-
-                <div class="faq-item" data-keywords="minimum withdrawal amount dollar limit">
-                    <button class="faq-question">
-                        <span>What is the minimum withdrawal amount?</span>
-                        <span class="faq-chevron" data-icon="faqChevron"></span>
-                    </button>
-                    <div class="faq-answer">
-                        <p>The minimum withdrawal amount is $5 USD equivalent per transaction per blockchain network. This applies to each chain independently.</p>
-                    </div>
-                </div>
-
-                <div class="faq-item" data-keywords="how long withdrawal take time confirmation speed">
-                    <button class="faq-question">
-                        <span>How long do withdrawals take?</span>
-                        <span class="faq-chevron" data-icon="faqChevron"></span>
-                    </button>
-                    <div class="faq-answer">
-                        <p>Most withdrawals are confirmed within 2 minutes. However, blockchain confirmation times may vary depending on network congestion and the specific blockchain you're using. You can track your withdrawal status in real-time in the Transactions section.</p>
-                    </div>
-                </div>
-
-                <div class="faq-item" data-keywords="transaction failed retry pending status error">
-                    <button class="faq-question">
-                        <span>What happens if a transaction fails?</span>
-                        <span class="faq-chevron" data-icon="faqChevron"></span>
-                    </button>
-                    <div class="faq-answer">
-                        <p>If a transaction fails, your funds will be returned to your wallet automatically. You can retry the transaction or contact our support team for assistance. Check the Transactions section for detailed status information.</p>
-                    </div>
-                </div>
-
-                <div class="faq-item" data-keywords="view transaction history transactions page records">
-                    <button class="faq-question">
-                        <span>How do I view my transaction history?</span>
-                        <span class="faq-chevron" data-icon="faqChevron"></span>
-                    </button>
-                    <div class="faq-answer">
-                        <p>Visit the Transactions section in your dashboard to see all past and pending transactions. You can view detailed information about each transaction including status, amount, blockchain, and timestamp.</p>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Security Section -->
-            <section class="section" id="security" data-section="security">
-                <h2 class="section-title">
-                    <span class="section-icon" data-icon="security"></span>
-                    Security & Account
-                </h2>
-
-                <div class="faq-item" data-keywords="secure account safety encryption protection">
-                    <button class="faq-question">
-                        <span>Is my account secure?</span>
-                        <span class="faq-chevron" data-icon="faqChevron"></span>
-                    </button>
-                    <div class="faq-answer">
-                        <p>Yes, we use bank-grade encryption and security protocols to protect your account. Your password is hashed using industry-standard algorithms and never stored in plain text. We maintain real-time monitoring and automated validations.</p>
-                    </div>
-                </div>
-
-                <div class="faq-item" data-keywords="delete account remove data privacy">
-                    <button class="faq-question">
-                        <span>Can I delete my account?</span>
-                        <span class="faq-chevron" data-icon="faqChevron"></span>
-                    </button>
-                    <div class="faq-answer">
-                        <p>Yes, you can request account deletion through your account settings. When you delete your account, all associated data will be securely removed from our systems. This action is permanent.</p>
-                    </div>
-                </div>
-
-                <div class="faq-item" data-keywords="two factor authentication 2fa mfa multi-factor">
-                    <button class="faq-question">
-                        <span>Do you support two-factor authentication?</span>
-                        <span class="faq-chevron" data-icon="faqChevron"></span>
-                    </button>
-                    <div class="faq-answer">
-                        <p>Security features are constantly being enhanced. Check your account settings for the latest available security options to protect your account.</p>
-                    </div>
-                </div>
-            </section>
-
-            <!-- API Section -->
-            <section class="section" id="api" data-section="api">
-                <h2 class="section-title">
-                    <span class="section-icon" data-icon="apiKeys"></span>
-                    API & Developers
-                </h2>
-
-                <div class="faq-item" data-keywords="api key generate create credentials">
-                    <button class="faq-question">
-                        <span>How do I get an API key?</span>
-                        <span class="faq-chevron" data-icon="faqChevron"></span>
-                    </button>
-                    <div class="faq-answer">
-                        <p>Log into your account and navigate to the API section in your dashboard. Click "Generate New Key" and your API key will be displayed securely. Store it safely and never share it publicly.</p>
-                    </div>
-                </div>
-
-                <div class="faq-item" data-keywords="api documentation reference endpoints specifications">
-                    <button class="faq-question">
-                        <span>Where is the API documentation?</span>
-                        <span class="faq-chevron" data-icon="faqChevron"></span>
-                    </button>
-                    <div class="faq-answer">
-                        <p>Complete API documentation is available at our <a href="/api-reference" style="color: #1a1a1a; text-decoration: underline;">API Reference</a> page. It includes detailed endpoint descriptions, authentication methods, request/response examples, and error handling guidelines.</p>
-                    </div>
-                </div>
-
-                <div class="faq-item" data-keywords="api rate limiting requests per second throttle">
-                    <button class="faq-question">
-                        <span>Are there rate limits on API calls?</span>
-                        <span class="faq-chevron" data-icon="faqChevron"></span>
-                    </button>
-                    <div class="faq-answer">
-                        <p>Yes, API rate limiting is enforced to ensure service stability for all users. Check the <a href="/api-reference" style="color: #1a1a1a; text-decoration: underline;">API Reference</a> for specific rate limit details and best practices for your use case.</p>
-                    </div>
-                </div>
-
-                <div class="faq-item" data-keywords="api key revoke delete remove deactivate">
-                    <button class="faq-question">
-                        <span>How do I revoke or delete an API key?</span>
-                        <span class="faq-chevron" data-icon="faqChevron"></span>
-                    </button>
-                    <div class="faq-answer">
-                        <p>You can revoke API keys from the API section of your dashboard. Click the delete button next to the key you want to remove. Revoked keys will immediately stop working.</p>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Support Section -->
-            <section class="section" id="support" data-section="support">
-                <h2 class="section-title">
-                    <span class="section-icon" data-icon="support"></span>
-                    Get in Touch
-                </h2>
-
-                <p>Need more help? Our support team is available 24/7 through multiple channels. Choose your preferred way to reach us.</p>
-
-                <div class="contact-channels">
-                    <h3>Support Channels</h3>
-                    <div class="channels-grid">
-                        <a href="https://discord.gg/etheroute" target="_blank" class="channel">
-                            <svg class="channel-icon" viewBox="0 0 24 24" fill="currentColor">
-                                <path d="M20.317 4.369a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.211.375-.445.865-.607 1.25a18.27 18.27 0 0 0-5.487 0c-.162-.385-.395-.875-.607-1.25a.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.056 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.873-1.295 1.226-1.994a.076.076 0 0 0-.042-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.294.075.075 0 0 1 .078-.01c3.928 1.793 8.18 1.793 12.062 0a.075.075 0 0 1 .079.009c.12.098.246.198.373.295a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.076.076 0 0 0-.041.107c.352.699.764 1.365 1.225 1.994a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-4.786-.838-8.95-3.549-12.617a.06.06 0 0 0-.031-.03zM8.02 15.331c-1.183 0-2.157-.965-2.157-2.156 0-1.193.948-2.157 2.157-2.157 1.211 0 2.176.964 2.157 2.157 0 1.19-.946 2.156-2.157 2.156zm7.975 0c-1.183 0-2.157-.965-2.157-2.156 0-1.193.948-2.157 2.157-2.157 1.211 0 2.176.964 2.157 2.157 0 1.19-.946 2.156-2.157 2.156z"/>
-                            </svg>
-                            Discord Community
-                        </a>
-                        <a href="https://t.me/etheroute" target="_blank" class="channel">
-                            <svg class="channel-icon" viewBox="0 0 24 24" fill="currentColor">
-                                <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.446 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12l-6.869 4.332-2.96-.924c-.644-.203-.658-.644.136-.954l11.566-4.461c.542-.203 1.013.131.832.941z"/>
-                            </svg>
-                            Telegram Support
-                        </a>
-                        <a href="mailto:support@etheroute.io" class="channel">
-                            <svg class="channel-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <rect x="2" y="4" width="20" height="16" rx="2"/>
-                                <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
-                            </svg>
-                            Email Support
-                        </a>
-                    </div>
-                </div>
-
-                <div class="faq-item" data-keywords="report bug issue security problem vulnerability">
-                    <button class="faq-question">
-                        <span>How do I report an issue?</span>
-                        <span class="faq-chevron" data-icon="faqChevron"></span>
-                    </button>
-                    <div class="faq-answer">
-                        <p>If you encounter any issues, please report them through our support channels. For security-related concerns, contact us immediately through Discord, Telegram, or email to ensure your issue is handled with priority.</p>
-                    </div>
-                </div>
-
-                <div class="faq-item" data-keywords="feedback suggestion feature request improvement idea">
-                    <button class="faq-question">
-                        <span>How can I suggest a feature?</span>
-                        <span class="faq-chevron" data-icon="faqChevron"></span>
-                    </button>
-                    <div class="faq-answer">
-                        <p>We love hearing from our users! Share your feature suggestions with our team through Discord, Telegram, or email. Your feedback helps us improve Etheroute and build the platform you need.</p>
-                    </div>
-                </div>
-            </section>
+            <div id="helpMain"></div>
         </main>
     </div>
 
-    <script src="/js/common/icons.js"></script>
-    <script src="/js/help.js"></script>
-
-    <!-- Footer -->
     <div class="footer">
         <div class="footer-content">
             <div class="footer-grid">
-                <div class="footer-section">
+                <div class="footer-section" data-reveal>
                     <h4>Support</h4>
                     <a href="/docs" class="footer-link">Documentation</a>
                     <a href="/api-reference" class="footer-link">API Reference</a>
                     <a href="/help" class="footer-link">Help Center</a>
                 </div>
-                <div class="footer-section">
+                <div class="footer-section" data-reveal data-reveal-delay="80">
                     <h4>Company</h4>
                     <a href="/about" class="footer-link">About Us</a>
                     <a href="https://discord.gg" class="footer-link" target="_blank">Discord</a>
                     <a href="https://t.me/etheroute" class="footer-link" target="_blank">Telegram</a>
                 </div>
-                <div class="footer-section">
+                <div class="footer-section" data-reveal data-reveal-delay="160">
                     <h4>Legal</h4>
                     <a href="/privacy" class="footer-link">Privacy Policy</a>
                     <a href="/terms" class="footer-link">Terms of Service</a>
                     <a href="/compliance" class="footer-link">Compliance</a>
                 </div>
             </div>
-            <div class="footer-bottom">
-                <p>&copy; 2026 Etheroute. All rights reserved. | Secure Multi-Chain Withdrawal Platform</p>
+            <div class="footer-bottom" data-reveal data-reveal-delay="240">
+                <p>&copy; 2026 Etheroute. All rights reserved. | Secure Multi-Chain Payments Platform</p>
             </div>
         </div>
     </div>
-</body>
-</html>
 
+    <script src="/js/common/icons.js"></script>
+    <script src="/js/help-content.js"></script>
+    <script src="/js/help.js"></script>
+    <script src="/js/common/reveal.js"></script>
+</body>
+
+</html>

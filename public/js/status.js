@@ -1,3 +1,18 @@
+/**
+ * Escape a value for interpolation into HTML.
+ *
+ * Incident labels, titles and messages are operator-supplied text. Pasting them
+ * into markup unescaped lets a crafted incident inject arbitrary elements.
+ */
+function escapeAttr(value) {
+    return String(value == null ? '' : value)
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+}
+
 const STATUS_API_URL = `${window.location.origin}/api/status`;
 
 const STATE = {
@@ -22,6 +37,17 @@ function formatTimestamp(value) {
   }).format(new Date(value));
 }
 
+/** Just the time of day — the strip caption already says "last checked". */
+function formatClockTime(value) {
+  if (!value) return '--';
+  return new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Chicago',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  }).format(new Date(value));
+}
+
 function formatDuration(minutes) {
   if (minutes == null) return '--';
   if (minutes < 60) return `${minutes.toFixed(1)}m`;
@@ -30,50 +56,76 @@ function formatDuration(minutes) {
   return `${(hours / 24).toFixed(1)}d`;
 }
 
+/** A short "Mar 4" style label for a tick's tooltip. */
+function formatDayLabel(isoDay) {
+  const [year, month, day] = String(isoDay).split('-').map(Number);
+  return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
+    .format(new Date(Date.UTC(year, month - 1, day)));
+}
+
 function setHeroState(data) {
   const pill = document.getElementById('heroStatusPill');
   const title = document.getElementById('heroTitle');
   const copy = document.getElementById('heroCopy');
+  const operational = data.overallStatus === 'operational';
 
   pill.textContent = data.overallStatusLabel;
-  pill.classList.toggle('down', data.overallStatus !== 'operational');
-  title.textContent = data.overallStatus === 'operational' ? 'All systems are operational' : 'Some services are degraded';
-  copy.textContent = data.overallStatus === 'operational'
-    ? 'Chain services and platform operations are running normally.'
-    : 'One or more services are currently affected. We are tracking the active incident(s) below.';
+  pill.classList.toggle('down', !operational);
+  title.textContent = operational ? 'All systems operational' : 'Some services are degraded';
+  copy.textContent = operational
+    ? 'Live health for the platform, refreshed from the Etheroute status API.'
+    : 'One or more services are currently affected. The active incidents are listed below.';
 
   document.getElementById('overallUptime').textContent = `${data.uptimePercentage.toFixed(2)}%`;
   document.getElementById('operationalCount').textContent = `${data.operationalCount}/${data.totalCount}`;
-  document.getElementById('generatedAt').textContent = formatTimestamp(data.generatedAt);
+  document.getElementById('generatedAt').textContent = formatClockTime(data.generatedAt);
+
+  const window = document.getElementById('uptimeWindow');
+  if (window && data.windowDays) window.textContent = String(data.windowDays);
+}
+
+/**
+ * One tick per day, oldest on the left.
+ *
+ * Every tick carries its own title, so the bar is readable on hover without a
+ * tooltip component — and the `days` array is what the server computed, so a
+ * day with no recorded incident is genuinely a day with no recorded incident.
+ */
+function renderUptimeBar(service) {
+  const days = service.days || [];
+  if (!days.length) return '';
+
+  const ticks = days.map((day) => {
+    const tone = day.status === 'down' ? 'down' : day.status === 'partial' ? 'partial' : 'operational';
+    const label = day.downtimeMinutes > 0
+      ? `${formatDayLabel(day.date)} — ${day.uptimePercentage.toFixed(2)}% (${formatDuration(day.downtimeMinutes)} down)`
+      : `${formatDayLabel(day.date)} — no downtime`;
+    return `<i class="tick tick--${tone}" title="${escapeAttr(label)}"></i>`;
+  }).join('');
+
+  return `
+    <div class="uptime-bar" role="img" aria-label="${escapeAttr(
+      `${service.label}: ${service.uptimePercentage.toFixed(2)}% uptime over the last ${days.length} days`,
+    )}">${ticks}</div>
+    <div class="uptime-scale"><span>${days.length} days ago</span><span>today</span></div>
+  `;
 }
 
 function renderServices(services) {
-  const grid = document.getElementById('serviceGrid');
+  const rows = document.getElementById('serviceRows');
 
-  grid.innerHTML = services.map((service) => `
-    <article class="service-card">
-      <div class="service-head">
-        <div class="service-name">
-          <strong>${service.label}</strong>
-          <span>${service.description}</span>
-        </div>
-        <div class="pill ${service.statusTone}">${service.statusLabel}</div>
+  rows.innerHTML = services.map((service) => `
+    <article class="service-row">
+      <div class="service-row__head">
+        <span class="service-row__name">${escapeAttr(service.label)}</span>
+        <span class="service-row__desc">${escapeAttr(service.description)}</span>
+        <span class="service-row__uptime">${service.uptimePercentage.toFixed(2)}%</span>
       </div>
-      <div class="metric-row">
-        <div class="metric-card">
-          <span class="label">Uptime</span>
-          <strong>${service.uptimePercentage.toFixed(2)}%</strong>
-        </div>
-        <div class="metric-card">
-          <span class="label">Last Incident</span>
-          <strong>${service.latestIncidentAt ? formatTimestamp(service.latestIncidentAt) : 'None'}</strong>
-        </div>
-      </div>
+      ${renderUptimeBar(service)}
       ${service.activeIncident ? `
-        <div class="incident-card" style="margin-top: 12px; background: #fff8f1; border-color: #f6d5bd;">
-          <h3>Active incident</h3>
-          <div class="incident-meta">${service.activeIncident.title} · ${formatTimestamp(service.activeIncident.startedAt)}</div>
-          <div class="incident-message">${service.activeIncident.message}</div>
+        <div class="service-row__active">
+          <strong>${escapeAttr(service.activeIncident.title)} · since ${escapeAttr(formatTimestamp(service.activeIncident.startedAt))}</strong>
+          <p>${escapeAttr(service.activeIncident.message)}</p>
         </div>
       ` : ''}
     </article>
@@ -91,17 +143,17 @@ function renderIncidents(selector, incidents, emptyText) {
     <article class="incident-card">
       <div class="incident-card-header">
         <div>
-          <h3>${incident.label} · ${incident.title}</h3>
+          <h3>${escapeAttr(incident.label)} · ${escapeAttr(incident.title)}</h3>
           <div class="incident-meta">
             ${formatTimestamp(incident.startedAt)}${incident.resolvedAt ? ` · Resolved ${formatTimestamp(incident.resolvedAt)}` : ' · Ongoing'}
             ${incident.durationMinutes != null ? ` · Duration ${formatDuration(incident.durationMinutes)}` : ''}
           </div>
         </div>
         <div class="incident-actions" data-dev-only="true">
-          <button class="danger-btn" type="button" onclick="openDeleteIncidentModal('${incident.id}', '${incident.label.replace(/'/g, "\\'")}', '${incident.title.replace(/'/g, "\\'")}')">Remove</button>
+          <button class="danger-btn" type="button" data-on-click="openDeleteIncidentModal" data-arg="${incident.id}" data-arg2="${escapeAttr(incident.label)}" data-arg3="${escapeAttr(incident.title)}">Remove</button>
         </div>
       </div>
-      <div class="incident-message">${incident.message}</div>
+      <div class="incident-message">${escapeAttr(incident.message)}</div>
     </article>
   `).join('');
 }
@@ -112,14 +164,14 @@ function populateTargets(scope) {
     ? [
         { value: 'API', label: 'API' },
         { value: 'WALLET_SYNC', label: 'Wallet Sync' },
-        { value: 'WITHDRAWALS', label: 'Withdrawals' },
+        { value: 'CHECKOUTS', label: 'Checkouts' },
         { value: 'PAYOUTS', label: 'Payout Engine' },
       ]
     : [
-        { value: 'ETH', label: 'Ethereum' },
-        { value: 'BTC', label: 'Bitcoin' },
-        { value: 'SOL', label: 'Solana' },
-        { value: 'LTC', label: 'Litecoin' },
+        { value: 'API', label: 'API' },
+        { value: 'WALLET_SYNC', label: 'Wallet Sync' },
+        { value: 'CHECKOUTS', label: 'Checkouts' },
+        { value: 'PAYOUTS', label: 'Payout Engine' },
       ];
 
   select.innerHTML = options.map((item) => `<option value="${item.value}">${item.label}</option>`).join('');
@@ -170,12 +222,12 @@ async function submitIncident(event) {
 
   const data = await response.json();
   if (!response.ok) {
-    message.style.color = '#b45309';
+    message.style.color = 'var(--danger)';
     message.textContent = data.message || 'Failed to record incident';
     return;
   }
 
-  message.style.color = '#0f8a5f';
+  message.style.color = 'var(--ok)';
   message.textContent = 'Incident recorded successfully.';
   event.target.reset();
   populateTargets('chain');
@@ -251,8 +303,10 @@ window.addEventListener('DOMContentLoaded', async () => {
   try {
     await loadStatus();
   } catch (error) {
-    document.getElementById('heroStatusPill').textContent = 'Status unavailable';
-    document.getElementById('heroStatusPill').classList.add('down');
+    const pill = document.getElementById('heroStatusPill');
+    pill.textContent = 'Status unavailable';
+    pill.classList.remove('down');
+    pill.classList.add('error');
     document.getElementById('heroTitle').textContent = 'Unable to load status';
     document.getElementById('heroCopy').textContent = error.message;
   }

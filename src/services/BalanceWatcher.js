@@ -1,10 +1,6 @@
 const { db } = require('../config/database');
 const PriceService = require('./PriceService');
-
-const EthereumWalletService = require('./wallets/EthereumWalletService');
-const SolanaWalletService = require('./wallets/SolanaWalletService');
-const BitcoinWalletService = require('./wallets/BitcoinWalletService');
-const LitecoinWalletService = require('./wallets/LitecoinWalletService');
+const { walletServiceFor } = require('./wallets');
 
 class BalanceWatcher {
     constructor() {
@@ -45,26 +41,16 @@ class BalanceWatcher {
      * @returns {Promise<Object>} Balance information
      */
     async updateWalletBalance(wallet) {
-        const oldBalance = parseFloat(wallet.balance) || 0;
-        let updatedWallet;
+        const updatedWallet = await walletServiceFor(wallet.chain).updateBalance(wallet, PriceService.rateFor(wallet.chain));
 
-        switch (wallet.chain) {
-            case 'ETH': updatedWallet = await EthereumWalletService.updateBalance(wallet, this.ethToUsdRate); break;
-            case 'LTC': updatedWallet = await LitecoinWalletService.updateBalance(wallet, this.ltcToUsdRate); break;
-            case 'BTC': updatedWallet = await BitcoinWalletService.updateBalance(wallet, this.btcToUsdRate); break;
-            case 'SOL': updatedWallet = await SolanaWalletService.updateBalance(wallet, this.solToUsdRate); break;
-        }
-
-        // Detect >90% balance drop — the remaining balance is the retained service fee.
-        // Setting serviceSubtractions = newBalance makes the displayed client balance = 0.
-        if (updatedWallet && oldBalance > 0.000001) {
-            const newBalance = parseFloat(updatedWallet.balance) || 0;
-            if (newBalance < oldBalance * 0.10) {
-                db.update('wallets', wallet.id, { serviceSubtractions: newBalance });
-                console.log(`[BalanceWatcher] 90%+ drop on ${wallet.chain} wallet ${wallet.id}: ${oldBalance} → ${newBalance}. serviceSubtractions set to ${newBalance}`);
-            }
-        }
-
+        // A large balance drop used to be treated as "the rest is our fee" and
+        // serviceSubtractions was set to whatever remained, forcing the client's
+        // displayed balance to zero. Two problems with that: it guessed rather
+        // than reading the fee actually charged, and because it never reset, any
+        // deposit the client made afterwards stayed invisible to them.
+        //
+        // The fee is now a known figure recorded at withdrawal time, so there is
+        // nothing to infer here.
         return updatedWallet;
     }
 
@@ -74,28 +60,8 @@ class BalanceWatcher {
      * @returns {Promise<Object>} Transaction data
      */
     async getTransactionHistory(wallet) {
-        switch (wallet.chain) {
-            case 'ETH': {
-                return await EthereumWalletService.getTransactionHistory(wallet.address);
-            };
-            break;
-
-            case 'LTC': { 
-                return await LitecoinWalletService.getTransactionHistory(wallet.address);
-            }; 
-            break;
-
-            case 'BTC': {
-                return await BitcoinWalletService.getTransactionHistory(wallet.address);
-            };
-            break;
-            
-            case 'SOL': {
-                return await SolanaWalletService.getTransactionHistory(wallet.address);
-            };
-            break;
-        };
-    };
+        return walletServiceFor(wallet.chain).getTransactionHistory(wallet.address);
+    }
 }
 
 module.exports = new BalanceWatcher();

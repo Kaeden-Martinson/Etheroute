@@ -1,8 +1,11 @@
 const { ValidationError } = require('./errors');
+const { bech32, bech32m } = require('bech32');
+const chains = require('../config/chains');
 
-const validateChain = (chain) => {
-  return ['ETH', 'BTC', 'LTC', 'SOL'].includes(chain);
-};
+// From the registry, so a chain added there is accepted everywhere at once.
+const SUPPORTED_CHAINS = chains.CODES;
+
+const validateChain = (chain) => chains.has(chain);
 
 const validateEmail = (email) => {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -14,20 +17,82 @@ const validateUUID = (id) => {
   return uuidRegex.test(id);
 };
 
-const validateAmount = (amount) => {
-  return amount > 0 && isFinite(amount);
-};
+const validateAmount = (amount) => amount > 0 && isFinite(amount);
+
+/**
+ * Validate a segwit address against its human-readable prefix.
+ *
+ * Witness version 0 (P2WPKH / P2WSH) uses bech32; version 1 and above
+ * (P2TR / taproot) uses bech32m. Checking the checksum with the wrong variant
+ * is exactly how a valid taproot address gets wrongly rejected.
+ */
+function isValidBech32(address, expectedPrefixes) {
+  const lower = address.toLowerCase();
+
+  // Mixed case is invalid per BIP-173, and the checksum is case-insensitive.
+  if (address !== lower && address !== address.toUpperCase()) return false;
+
+  let decoded = null;
+  let usedBech32m = false;
+
+  try {
+    decoded = bech32.decode(lower);
+  } catch {
+    try {
+      decoded = bech32m.decode(lower);
+      usedBech32m = true;
+    } catch {
+      return false;
+    }
+  }
+
+  if (!expectedPrefixes.includes(decoded.prefix)) return false;
+
+  const witnessVersion = decoded.words[0];
+  if (witnessVersion === undefined || witnessVersion > 16) return false;
+
+  // Version 0 must be bech32; everything above must be bech32m.
+  if (witnessVersion === 0 && usedBech32m) return false;
+  if (witnessVersion > 0 && !usedBech32m) return false;
+
+  const program = bech32.fromWords(decoded.words.slice(1));
+  if (program.length < 2 || program.length > 40) return false;
+  if (witnessVersion === 0 && program.length !== 20 && program.length !== 32) return false;
+
+  return true;
+}
+
+/**
+ * Base58Check addresses have no checksum validation here - the length and
+ * alphabet check matches what the chain accepts structurally, and a wrong-but-
+ * well-formed address is caught by the node at broadcast time.
+ */
+const BASE58_BTC = /^[13][a-km-zA-HJ-NP-Z1-9]{25,34}$/;
+const BASE58_LTC = /^[LM3][a-km-zA-HJ-NP-Z1-9]{26,33}$/;
+const BASE58_SOL = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
 
 const validateCryptoAddress = (address, chain) => {
+  if (typeof address !== 'string' || address.length === 0) return false;
+  if (!chains.has(chain)) return false;
+
+  // Every EVM chain shares Ethereum's address format.
+  if (chains.get(chain).family === 'evm') {
+    return /^0x[a-fA-F0-9]{40}$/.test(address);
+  }
+
   switch (chain) {
-    case 'ETH':
-      return /^0x[a-fA-F0-9]{40}$/.test(address);
+
     case 'BTC':
-      return /^[13][a-km-zA-HJ-NP-Z1-9]{25,34}$/.test(address);
+      // Legacy (1...), P2SH (3...), or segwit/taproot (bc1...).
+      return BASE58_BTC.test(address) || isValidBech32(address, ['bc']);
+
     case 'LTC':
-      return /^[LM3][a-km-zA-HJ-NP-Z1-9]{26,33}$/.test(address);
+      // Legacy (L.../M...), P2SH (3...), or segwit (ltc1...).
+      return BASE58_LTC.test(address) || isValidBech32(address, ['ltc']);
+
     case 'SOL':
-      return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(address);
+      return BASE58_SOL.test(address);
+
     default:
       return false;
   }
@@ -67,6 +132,7 @@ const validatePayoutInput = (amount, recipientAddress, chain) => {
 };
 
 module.exports = {
+  SUPPORTED_CHAINS,
   validateChain,
   validateEmail,
   validateUUID,

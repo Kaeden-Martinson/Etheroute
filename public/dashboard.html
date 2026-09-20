@@ -5,243 +5,838 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - Etheroute</title>
     <link rel="icon" type="image/svg+xml" href="/svg/favicon.svg">
+    <script src="/js/common/theme.js"></script>
+    <link rel="stylesheet" href="/css/tokens.css">
     <link rel="stylesheet" href="/css/dashboard.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="/js/vendor/chart.umd.js"></script>
     <script src="/js/common/icons.js"></script>
 </head>
 
 <body>
-    <div class="header">
-        <div class="header-left" onclick="window.location.href='/';">
-            <div class="logo-mini" data-icon="logo"></div>
-            <div class="brand">Etheroute</div>
-        </div>
-        
-        <div class="nav-links" id="dashNavLinks">
-            <a class="nav-link active" onclick="switchDashboardPage('overview')">Overview</a>
-            <a class="nav-link" onclick="switchDashboardPage('transactions')">Transactions</a>
-            <a class="nav-link" onclick="switchDashboardPage('wallets')">Wallets</a>
-            <a class="nav-link" onclick="switchDashboardPage('payouts')">Payouts</a>
-            <a class="nav-link" onclick="switchDashboardPage('withdrawal')">Withdrawal</a>
-            <a class="nav-link" onclick="openAPIModal()">API</a>
+    <!-- The dashboard's chrome is a left rail. Its old top bar could not hold
+         seven sections plus account, theme and sign-out: it overflowed at
+         1165px before its own breakpoint, and the wordmark collided with the
+         first nav item. Every hook dashboard.js reaches for is kept: .nav-link
+         with data-arg (the page switcher matches on it), #dashNavLinks and
+         #dashNavToggle (the mobile toggle), #themeToggle with its three icons
+         (tokens.css shows one per state), #userAvatar and #username. -->
+    <div class="dash-shell">
+    <nav class="rail" id="dashRail" aria-label="Dashboard">
+        <!-- The brand, and the theme at the top right of the rail where a
+             setting belongs - not down in the foot with the account. -->
+        <div class="rail__top">
+            <a class="rail__brand" href="/" data-on-click="navigateTo" data-arg="/">
+                <span class="rail__mark" data-icon="logoOutline"></span>
+                <span class="rail__word">Etheroute</span>
+            </a>
+            <button class="theme-toggle rail__icon" id="themeToggle" data-on-click="cycleTheme"
+                    aria-label="Switch colour theme" title="Switch colour theme">
+                <svg class="theme-icon theme-icon--sun" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="12" cy="12" r="4"/>
+                    <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>
+                </svg>
+                <svg class="theme-icon theme-icon--moon" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>
+                </svg>
+                <svg class="theme-icon theme-icon--auto" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="12" cy="12" r="9"/>
+                    <path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor" stroke="none"/>
+                </svg>
+            </button>
         </div>
 
-        <button class="dash-nav-toggle" id="dashNavToggle" aria-label="Toggle navigation" aria-expanded="false">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="3" y1="6" x2="21" y2="6"/>
-                <line x1="3" y1="12" x2="21" y2="12"/>
-                <line x1="3" y1="18" x2="21" y2="18"/>
-            </svg>
+        <!-- Three bars that fold into a chevron while the menu is open - the
+             same morph the site header's toggle does (navbar.js). -->
+        <button class="rail__toggle" id="dashNavToggle" aria-label="Toggle navigation" aria-expanded="false" aria-controls="dashNavLinks">
+            <span class="rail__bars" aria-hidden="true"><i></i><i></i><i></i></span>
         </button>
 
-        <div class="header-right">
-            <div class="user-menu" onclick="toggleUserMenu()">
-                <div class="user-avatar" id="userAvatar">U</div>
-                <span id="username">User</span>
+        <div class="rail__links" id="dashNavLinks">
+            <span class="rail__group">Money</span>
+            <a class="nav-link active" data-on-click="switchDashboardPage" data-arg="overview" aria-current="page">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+                <span>Overview</span>
+            </a>
+            <a class="nav-link" data-on-click="switchDashboardPage" data-arg="transactions">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10"/></svg>
+                <span>Transactions</span>
+            </a>
+            <a class="nav-link" data-on-click="switchDashboardPage" data-arg="wallets">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M16 15h2"/></svg>
+                <span>Wallets</span>
+            </a>
+            <a class="nav-link" data-on-click="switchDashboardPage" data-arg="payouts">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v16M5 11l7-7 7 7"/></svg>
+                <span>Payouts</span>
+            </a>
+            <a class="nav-link" data-on-click="switchDashboardPage" data-arg="withdrawal">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20V4M5 13l7 7 7-7"/></svg>
+                <span>Withdrawal</span>
+            </a>
+
+            <span class="rail__group">Build</span>
+            <a class="nav-link" data-on-click="switchDashboardPage" data-arg="createLink">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+                <span>New payment link</span>
+            </a>
+            <a class="nav-link" data-on-click="switchDashboardPage" data-arg="checkout">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg>
+                <span>Payment links</span>
+            </a>
+            <a class="nav-link" data-on-click="switchDashboardPage" data-arg="api">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 9l-4 3 4 3M16 9l4 3-4 3M14 5l-4 14"/></svg>
+                <span>API</span>
+            </a>
+
+            <span class="rail__group">Account</span>
+            <a class="nav-link" data-on-click="switchDashboardPage" data-arg="account">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                <span>Account</span>
+            </a>
+        </div>
+
+        <!-- The foot is who is signed in, and the way out. The account page
+             is one click on either the name or the rail's Account link. -->
+        <div class="rail__foot">
+            <div class="rail__account" data-on-click="switchDashboardPage" data-arg="account" role="button" tabindex="0" title="Account">
+                <div class="rail__avatar" id="userAvatar">U</div>
+                <div class="rail__who">
+                    <b id="username">User</b>
+                    <span>Signed in</span>
+                </div>
             </div>
-            <button class="icon-btn" onclick="logout()">
+            <button class="rail__icon" data-on-click="logout" aria-label="Sign out" title="Sign out">
                 <span data-icon="logout"></span>
             </button>
         </div>
-    </div>
+    </nav>
 
-    <div class="container">
+    <main class="container" id="dashMain">
+
         <!-- Overview Page -->
         <div id="overviewPage" class="dashboard-page" style="display: block;">
-        <!-- Total Balance Card -->
-        <div class="grid-2">
-            <div class="card">
-                <div class="card-header">
-                    <div>
-                        <div class="card-title">Total Balance</div>
-                        <div class="card-subtitle">Across all chains</div>
-                    </div>
-                </div>
-                <div class="balance-display" id="totalBalanceUSD">$0.00</div>
-                <div class="balance-label">USD Equivalent</div>
-                <div class="withdrawal-status" id="withdrawalStatus">
-                    <span class="status-text">Able to Withdraw</span>
-                    <span class="status-badge available"></span>
-                    <div class="info-tooltip" style="display: none;">You have sufficient balance to withdraw</div>
-                </div>
-            </div>
 
-            <!-- Quick Stats -->
-            <div class="card">
-                <div class="card-title">Account Statistics</div>
-                <div style="margin-top: 20px;">
-                    <div style="padding: 12px 0; border-bottom: 1px solid #f0f0f0; display: flex; justify-content: space-between;">
-                        <span style="color: #666;">Active Wallets</span>
-                        <span style="font-weight: 600;" id="walletCount">0</span>
-                    </div>
-                    <div style="padding: 12px 0; border-bottom: 1px solid #f0f0f0; display: flex; justify-content: space-between;">
-                        <span style="color: #666;">Supported Chains</span>
-                        <span style="font-weight: 600;">4</span>
-                    </div>
-                    <div style="padding: 12px 0; display: flex; justify-content: space-between;">
-                        <span style="color: #666;">Account Status</span>
-                        <span style="font-weight: 600; color: #2e7d32;">Active</span>
-                    </div>
-                    <div style="padding: 12px 0; border-top: 1px solid #f0f0f0; display: flex; justify-content: space-between;">
-                        <span style="color: #666;">API Status</span>
-                        <span style="font-weight: 600;">Available</span>
+        <!-- The page head carries the one figure the page is about. Every id
+             here is written to by dashboard.js: totalBalanceUSD, the
+             withdrawalStatus indicator and its children, and the wallet action. -->
+        <header class="dash-head">
+            <div>
+                <span class="dash-head__eyebrow" data-reveal>Overview</span>
+                <div class="dash-balance" id="totalBalanceUSD" data-reveal data-reveal-delay="60">$0.00</div>
+                <div class="dash-balance__meta" data-reveal data-reveal-delay="120">
+                    <span>USD equivalent, across all chains</span>
+                    <div class="withdrawal-status" id="withdrawalStatus">
+                        <span class="status-text">Checking…</span>
+                        <span class="status-badge available" data-icon="check"></span>
+                        <div class="info-tooltip" style="display: none;">You have sufficient balance to withdraw</div>
                     </div>
                 </div>
             </div>
-        </div>
-
-        <!-- Wallets by Chain -->
-        <div class="card">
-            <div class="card-header">
-                <div>
-                    <div class="card-title">Your Wallets</div>
-                    <div class="card-subtitle">Receive payments on any chain</div>
-                </div>
-                <button class="btn-small btn-secondary" onclick="openCreateWalletModal()">
+            <div class="dash-head__actions" data-reveal data-reveal-delay="100">
+                <!-- Every head action is the same button: filled, with a glyph
+                     - a plus when it makes something, the destination's own
+                     rail glyph when it goes somewhere. -->
+                <button class="btn-small btn-primary" data-on-click="switchDashboardPage" data-arg="withdrawal">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20V4M5 13l7 7 7-7"/></svg>
+                    Withdraw
+                </button>
+                <button class="btn-small btn-primary" data-on-click="openCreateWalletModal">
                     <span data-icon="plus"></span>
-                    Add Wallet
+                    Add wallet
                 </button>
             </div>
-            <div class="wallets-grid" id="walletsContainer">
-                <div style="padding: 24px; text-align: center; color: #999;">
-                    <p>No wallets created yet. Add one to start receiving payments.</p>
-                </div>
-            </div>
+        </header>
+
+        <!-- Where the balance actually sits, chain by chain. One bar, segments
+             proportional to value, rendered by displayDistribution() from the
+             same wallet list the facts use. Monochrome: tickers and hatching
+             tell the chains apart, not ten colours. -->
+        <div class="dist" id="distribution" aria-label="Balance by chain">
+            <div class="dist__bar"><div class="dist__none">Loading balances&hellip;</div></div>
         </div>
 
-        <!-- API Calls Analytics -->
-        <div class="card">
-            <div class="card-header">
+        <!-- Every figure is live. The card this replaces also carried
+             "Account Status: Active" and "API Status: Available" as fixed text;
+             a status line that cannot change is not a status line. -->
+        <div class="dash-facts" aria-label="Account at a glance">
+            <div><b id="walletCount">0</b><span>Active wallets</span></div>
+            <div><b id="supportedChainCount">&mdash;</b><span>Supported chains</span></div>
+            <div><b id="pendingCount">&mdash;</b><span>Pending confirmations</span></div>
+            <div><b id="apiCallsTotal">&mdash;</b><span>API calls, all time</span></div>
+        </div>
+
+        <!-- The last few things that happened, as rows. displayTransactions()
+             renders here from the same fetch the old overview made and then
+             threw away: it wrote into #transactionsList, which no page had. -->
+        <section class="dash-section">
+            <div class="dash-section__head">
                 <div>
-                    <div class="card-title">API Calls</div>
-                    <div class="card-subtitle" id="apiCallsSubtitle">Usage analytics over time</div>
+                    <h2 class="dash-section__title">Recent activity</h2>
+                    <p class="dash-section__sub" id="activitySub">Last 10 events</p>
                 </div>
-                <div style="display: flex; gap: 8px;">
-                    <button class="btn-small btn-secondary" onclick="switchChartPeriod('hour')" id="hourBtn">Hour</button>
-                    <button class="btn-small btn-secondary" onclick="switchChartPeriod('day')" id="dayBtn">Day</button>
-                    <button class="btn-small btn-secondary" onclick="switchChartPeriod('week')" id="weekBtn">Week</button>
+                <div class="dash-section__actions">
+                    <a class="dash-section__link" data-on-click="switchDashboardPage" data-arg="transactions">All transactions &rarr;</a>
                 </div>
             </div>
-            <canvas id="apiCallsChart" style="max-height: 300px;"></canvas>
-        </div>
+            <div class="dash-rail" id="activityRail">
+                <div class="dash-empty">No activity yet. Your first payment will appear here.</div>
+            </div>
+        </section>
+
+        <!-- Wallets as tiles that share hairlines, drawn by displayWallets():
+             a glance, not the full rows. A tile opens the Wallets tab with
+             that wallet's row open, where the actions live. -->
+        <section class="dash-section">
+            <div class="dash-section__head">
+                <div>
+                    <h2 class="dash-section__title">Your wallets</h2>
+                    <p class="dash-section__sub">Receive payments on any chain</p>
+                </div>
+                <div class="dash-section__actions">
+                    <a class="dash-section__link" data-on-click="switchDashboardPage" data-arg="wallets">All wallets &rarr;</a>
+                </div>
+            </div>
+            <div class="wgrid-host" id="walletsContainer">
+                <div class="dash-empty">No wallets yet. Add one to start receiving payments.</div>
+            </div>
+        </section>
+
+        <section class="dash-section">
+            <div class="dash-section__head">
+                <div>
+                    <h2 class="dash-section__title">API calls</h2>
+                    <p class="dash-section__sub" id="apiCallsSubtitle">Usage over time</p>
+                </div>
+                <div class="dash-section__actions">
+                    <div class="segmented" role="group" aria-label="Chart period">
+                        <button class="btn-small btn-secondary" data-on-click="switchChartPeriod" data-arg="hour" id="hourBtn">Hour</button>
+                        <button class="btn-small btn-primary" data-on-click="switchChartPeriod" data-arg="day" id="dayBtn">Day</button>
+                        <button class="btn-small btn-secondary" data-on-click="switchChartPeriod" data-arg="week" id="weekBtn">Week</button>
+                    </div>
+                </div>
+            </div>
+            <div class="dash-panel">
+                <canvas id="apiCallsChart" style="max-height: 300px;"></canvas>
+            </div>
+        </section>
         </div>
 
         <!-- Transactions Page -->
+        <!-- A real table: this is tabular data, and a screen reader should get
+             column headers. The old page rendered each transaction as a stack
+             of divs inside a card. The tbody is filled by displayTransactionsList();
+             a row opens in place to its details. -->
         <div id="transactionsPage" class="dashboard-page" style="display: none;">
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-title">All Transactions</div>
+            <header class="dash-head">
+                <div>
+                    <span class="dash-head__eyebrow" data-reveal>Money</span>
+                    <h1 class="dash-head__title" data-reveal data-reveal-delay="60">Transactions</h1>
+                    <p class="dash-head__lede" data-reveal data-reveal-delay="120">Every payment in and payout out, across all chains.</p>
                 </div>
-                <div id="allTransactionsList"></div>
+            </header>
+
+            <div class="dash-filter">
+                <div class="dash-search">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5" stroke-linecap="round"/></svg>
+                    <input type="search" id="txSearch" placeholder="Hash, chain, amount&hellip;" aria-label="Search transactions" autocomplete="off">
+                </div>
+                <div class="dash-chips" id="txChips" role="group" aria-label="Filter by state">
+                    <button type="button" data-filter="all" aria-pressed="true">All</button>
+                    <button type="button" data-filter="in" aria-pressed="false">Received</button>
+                    <button type="button" data-filter="out" aria-pressed="false">Sent</button>
+                    <button type="button" data-filter="pending" aria-pressed="false">Pending</button>
+                    <button type="button" data-filter="failed" aria-pressed="false">Failed</button>
+                </div>
+                <span class="dash-count" id="txCount" role="status" aria-live="polite"></span>
             </div>
+
+            <table class="dash-table" id="txTable">
+                <thead>
+                    <tr>
+                        <th scope="col">When</th>
+                        <th scope="col">Type</th>
+                        <th scope="col" class="num">Amount</th>
+                        <th scope="col">Chain</th>
+                        <th scope="col">Hash</th>
+                        <th scope="col">Status</th>
+                        <th scope="col"><span class="sr-only">Details</span></th>
+                    </tr>
+                </thead>
+                <tbody id="allTransactionsList">
+                    <tr class="dash-table__empty"><td colspan="7">Loading transactions&hellip;</td></tr>
+                </tbody>
+            </table>
         </div>
 
         <!-- Wallets Page -->
+        <!-- Rows grouped by chain, rendered by loadWalletsList() through the
+             same renderWalletCard() the overview uses. Rename happens in the
+             row; delete goes through confirmDialog(), the themed dialog the
+             rest of the dashboard already had, instead of the absolutely
+             positioned overlay this page used to carry. -->
         <div id="walletsPage" class="dashboard-page" style="display: none;">
-            <div class="card">
-                <div class="card-header">
-                    <div>
-                        <div class="card-title">Your Wallets</div>
-                        <div class="card-subtitle">Manage your cryptocurrency wallets</div>
-                    </div>
-                    <button class="btn-small btn-secondary" onclick="openCreateWalletModal()">
+            <header class="dash-head">
+                <div>
+                    <span class="dash-head__eyebrow" data-reveal>Money</span>
+                    <h1 class="dash-head__title" data-reveal data-reveal-delay="60">Wallets</h1>
+                    <p class="dash-head__lede" data-reveal data-reveal-delay="120">One address per chain per wallet. Name them, copy them, retire them.</p>
+                </div>
+                <div class="dash-head__actions" data-reveal data-reveal-delay="100">
+                    <button class="btn-small btn-primary" data-on-click="toggleAddWallet">
                         <span data-icon="plus"></span>
-                        Add Wallet
+                        Add wallet
                     </button>
                 </div>
-                <div id="allWalletsList" style="position: relative;"></div>
+            </header>
 
-                <!-- Delete Wallet Confirmation Overlay -->
-                <div id="deleteConfirmationOverlay" class="delete-confirmation-overlay" style="position: absolute; top: 78px; left: 0; right: 0; bottom: 0;">
-                    <div class="confirmation-message">
-                        <div id="deleteConfirmationText">Are you sure you want to delete this wallet? This action cannot be undone.</div>
+            <!-- Add wallet, in place under the head rather than in a modal. The
+                 overview's Add wallet brings you here with it open. The form
+                 keeps its id: setupEventListeners() binds its submit, and
+                 loadChains() fills #walletChain. -->
+            <div class="wallet-add hidden" id="addWalletPanel">
+                <form id="createWalletForm" novalidate>
+                    <div class="fgroup__title">New wallet</div>
+                    <div class="fgroup__row">
+                        <div class="field">
+                            <label for="walletChain">Chain</label>
+                            <select id="walletChain" required>
+                                <option value="">Choose a chain...</option>
+                            </select>
+                            <p class="field-hint">One address on this chain. You can add as many as you like.</p>
+                        </div>
+                        <div class="field">
+                            <label for="walletLabel">Name <em>optional</em></label>
+                            <input type="text" id="walletLabel" maxlength="40" placeholder="e.g. Shop payouts, Client A" autocomplete="off" />
+                            <p class="field-hint">Shown wherever this wallet appears. You can rename it later.</p>
+                        </div>
                     </div>
-                    <div class="confirmation-buttons">
-                        <button class="btn-confirm" onclick="confirmDeleteWallet()">Confirm</button>
-                        <button class="btn-deny" onclick="denyDeleteWallet()">Cancel</button>
+                    <div class="wallet-add__foot">
+                        <button type="submit" class="btn-small btn-primary">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+                            Create wallet
+                        </button>
+                        <button type="button" class="btn-small btn-primary" data-on-click="toggleAddWallet">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+                            Cancel
+                        </button>
+                        <span class="field-hint">A wallet needs $5 in it before it can be withdrawn from.</span>
                     </div>
-                </div>
+                </form>
             </div>
+
+            <div class="dash-filter">
+                <div class="dash-search">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5" stroke-linecap="round"/></svg>
+                    <input type="search" id="walletSearch" placeholder="Name, address, chain&hellip;" aria-label="Search wallets" data-on-input="filterWallets" autocomplete="off">
+                </div>
+                <!-- Chips are made from the chains the account actually has. -->
+                <div class="dash-chips" id="walletChips" role="group" aria-label="Filter by chain"></div>
+                <span class="dash-count" id="walletsPageCount" role="status" aria-live="polite"></span>
+            </div>
+
+            <div class="dash-rail" id="allWalletsList"></div>
         </div>
 
         <!-- Payouts Page -->
+        <!-- The transactions table pattern with payout columns. A row opens to
+             the transfer breakdown - which source chain contributed what, and
+             whether it moved directly or through a swap. -->
         <div id="payoutsPage" class="dashboard-page" style="display: none;">
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-title">Payouts History</div>
+            <header class="dash-head">
+                <div>
+                    <span class="dash-head__eyebrow" data-reveal>Money</span>
+                    <h1 class="dash-head__title" data-reveal data-reveal-delay="60">Payouts</h1>
+                    <p class="dash-head__lede" data-reveal data-reveal-delay="120">Every withdrawal, with the fee and the gas it actually cost.</p>
                 </div>
-                <div id="allPayoutsList"></div>
+                <div class="dash-head__actions" data-reveal data-reveal-delay="100">
+                    <button class="btn-small btn-primary" data-on-click="switchDashboardPage" data-arg="withdrawal">
+                        <span data-icon="plus"></span>
+                        New payout
+                    </button>
+                </div>
+            </header>
+
+            <div class="dash-filter">
+                <div class="dash-chips" id="payoutChips" role="group" aria-label="Filter by state">
+                    <button type="button" data-filter="all" aria-pressed="true">All</button>
+                    <button type="button" data-filter="done" aria-pressed="false">Completed</button>
+                    <button type="button" data-filter="pending" aria-pressed="false">In progress</button>
+                    <button type="button" data-filter="failed" aria-pressed="false">Failed</button>
+                </div>
+                <span class="dash-count" id="payoutCount" role="status" aria-live="polite"></span>
             </div>
+
+            <table class="dash-table" id="payoutTable">
+                <thead>
+                    <tr>
+                        <th scope="col">When</th>
+                        <th scope="col">Paid in</th>
+                        <th scope="col" class="num">Gross</th>
+                        <th scope="col" class="num">Fee</th>
+                        <th scope="col" class="num">Gas</th>
+                        <th scope="col" class="num">Net</th>
+                        <th scope="col">Status</th>
+                        <th scope="col"><span class="sr-only">Details</span></th>
+                    </tr>
+                </thead>
+                <tbody id="allPayoutsList">
+                    <tr class="dash-table__empty"><td colspan="8">Loading payouts&hellip;</td></tr>
+                </tbody>
+            </table>
         </div>
 
         <!-- Withdrawal Page -->
+        <!-- Three steps on a rail: where it goes, what it comes from, and the
+             receipt with the one button that sends. Review and Confirm used to
+             be two cards drawing the same figures; the receipt draws them once,
+             under the warning, and the button names the amount. Every id the
+             withdrawal functions reach for is kept: payoutChain, recipientAddress,
+             wallets-container, preview-details, final-summary, confirmBtn, the
+             stepN sections and stepN-message slots. -->
         <div id="withdrawalPage" class="dashboard-page" style="display: none;">
-            <!-- Step Indicators -->
-            <div class="steps">
-                <div class="step-badge active" id="step1-badge">1. Connect</div>
-                <div class="step-badge" id="step2-badge">2. Select</div>
-                <div class="step-badge" id="step3-badge">3. Review</div>
-                <div class="step-badge" id="step4-badge">4. Confirm</div>
+            <header class="dash-head">
+                <div>
+                    <span class="dash-head__eyebrow" data-reveal>Money</span>
+                    <h1 class="dash-head__title" data-reveal data-reveal-delay="60">Withdrawal</h1>
+                    <p class="dash-head__lede" data-reveal data-reveal-delay="120">Sweep what you have received into one wallet, on whichever chain you like.</p>
+                </div>
+                <!-- The figure the page is about: what can be withdrawn right now,
+                     written by loadWithdrawalPage() from the same wallet list the
+                     overview uses. -->
+                <div class="dash-head__actions wd-avail" data-reveal data-reveal-delay="100">
+                    <b id="wdAvailable">&mdash;</b>
+                    <span id="wdAvailableNote">available to withdraw</span>
+                </div>
+            </header>
+
+            <div class="wd-page">
+                <ol class="wd-rail" id="wdRail" aria-label="Progress" data-reveal data-reveal-delay="160">
+                    <li class="is-now" id="step1-badge" data-on-click="goBackToStep" data-arg="1"><span>Step 1</span><b>Destination</b></li>
+                    <li id="step2-badge" data-on-click="goBackToStep" data-arg="2"><span>Step 2</span><b>Sources</b></li>
+                    <li id="step3-badge" data-on-click="goBackToStep" data-arg="3"><span>Step 3</span><b>Review</b></li>
+                </ol>
+
+                <!-- 1: where it goes -->
+                <section class="wd-stage active" id="step1" data-reveal data-reveal-delay="220">
+                    <div class="fgroup">
+                        <div class="fgroup__title">Where it goes</div>
+                        <div class="field">
+                            <label for="payoutChain">Cash out in</label>
+                            <select id="payoutChain" data-on-change="onPayoutChainChange">
+                                <option value="ETH">Ethereum (ETH)</option>
+                            </select>
+                            <p class="field-hint" id="payoutChainHint">Wallets already on this chain are sent directly, with no swap. Everything else is swapped at a rate quoted on the review.</p>
+                        </div>
+                        <div class="field">
+                            <label for="recipientAddress">Recipient address</label>
+                            <input type="text" id="recipientAddress" placeholder="0x&hellip;" autocomplete="off" spellcheck="false" data-on-input="checkRecipientAddress" />
+                            <p class="field-hint" id="recipientHint">The address you control on this chain. Checked for shape here; the server checks it properly.</p>
+                        </div>
+                    </div>
+                    <div id="step1-message" role="alert"></div>
+                    <div class="wd-foot">
+                        <span></span>
+                        <button class="btn-small btn-primary" data-on-click="loadWithdrawalWallets">
+                            Choose sources
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+                        </button>
+                    </div>
+                </section>
+
+                <!-- 2: what it comes from -->
+                <section class="wd-stage" id="step2">
+                    <div class="fgroup">
+                        <div class="fgroup__title">Withdraw from</div>
+                        <!-- Rows rendered by displayWalletSelection(); the tally
+                             follows the checkboxes through the delegated change. -->
+                        <div class="wd-sources" id="wallets-container" data-on-change="updateWithdrawTally"></div>
+                        <div class="wd-tally"><span id="wdTallyLabel">Nothing selected</span><b id="wdTally">$0.00</b></div>
+                    </div>
+                    <div id="step2-message" role="alert"></div>
+                    <div class="wd-foot">
+                        <button class="btn-small btn-primary" data-on-click="goBackToStep" data-arg="1">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6"/></svg>
+                            Destination
+                        </button>
+                        <button class="btn-small btn-primary" data-on-click="getPreview">
+                            Review
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+                        </button>
+                    </div>
+                </section>
+
+                <!-- 3: the receipt, and the one button that sends -->
+                <section class="wd-stage" id="step3">
+                    <div class="fgroup">
+                        <div class="fgroup__title">What will send</div>
+                        <div id="preview-details"></div>
+                        <div class="wd-warn"><span class="inline-icon" data-icon="alert"></span><span>Once sent this cannot be reversed. Check the address is one you control.</span></div>
+                    </div>
+                    <div id="step3-message" role="alert"></div>
+                    <div class="wd-foot">
+                        <button class="btn-small btn-primary" data-on-click="goBackToStep" data-arg="2">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6"/></svg>
+                            Sources
+                        </button>
+                        <button class="btn-small btn-primary" data-on-click="processWithdrawal" id="confirmBtn">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20V4M5 13l7 7 7-7"/></svg>
+                            <span id="confirmBtnLabel">Send</span>
+                        </button>
+                    </div>
+                </section>
+
+                <!-- Sent. displayFinalSummary() writes the subline and the
+                     transfer list from the payout the server created. -->
+                <section class="wd-stage" id="step4">
+                    <div class="wd-done">
+                        <span class="link-ready__check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg></span>
+                        <div>
+                            <div class="wd-done__title">Withdrawal sent</div>
+                            <div class="wd-done__sub" id="final-summary"></div>
+                        </div>
+                    </div>
+                    <div id="wdSentReceipt"></div>
+                    <div id="step4-message" role="alert"></div>
+                    <div class="wd-foot">
+                        <button class="btn-small btn-primary" data-on-click="switchDashboardPage" data-arg="payouts">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v16M5 11l7-7 7 7"/></svg>
+                            See it in Payouts
+                        </button>
+                        <button class="btn-small btn-primary" data-on-click="newWithdrawal">
+                            <span data-icon="plus"></span>
+                            New withdrawal
+                        </button>
+                    </div>
+                </section>
+            </div>
+        </div>
+
+        <!-- New payment link -->
+        <!-- Its own page. The form is a sequence to fill in; once it is done the
+             link takes its place - URL in a copy field, a QR of the link a
+             customer can scan to open it, the fixed coin amount, a countdown to
+             expiry. Nothing to go and find. Every id createCheckoutSession()
+             reads is kept. -->
+        <div id="createLinkPage" class="dashboard-page" style="display: none;">
+            <header class="dash-head">
+                <div>
+                    <span class="dash-head__eyebrow" data-reveal>Build</span>
+                    <h1 class="dash-head__title" data-reveal data-reveal-delay="60">New payment link</h1>
+                    <p class="dash-head__lede" data-reveal data-reveal-delay="120">A hosted page your customer pays on. The amount is fixed in the coin when the link is made, and we tell you the moment it lands.</p>
+                </div>
+                <div class="dash-head__actions" data-reveal data-reveal-delay="100">
+                    <a class="btn-small btn-primary" data-on-click="switchDashboardPage" data-arg="checkout">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg>
+                        All links
+                    </a>
+                </div>
+            </header>
+
+            <div class="link-page">
+                <form class="link-form" id="checkoutCreateForm" data-on-submit="createCheckoutSession" novalidate>
+                    <!-- The groups follow the head in, one behind the other,
+                         the way the mockup drew them. -->
+                    <div class="fgroup" data-reveal data-reveal-delay="180">
+                        <div class="fgroup__title">Payment</div>
+                        <div class="field">
+                            <label for="checkoutWallet">Receive into</label>
+                            <select id="checkoutWallet" required data-on-change="syncCheckoutCurrencyLabel">
+                                <option value="">Loading wallets&hellip;</option>
+                            </select>
+                            <p class="field-hint" id="checkoutWalletHint">The customer pays in this wallet's coin and it settles here.</p>
+                        </div>
+                        <div class="field">
+                            <label for="checkoutAmount">Amount</label>
+                            <div class="amount-field">
+                                <input type="number" id="checkoutAmount" step="0.00000001" min="0" placeholder="25.00" required inputmode="decimal" data-on-input="drawCheckoutQuote" />
+                                <div class="segmented" role="radiogroup" aria-label="Priced in">
+                                    <input type="radio" name="checkoutCurrency" id="checkoutCurrencyUsd" value="usd" checked data-on-change="syncCheckoutCurrencyLabel" />
+                                    <label for="checkoutCurrencyUsd">USD</label>
+                                    <input type="radio" name="checkoutCurrency" id="checkoutCurrencyNative" value="native" data-on-change="syncCheckoutCurrencyLabel" />
+                                    <label for="checkoutCurrencyNative" id="checkoutCurrencyNativeLabel">Coin</label>
+                                </div>
+                            </div>
+                            <!-- The conversion itself, not a sentence about it: the
+                                 coin figure this amount would be quoted at right now,
+                                 and how old that price is. Falls back to prose until
+                                 the rate has loaded. -->
+                            <div class="quote" aria-live="polite">
+                                <span class="field-hint" id="checkoutAmountHint">Quoted in the wallet's coin at today's rate when the link is made. The customer pays that figure, not the USD.</span>
+                                <span class="quote__age" id="checkoutQuoteAge" hidden></span>
+                            </div>
+                        </div>
+                        <div class="field">
+                            <label for="checkoutReference">Reference <em>optional</em></label>
+                            <input type="text" id="checkoutReference" placeholder="order-1234" maxlength="120" />
+                            <p class="field-hint">Your own order id. Shown here and sent in the webhook.</p>
+                        </div>
+                    </div>
+
+                    <div class="fgroup" data-reveal data-reveal-delay="240">
+                        <div class="fgroup__title">After payment</div>
+                        <!-- Two destinations, side by side: they are the same kind
+                             of thing and are read together. -->
+                        <div class="fgroup__row">
+                            <div class="field">
+                                <label for="checkoutSuccess">Send the customer to</label>
+                                <input type="url" id="checkoutSuccess" placeholder="https://yourshop.com/thanks" required />
+                            </div>
+                            <div class="field">
+                                <label for="checkoutFailure">If it fails or expires</label>
+                                <input type="url" id="checkoutFailure" placeholder="https://yourshop.com/payment-failed" required />
+                            </div>
+                        </div>
+                        <p class="field-hint">Both redirects carry a signed <code>token</code> you can verify server-side.</p>
+                    </div>
+
+                    <div class="fgroup" data-reveal data-reveal-delay="300">
+                        <div class="fgroup__title">Notifications <em>optional</em></div>
+                        <div class="field">
+                            <label for="checkoutWebhook">Webhook URL</label>
+                            <input type="url" id="checkoutWebhook" placeholder="https://yourshop.com/hooks/etheroute" />
+                            <p class="field-hint">A signed <code>POST</code> on paid, underpaid and expired. Must be a public <code>https</code> address.</p>
+                        </div>
+                    </div>
+
+                    <div class="link-form__foot" data-reveal data-reveal-delay="360">
+                        <button type="submit" class="btn-small btn-primary" id="checkoutCreateBtn">Create payment link</button>
+                        <span class="field-hint">Expires 60 minutes after creation if unpaid.</span>
+                    </div>
+                    <div id="checkoutCreateMessage" role="alert"></div>
+                </form>
+
+                <!-- A sibling of the form, not a child: the form is reset after
+                     a create and must not take this with it. -->
+                <div class="link-ready hidden" id="checkoutResult" role="status" aria-live="polite"></div>
+            </div>
+        </div>
+
+        <!-- Payment links -->
+        <!-- The transactions table pattern. A row opens in place to the link
+             itself, the customer's sending address, the paid transaction and a
+             timeline of where the link actually is. -->
+        <div id="checkoutPage" class="dashboard-page" style="display: none;">
+            <header class="dash-head">
+                <div>
+                    <span class="dash-head__eyebrow" data-reveal>Build</span>
+                    <h1 class="dash-head__title" data-reveal data-reveal-delay="60">Payment links</h1>
+                    <p class="dash-head__lede" id="checkoutSummary" data-reveal data-reveal-delay="120">Loading&hellip;</p>
+                </div>
+                <div class="dash-head__actions" data-reveal data-reveal-delay="100">
+                    <span class="dash-live" id="checkoutLive" title="Refreshes every 15 seconds while this page is open">Live</span>
+                    <!-- The same button as "Add wallet": it makes something,
+                         so it carries the plus. -->
+                    <button class="btn-small btn-primary" data-on-click="switchDashboardPage" data-arg="createLink">
+                        <span data-icon="plus"></span>
+                        New link
+                    </button>
+                </div>
+            </header>
+
+            <div class="dash-filter">
+                <div class="dash-search">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5" stroke-linecap="round"/></svg>
+                    <input type="search" id="checkoutSearch" placeholder="Reference, chain, amount&hellip;" aria-label="Search payment links" autocomplete="off">
+                </div>
+                <div class="dash-chips" id="checkoutChips" role="group" aria-label="Filter by state">
+                    <button type="button" data-filter="" aria-pressed="true">All</button>
+                    <button type="button" data-filter="open" aria-pressed="false">Open</button>
+                    <button type="button" data-filter="PAID" aria-pressed="false">Paid</button>
+                    <button type="button" data-filter="INSUFFICIENT" aria-pressed="false">Underpaid</button>
+                    <button type="button" data-filter="EXPIRED" aria-pressed="false">Expired</button>
+                </div>
+                <span class="dash-count" id="checkoutCount" role="status" aria-live="polite"></span>
             </div>
 
-            <!-- STEP 1: Connect -->
-            <div class="card section-step active" id="step1">
-                <div class="card-header">
-                    <div class="card-title">Connect Your Account</div>
-                </div>
-                <div class="form-group">
-                    <label>Recipient ETH Address</label>
-                    <input type="text" id="recipientAddress" placeholder="0x..." />
-                </div>
-                <div id="step1-message"></div>
-                <div class="button-group">
-                    <button class="btn-primary" onclick="loadWithdrawalWallets()">Load Wallets</button>
-                    <button class="btn-secondary" onclick="clearStep1()">Clear</button>
-                </div>
-            </div>
+            <table class="dash-table" id="checkoutSessionsTable">
+                <thead>
+                    <tr>
+                        <th scope="col">Reference</th>
+                        <th scope="col" class="num">Amount</th>
+                        <th scope="col">Status</th>
+                        <th scope="col">Created</th>
+                        <th scope="col"><span class="sr-only">Details</span></th>
+                    </tr>
+                </thead>
+                <tbody id="checkoutSessionsBody">
+                    <tr class="dash-table__empty"><td colspan="5">Loading payment links&hellip;</td></tr>
+                </tbody>
+            </table>
+        </div>
 
-            <!-- STEP 2: Select Chains -->
-            <div class="card section-step" id="step2">
-                <div class="card-header">
-                    <div class="card-title">Select Chains to Withdraw</div>
+        <!-- API -->
+        <!-- A page under Build, not a modal. The key as one row with the two
+             things you can do to it; the once-only panel the new key lands in
+             (a sibling of the row, which loadAPIKeys() rewrites); a first call
+             to copy; and what the account has been doing, from the call log. -->
+        <div id="apiPage" class="dashboard-page" style="display: none;">
+            <header class="dash-head">
+                <div>
+                    <span class="dash-head__eyebrow" data-reveal>Build</span>
+                    <h1 class="dash-head__title" data-reveal data-reveal-delay="60">API</h1>
+                    <p class="dash-head__lede" data-reveal data-reveal-delay="120">One key for your account. We keep a hash of it, so it is readable once, when it is made.</p>
                 </div>
-                <p style="color: #999999; margin-bottom: 16px; font-size: 13px;">Minimum $5 USD per chain. Select which chains you want to withdraw from.</p>
-                <div class="wallet-grid" id="wallets-container"></div>
-                <div id="step2-message"></div>
-                <div class="button-group">
-                    <button class="btn-primary" onclick="getPreview()">Review & Continue</button>
-                    <button class="btn-secondary" onclick="goBackToStep(1)">Back</button>
+                <div class="dash-head__actions" data-reveal data-reveal-delay="100">
+                    <a class="btn-small btn-primary" href="/api-reference" target="_blank" rel="noopener">
+                        <span data-icon="book"></span>
+                        View the docs
+                    </a>
                 </div>
-            </div>
+            </header>
 
-            <!-- STEP 3: Review -->
-            <div class="card section-step" id="step3">
-                <div class="card-header">
-                    <div class="card-title">Review Withdrawal</div>
+            <div class="api-page">
+                <div class="fgroup" data-reveal data-reveal-delay="180">
+                    <div class="fgroup__title">Your key</div>
+                    <div id="apiKeysContainer"><div class="dash-empty">Loading&hellip;</div></div>
+                    <div id="newApiKeyPanel" class="new-api-key hidden" role="status" aria-live="polite"></div>
                 </div>
-                <div id="preview-details"></div>
-                <div id="step3-message"></div>
-                <div class="button-group">
-                    <button class="btn-primary" onclick="goToStep(4)">Continue to Confirmation</button>
-                    <button class="btn-secondary" onclick="goBackToStep(2)">Back</button>
-                </div>
-            </div>
 
-            <!-- STEP 4: Confirm -->
-            <div class="card section-step" id="step4">
-                <div class="card-header">
-                    <div class="card-title">Final Confirmation</div>
+                <div class="fgroup" data-reveal data-reveal-delay="240">
+                    <div class="fgroup__title">Quick start <em>&middot; your prefix is already in it</em></div>
+                    <div class="api-code">
+                        <button type="button" class="btn-small btn-primary" data-on-click="copyQuickStart">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                            Copy
+                        </button>
+                        <pre id="apiQuickStart"><span class="c"># list your wallets</span>
+curl <b id="apiQuickStartUrl">/api/wallets/list</b> \
+  -H <b>"Authorization: Bearer <span id="apiQuickStartKey">ethr_&hellip;</span>"</b></pre>
+                    </div>
+                    <div class="api-notes">
+                        <div><b>Send it as a bearer token</b>The same header the dashboard uses with its session: a key and a session are interchangeable on every <code>/api</code> route.</div>
+                        <div><b>One key per account</b>Making a new one replaces the old, which stops working at once. Revoke it if it leaks.</div>
+                        <div><b>Idempotent writes</b>Send an <code>Idempotency-Key</code> on withdrawals and wallet creation; a retry after a timeout will not run twice.</div>
+                    </div>
                 </div>
-                <div class="alert alert-warning">⚠️ This action cannot be undone. Verify all details carefully.</div>
-                <div id="final-summary"></div>
-                <div id="step4-message"></div>
-                <div class="button-group">
-                    <button class="btn-primary" onclick="processWithdrawal()" id="confirmBtn">Confirm Withdrawal</button>
-                    <button class="btn-secondary" onclick="goBackToStep(3)">Back</button>
+
+                <div class="fgroup" data-reveal data-reveal-delay="300">
+                    <div class="fgroup__title">Usage <em>&middot; every call, key or session</em><span class="dash-live" id="apiLive" title="Refreshes every 15 seconds while this page is open">Live</span></div>
+                    <div class="dash-facts api-facts" aria-label="Usage at a glance">
+                        <div><b id="apiFactTotal">&mdash;</b><span>calls, all time</span></div>
+                        <div><b id="apiFactDay">&mdash;</b><span>in the last 24 hours</span></div>
+                        <div><b id="apiFactErrors">&mdash;</b><span>errors in the last 24 hours</span></div>
+                    </div>
+                    <table class="dash-table" id="apiRecentTable">
+                        <thead>
+                            <tr>
+                                <th scope="col">Request</th>
+                                <th scope="col">Status</th>
+                                <th scope="col" class="num">When</th>
+                            </tr>
+                        </thead>
+                        <tbody id="apiRecentBody">
+                            <tr class="dash-table__empty"><td colspan="3">Loading recent requests&hellip;</td></tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
-    </div>
+
+        <!-- Account -->
+        <!-- Who you are, what you hold, and the two things that keep it yours.
+             The standard head with the avatar in the title and Sign out as
+             its action; the four live figures on hairlines; then Account and
+             Security as rows. Every id loadAccountPage() writes to is kept. -->
+        <div id="accountPage" class="dashboard-page" style="display: none;">
+            <header class="dash-head">
+                <div>
+                    <span class="dash-head__eyebrow" data-reveal>Account</span>
+                    <h1 class="dash-head__title acct-title" data-reveal data-reveal-delay="60"><span class="acct-avatar" id="accountAvatar">U</span><span id="accountUsername">&mdash;</span></h1>
+                    <p class="dash-head__lede" id="accountSince" data-reveal data-reveal-delay="120">Member since &mdash;</p>
+                </div>
+                <div class="dash-head__actions" data-reveal data-reveal-delay="100">
+                    <button class="btn-small btn-primary" data-on-click="logout">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+                        Sign out
+                    </button>
+                </div>
+            </header>
+
+            <div class="dash-facts" aria-label="Account at a glance" data-reveal data-reveal-delay="160">
+                <div><b id="accountBalance">$0.00</b><span id="accountBalanceNote">across all wallets</span></div>
+                <div><b id="accountWallets">0</b><span id="accountWalletsNote">wallets on 0 chains</span></div>
+                <div><b id="accountPayouts">0</b><span>payouts made</span></div>
+                <div><b id="accountApiCalls">0</b><span>API calls today</span></div>
+            </div>
+
+            <div class="acct-page">
+                <div class="fgroup" data-reveal data-reveal-delay="220">
+                    <div class="fgroup__title">Account</div>
+                    <div class="acct-row"><span>Username</span><span class="v" id="accountRowName">&mdash;</span><span></span></div>
+                    <div class="acct-row"><span>Account id</span><span class="v mono" id="accountRowId">&mdash;</span><span class="acts">
+                        <button type="button" class="btn-small btn-primary" data-on-click="copyAccountId">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                            Copy
+                        </button>
+                    </span></div>
+                    <div class="acct-row"><span>Member since</span><span class="v" id="accountRowCreated">&mdash;</span><span></span></div>
+                    <div class="acct-row"><span>Last sign in</span><span class="v" id="accountRowLogin">&mdash;</span><span></span></div>
+                    <div class="acct-row"><span>Type</span><span class="v" id="accountRowType">Standard</span><span></span></div>
+                    <!-- Read from the token the browser holds; no request. -->
+                    <div class="acct-row"><span>This session</span><span class="v dot">Signed in on this browser<small id="accountSession">&mdash;</small></span><span></span></div>
+                </div>
+
+                <div class="fgroup" data-reveal data-reveal-delay="280">
+                    <div class="fgroup__title">Security</div>
+
+                    <div class="acct-row"><span>Password</span><span class="v">Set<small>At least 12 characters. Changing it does not sign you out elsewhere.</small></span><span class="acts">
+                        <button type="button" class="btn-small btn-primary" data-on-click="togglePasswordForm">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+                            Change password
+                        </button>
+                    </span></div>
+                    <form class="acct-form hidden" id="changePasswordForm" data-on-submit="changePassword" novalidate>
+                        <div class="field">
+                            <label for="currentPassword">Current password</label>
+                            <input type="password" id="currentPassword" autocomplete="current-password" required />
+                        </div>
+                        <div class="fgroup__row">
+                            <div class="field">
+                                <label for="newPassword">New password</label>
+                                <input type="password" id="newPassword" autocomplete="new-password" minlength="12" maxlength="200" required />
+                            </div>
+                            <div class="field">
+                                <label for="newPasswordAgain">Confirm new password</label>
+                                <input type="password" id="newPasswordAgain" autocomplete="new-password" required />
+                            </div>
+                        </div>
+                        <p class="field-hint">At least 12 characters. Use a password manager if you have one.</p>
+                        <div id="changePasswordMessage" role="alert"></div>
+                        <div class="acct-form__foot">
+                            <button type="submit" class="btn-small btn-primary" id="changePasswordBtn">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+                                Save new password
+                            </button>
+                            <button type="button" class="btn-small btn-primary" data-on-click="togglePasswordForm">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+                                Cancel
+                            </button>
+                        </div>
+                    </form>
+
+                    <div class="acct-row"><span>Recovery codes</span><span class="v dot" id="accountCodes"><span id="accountCodesCount">&mdash;</span><small>Each resets a forgotten password once. Make a new set when you run low, or if the old set may have been seen.</small></span><span class="acts">
+                        <button type="button" class="btn-small btn-primary" data-on-click="regenerateRecoveryCodes">
+                            <span data-icon="plus"></span>
+                            New codes
+                        </button>
+                    </span></div>
+                    <!-- The fresh set lands here, once - the same panel the API key uses. -->
+                    <div id="recoveryCodesPanel" class="new-api-key hidden" role="status" aria-live="polite"></div>
+
+                    <div class="acct-row"><span>API key</span><span class="v" id="accountApiState"><span class="mono" id="accountApiPrefix">&mdash;</span><small id="accountApiStatus">Checking&hellip;</small></span><span class="acts">
+                        <button type="button" class="btn-small btn-primary" data-on-click="switchDashboardPage" data-arg="api">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 9l-4 3 4 3M16 9l4 3-4 3M14 5l-4 14"/></svg>
+                            Manage
+                        </button>
+                    </span></div>
+                </div>
+            </div>
+        </div>
+    </main>
+    </div><!-- /.dash-shell -->
 
     <!-- Withdrawal Modal -->
     <div class="modal" id="withdrawalModal">
@@ -249,7 +844,7 @@
             <div class="modal-header">
                 <h2 class="modal-title">Withdraw to Ethereum</h2>
             </div>
-            <button class="close-btn" onclick="closeWithdrawalModal()">
+            <button class="close-btn" data-on-click="closeWithdrawalModal">
                 <span data-icon="close"></span>
             </button>
 
@@ -263,7 +858,7 @@
             <form id="withdrawalForm">
                 <div class="form-group">
                     <label>Available Balance</label>
-                    <div style="padding: 12px; background: #f8f8f8; border-radius: 6px; font-weight: 600; font-family: 'Courier New', monospace;">
+                    <div style="padding: 12px; background: var(--surface-sunken); border-radius: 6px; font-weight: 600; font-family: 'Courier New', monospace;">
                         <span id="availableBalance">$0.00</span>
                     </div>
                 </div>
@@ -290,88 +885,23 @@
                 </div>
 
                 <div class="form-group">
-                    <strong style="color: #1a1a1a;">You will receive:</strong>
-                    <div style="margin-top: 8px; padding: 12px; background: #f0f0f0; border-radius: 6px; font-size: 18px; font-weight: 600; font-family: 'Courier New', monospace;">
+                    <strong style="color: var(--ink);">You will receive:</strong>
+                    <div style="margin-top: 8px; padding: 12px; background: var(--line); border-radius: 6px; font-size: 18px; font-weight: 600; font-family: 'Courier New', monospace;">
                         <span id="youWillReceive">$0.00</span>
                     </div>
                 </div>
 
                 <div class="button-group">
                     <button type="submit" class="btn-primary">Confirm Withdrawal</button>
-                    <button type="button" class="btn-secondary" onclick="closeWithdrawalModal()">Cancel</button>
+                    <button type="button" class="btn-secondary" data-on-click="closeWithdrawalModal">Cancel</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- Create Wallet Modal -->
-    <div class="modal" id="createWalletModal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2 class="modal-title">Add Wallet</h2>
-            </div>
-            <button class="close-btn" onclick="closeCreateWalletModal()">
-                <span data-icon="close"></span>
-            </button>
-
-            <div class="info-box">
-                <strong>Minimum: $5.00 per wallet/chain</strong>
-                You must have at least $5 in a single wallet to withdraw from that chain.
-            </div>
-
-            <form id="createWalletForm">
-                <div class="form-group">
-                    <label>Select Blockchain</label>
-                    <select id="walletChain" required>
-                        <option value="">Choose a chain...</option>
-                        <option value="ETH">Ethereum (ETH)</option>
-                        <option value="BTC">Bitcoin (BTC)</option>
-                        <option value="LTC">Litecoin (LTC)</option>
-                        <option value="SOL">Solana (SOL)</option>
-                    </select>
-                </div>
-
-                <div class="button-group">
-                    <button type="submit" class="btn-primary">Create Wallet</button>
-                    <button type="button" class="btn-secondary" onclick="closeCreateWalletModal()">Cancel</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- API Keys Modal -->
-    <div class="modal" id="apiModal" onclick="closeAPIModalOnClickOutside(event)">
-        <div class="modal-content">
-            <div class="modal-header" style="position: relative; display: flex; align-items: center; justify-content: space-between;">
-                <h2 class="modal-title">API Keys</h2>
-                <button class="close-btn" onclick="closeAPIModal()" style="position: relative; top: 0; right: 0; padding: 8px; margin: 0;">
-                    <span data-icon="close"></span>
-                </button>
-            </div>
-
-            <div class="info-box">
-                <strong>API Access</strong>
-                Use your API key to programmatically manage wallets and transactions.
-            </div>
-
-            <div id="apiKeysContainer" style="position: relative;">
-                <p style="text-align: center; color: #999;">Loading API keys...</p>
-            </div>
-
-            <div id="apiConfirmationOverlay" class="api-confirmation-overlay" style="position: absolute; top: 78px; left: 0; right: 0; bottom: 0px;">
-                <div class="confirmation-message">
-                    This will generate a new API key. Continue?
-                </div>
-                <div class="confirmation-buttons">
-                    <button class="btn-confirm" onclick="confirmGenerateAPIKey()">Confirm</button>
-                    <button class="btn-deny" onclick="denyGenerateAPIKey()">Deny</button>
-                </div>
-            </div>
-
-            <button class="btn-primary" style="margin-top: 16px;" onclick="generateNewAPIKey()">Generate New Key</button>
-        </div>
-    </div>
-
+    <script src="/js/common/chain-logos.js"></script>
     <script src="/js/dashboard.js"></script>
+    <script src="/js/dashboard-checkout.js"></script>
+    <script src="/js/common/actions.js"></script>
 </body>
 </html>

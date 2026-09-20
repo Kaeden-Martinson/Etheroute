@@ -2,10 +2,7 @@ const { v4: uuidv4 } = require('uuid');
 const crypto = require('crypto');
 const { ethers } = require('ethers');
 const bip39 = require('bip39');
-const SolanaWalletService = require('./wallets/SolanaWalletService');
-const BitcoinWalletService = require('./wallets/BitcoinWalletService');
-const EthereumWalletService = require('./wallets/EthereumWalletService');
-const LitecoinWalletService = require('./wallets/LitecoinWalletService');
+const { walletServiceFor } = require('./wallets');
 const { db } = require('../config/database');
 
 class WalletService {
@@ -16,22 +13,8 @@ class WalletService {
       throw new Error(`User with ID ${clientId} not found`);
     }
 
-    // Delegate to specialized services
-    if (chain === 'ETH') {
-      return EthereumWalletService.createWallet(clientId, null);
-    }
-
-    if (chain === 'SOL') {
-      return SolanaWalletService.createWallet(clientId, null);
-    }
-
-    if (chain === 'BTC') {
-      return BitcoinWalletService.createWallet(clientId, null);
-    }
-
-    if (chain === 'LTC') {
-      return LitecoinWalletService.createWallet(clientId, null);
-    }
+    // The registry decides which family signs for this chain.
+    return walletServiceFor(chain).createWallet(clientId, null);
   }
 
   getWalletsByClient(clientId) {

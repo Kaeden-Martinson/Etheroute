@@ -27,4 +27,18 @@ class UnauthorizedError extends ApiError {
   }
 }
 
-module.exports = { ApiError, ValidationError, NotFoundError, UnauthorizedError };
+class ForbiddenError extends ApiError {
+  constructor(message = 'Forbidden') {
+    super(403, message);
+    this.name = 'ForbiddenError';
+  }
+}
+
+class ConflictError extends ApiError {
+  constructor(message = 'Conflict') {
+    super(409, message);
+    this.name = 'ConflictError';
+  }
+}
+
+module.exports = { ApiError, ValidationError, NotFoundError, UnauthorizedError, ForbiddenError, ConflictError };

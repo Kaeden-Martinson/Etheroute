@@ -3,193 +3,150 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Etheroute accepts crypto payments on ten networks and pays them out on whichever one you like — no documents, no onboarding call.">
     <title>About - Etheroute</title>
     <link rel="icon" type="image/svg+xml" href="/svg/favicon.svg">
+    <script src="/js/common/theme.js"></script>
+    <link rel="stylesheet" href="/css/tokens.css">
     <link rel="stylesheet" href="/css/about.css">
 </head>
 <body>
+    <script src="/js/common/actions.js"></script>
     <script src="/js/common/navbar.js"></script>
 
+    <!-- The shared banner from tokens.css, the same one the status page opens
+         with: gradient ground, a slow diagonal sheen, and the heading rising
+         into place. The pill is the neutral variant - a label, not a state. -->
     <div class="hero">
-        <h1>About Etheroute</h1>
-        <p>Simplifying cryptocurrency withdrawals across multiple blockchains with zero KYC requirements and complete privacy.</p>
+        <span class="hero-pill">About Etheroute</span>
+        <h1>Crypto payments, without the paperwork</h1>
+        <p>Accept on ten networks and pay out on whichever one you like. No documents, no onboarding
+            call, no waiting on a reviewer.</p>
     </div>
 
     <div class="container">
-        <!-- Mission Section -->
-        <div class="section">
-            <h2>Our Mission</h2>
-            <p>At Etheroute, we believe in a future where cryptocurrency users have unrestricted access to their digital assets. Our mission is to provide a fast, secure, and private platform for withdrawing crypto across multiple blockchain networks without unnecessary barriers or invasive data collection.</p>
-            
-            <div class="highlight-box">
-                <h3>Zero KYC, Zero Compromise</h3>
-                <p>We respect your privacy. We don't require personal information, email verification, or identity documents. Just a username and password. That's it.</p>
-            </div>
-        </div>
 
-        <!-- Values Section -->
-        <div class="section">
-            <h2>Our Values</h2>
-            <div class="values-grid">
-                <div class="value-card">
-                    <div class="value-icon">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                    </div>
-                    <h3>Privacy First</h3>
-                    <p>We believe privacy is a fundamental right. We collect minimal data and encrypt everything.</p>
-                </div>
-                <div class="value-card">
-                    <div class="value-icon">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-                    </div>
-                    <h3>Speed &amp; Efficiency</h3>
-                    <p>Fast transactions with intelligent fee optimization across all supported networks.</p>
-                </div>
-                <div class="value-card">
-                    <div class="value-icon">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-                    </div>
-                    <h3>Security</h3>
-                    <p>Bank-grade encryption and multi-layer security protocols protect your assets.</p>
-                </div>
-                <div class="value-card">
-                    <div class="value-icon">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-                    </div>
-                    <h3>Accessibility</h3>
-                    <p>Available 24/7 to users worldwide with support for multiple blockchain networks.</p>
-                </div>
-            </div>
-        </div>
+        <!-- Every figure here is checkable in the repo: ten chains in
+             config/chains.js, 5% from PLATFORM_FEE_RATE, zero documents because
+             there is no KYC flow to have one, AES-256 for the key store.
+             Nothing on this page claims a userbase. -->
+        <section class="facts" aria-label="Etheroute at a glance">
+            <div data-reveal><b>10</b><span>Networks, one integration</span></div>
+            <div data-reveal data-reveal-delay="60"><b>5%</b><span>Platform fee, stated before you confirm</span></div>
+            <div data-reveal data-reveal-delay="120"><b>0</b><span>Documents to open an account</span></div>
+            <div data-reveal data-reveal-delay="180"><b>AES&#8209;256</b><span>Key encryption at rest</span></div>
+        </section>
 
-        <!-- Why Choose Us Section -->
-        <div class="section">
-            <h2>Why Choose Etheroute</h2>
-            <div class="feature-list">
-                <div class="feature-item">
-                    <div class="feature-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
-                    <div class="feature-text"><strong>No KYC</strong><div>Zero personal information required. Just username and password.</div></div>
-                </div>
-                <div class="feature-item">
-                    <div class="feature-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
-                    <div class="feature-text"><strong>Multi-Chain</strong><div>Withdraw from ETH, BTC, SOL, and LTC all in one platform.</div></div>
-                </div>
-                <div class="feature-item">
-                    <div class="feature-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
-                    <div class="feature-text"><strong>Fair Fees</strong><div>Transparent 5% platform fee with no hidden charges.</div></div>
-                </div>
-                <div class="feature-item">
-                    <div class="feature-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
-                    <div class="feature-text"><strong>Instant Setup</strong><div>Create account and start withdrawing within minutes.</div></div>
-                </div>
-                <div class="feature-item">
-                    <div class="feature-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
-                    <div class="feature-text"><strong>API Available</strong><div>Integrate our service into your application with our REST API.</div></div>
-                </div>
-                <div class="feature-item">
-                    <div class="feature-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
-                    <div class="feature-text"><strong>24/7 Support</strong><div>Round-the-clock support for all your withdrawal needs.</div></div>
-                </div>
+        <section class="prose">
+            <div data-reveal>
+                <h2>Why we built it</h2>
+                <p>Taking a crypto payment should be the easy part of running a business. In practice it
+                    means picking a chain and hoping your customer holds it, reconciling a fee you were
+                    quoted against the one that actually landed, and handing identity documents to an
+                    intermediary who is only passing the money along.</p>
+                <p>Etheroute is that without the intermediary&rsquo;s paperwork. You get an address on every
+                    chain we support, a confirmation you can watch block by block, and a review screen whose
+                    total is the number that sends. The keys stay encrypted, the fee stays where it was
+                    quoted, and nobody asks who you are.</p>
             </div>
-        </div>
+            <figure class="pull" data-reveal data-reveal-delay="90">
+                <blockquote>A payment processor should be able to tell you exactly what will arrive, before
+                    you agree to send it.</blockquote>
+                <figcaption>The whole idea</figcaption>
+            </figure>
+        </section>
 
-        <!-- Technology Section -->
-        <div class="section">
-            <h2>Technology Stack</h2>
-            <p>We use cutting-edge technology to ensure reliability, security, and performance:</p>
-            <div class="highlight-box">
-                <h3>Backend Infrastructure</h3>
-                <p><strong>Node.js</strong> with Express.js for high-performance request handling</p>
-                <p><strong>Multiple RPC Providers</strong> for blockchain interaction and verification</p>
-                <p><strong>Encryption</strong> using industry-standard protocols (AES-256)</p>
+        <!-- One numbered rail, replacing BOTH the four-card "Our Values" grid and
+             the six green checkmarks of "Why Choose Etheroute". They made the
+             same four arguments twice: Privacy First / No KYC, Speed / Instant
+             Setup, Security / encryption, Accessibility / API. -->
+        <section class="principles">
+            <h2 data-reveal>How it works in practice</h2>
+            <p class="principles__lede" data-reveal data-reveal-delay="60">Four commitments, each one you can
+                check against the product rather than take on faith.</p>
+
+            <div class="rule" data-reveal data-reveal-delay="120">
+                <i>01</i>
+                <h3>No account to verify</h3>
+                <p>A username and a password opens a basic account. There is no document upload, because
+                    there is no review queue behind it &mdash; you can take a payment the same day.</p>
             </div>
-
-            <div class="highlight-box">
-                <h3>Blockchain Integration</h3>
-                <p>Direct RPC connections to all supported networks:</p>
-                <ul style="margin-left: 20px; margin-top: 12px;">
-                    <li>Ethereum (via ethers.js)</li>
-                    <li>Bitcoin (via bitcoinjs-lib)</li>
-                    <li>Solana (via @solana/web3.js)</li>
-                    <li>Litecoin (via custom RPC integration)</li>
-                </ul>
+            <div class="rule" data-reveal data-reveal-delay="190">
+                <i>02</i>
+                <h3>Ten chains, one integration</h3>
+                <p>Ethereum and its L2s, BNB Chain, Avalanche, Bitcoin, Litecoin and Solana, behind one API
+                    and one set of webhooks. Build against <code>GET /api/chains</code> and adding a network
+                    costs you nothing.</p>
             </div>
-        </div>
-
-        <!-- Timeline Section -->
-        <div class="section">
-            <h2>Our Journey</h2>
-            <div class="timeline">
-                <div class="timeline-item">
-                    <div class="timeline-year">2025</div>
-                    <div class="timeline-content">
-                        <p><strong>Etheroute Founded</strong> - Launched with Ethereum support and a vision for privacy-first crypto withdrawals.</p>
-                    </div>
-                </div>
-                <div class="timeline-item">
-                    <div class="timeline-year">2025</div>
-                    <div class="timeline-content">
-                        <p><strong>Multi-Chain Expansion</strong> - Added Bitcoin, Solana, and Litecoin support.</p>
-                    </div>
-                </div>
-                <div class="timeline-item">
-                    <div class="timeline-year">2026</div>
-                    <div class="timeline-content">
-                        <p><strong>API Release</strong> - Opened REST API for developers and business integration. Continuing to expand.</p>
-                    </div>
-                </div>
+            <div class="rule" data-reveal data-reveal-delay="260">
+                <i>03</i>
+                <h3>Your keys, encrypted at rest</h3>
+                <p>Wallet keys are encrypted with AES-256 before they are stored, and withdrawals go out to
+                    an address you control. We hold the infrastructure, not a claim on your balance.</p>
             </div>
-        </div>
-
-        <!-- Contact Section -->
-        <div class="section">
-            <h2>Get in Touch</h2>
-            <p>Have questions about Etheroute? We'd love to hear from you. Reach out through any of these channels:</p>
-            <div class="highlight-box">
-                <p style="margin-bottom: 8px;"><strong>Telegram:</strong> https://t.me/etheroute</p>
-                <p style="margin-bottom: 8px;"><strong>Response Time:</strong> Usually within 24 hours</p>
-                <p style="margin-bottom: 0;"><strong>Status Page:</strong> https://etheroute.io/status</p>
+            <div class="rule" data-reveal data-reveal-delay="330">
+                <i>04</i>
+                <h3>One fee, quoted before you confirm</h3>
+                <p>A flat 5% platform fee and the network&rsquo;s own cost, broken down on the review screen.
+                    No spread hidden in the rate, and no figure that moves between the quote and the send.</p>
             </div>
-        </div>
+        </section>
 
-        <!-- CTA Section -->
-        <div class="cta-section">
-            <h2>Ready to Get Started?</h2>
-            <p>Start withdrawing your crypto across multiple networks in minutes. No KYC, no hassle.</p>
-            <a href="/auth" class="btn">Create Your Account</a>
-        </div>
+        <!-- The Help Center's block, verbatim. It replaces a grey slab that
+             printed https://t.me/etheroute as plain text - not even a link. -->
+        <section class="contact">
+            <h2 data-reveal>Get in touch</h2>
+            <p data-reveal data-reveal-delay="60">Questions about the product, an integration, or something
+                that looks wrong? Any of these reaches the team. For anything security-related, use them
+                right away so it gets prioritised.</p>
+            <div class="channels-grid">
+                <a class="channel" href="https://discord.gg/etheroute" target="_blank" rel="noopener" data-reveal data-reveal-delay="120">
+                    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.317 4.369a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.211.375-.445.865-.607 1.25a18.27 18.27 0 0 0-5.487 0c-.162-.385-.395-.875-.607-1.25a.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.056 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.873-1.295 1.226-1.994a.076.076 0 0 0-.042-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.294.075.075 0 0 1 .078-.01c3.928 1.793 8.18 1.793 12.062 0a.075.075 0 0 1 .079.009c.12.098.246.198.373.295a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.076.076 0 0 0-.041.107c.352.699.764 1.365 1.225 1.994a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-4.786-.838-8.95-3.549-12.617a.06.06 0 0 0-.031-.03zM8.02 15.331c-1.183 0-2.157-.965-2.157-2.156 0-1.193.948-2.157 2.157-2.157 1.211 0 2.176.964 2.157 2.157 0 1.19-.946 2.156-2.157 2.156zm7.975 0c-1.183 0-2.157-.965-2.157-2.156 0-1.193.948-2.157 2.157-2.157 1.211 0 2.176.964 2.157 2.157 0 1.19-.946 2.156-2.157 2.156z"/></svg>
+                    Discord Community
+                </a>
+                <a class="channel" href="https://t.me/etheroute" target="_blank" rel="noopener" data-reveal data-reveal-delay="170">
+                    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.446 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12l-6.869 4.332-2.96-.924c-.644-.203-.658-.644.136-.954l11.566-4.461c.542-.203 1.013.131.832.941z"/></svg>
+                    Telegram Support
+                </a>
+                <a class="channel" href="mailto:support@etheroute.io" data-reveal data-reveal-delay="220">
+                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2" stroke="currentColor" stroke-width="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" stroke="currentColor" stroke-width="2"/></svg>
+                    Email Support
+                </a>
+            </div>
+        </section>
+
     </div>
 
     <!-- Footer -->
     <div class="footer">
         <div class="footer-content">
             <div class="footer-grid">
-                <div class="footer-section">
+                <div class="footer-section" data-reveal>
                     <h4>Support</h4>
                     <a href="/docs" class="footer-link">Documentation</a>
                     <a href="/api-reference" class="footer-link">API Reference</a>
                     <a href="/help" class="footer-link">Help Center</a>
                 </div>
-                <div class="footer-section">
+                <div class="footer-section" data-reveal data-reveal-delay="80">
                     <h4>Company</h4>
                     <a href="/about" class="footer-link">About Us</a>
-                    <a href="https://discord.gg" class="footer-link" target="_blank">Discord</a>
+                    <a href="https://discord.gg/etheroute" class="footer-link" target="_blank" rel="noopener">Discord</a>
                     <a href="https://t.me/etheroute" class="footer-link" target="_blank">Telegram</a>
                 </div>
-                <div class="footer-section">
+                <div class="footer-section" data-reveal data-reveal-delay="160">
                     <h4>Legal</h4>
                     <a href="/privacy" class="footer-link">Privacy Policy</a>
                     <a href="/terms" class="footer-link">Terms of Service</a>
                     <a href="/compliance" class="footer-link">Compliance</a>
                 </div>
             </div>
-            <div class="footer-bottom">
+            <div class="footer-bottom" data-reveal data-reveal-delay="240">
                 <p>&copy; 2026 Etheroute. All rights reserved. | Secure Multi-Chain Withdrawal Platform</p>
             </div>
         </div>
     </div>
 
-    <script src="/js/about.js"></script>
     <script src="/js/common/icons.js"></script>
+    <script src="/js/common/reveal.js"></script>
 </body>
 </html>

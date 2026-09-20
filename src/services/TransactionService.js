@@ -93,6 +93,18 @@ class TransactionService {
    * @param {number} blockNumber - Block number (for confirmed transactions)
    * @returns {Object} Updated transaction
    */
+  /**
+   * Record bookkeeping on a transaction without changing its status - the
+   * last status the chain or Sideshift reported, and when it was checked.
+   */
+  touch(transactionId, fields) {
+    const transaction = db.update('transactions', transactionId, { ...fields });
+    if (!transaction) {
+      throw new Error(`Transaction with ID ${transactionId} not found`);
+    }
+    return transaction;
+  }
+
   updateTransactionStatus(transactionId, status, blockNumber) {
     const validStatuses = ['PENDING', 'PROCESSING', 'CONFIRMED', 'FAILED'];
     if (!validStatuses.includes(status)) {

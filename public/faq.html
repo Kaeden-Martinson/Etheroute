@@ -5,294 +5,293 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FAQ - Etheroute</title>
     <link rel="icon" type="image/svg+xml" href="/svg/favicon.svg">
+    <script src="/js/common/theme.js"></script>
+    <link rel="stylesheet" href="/css/tokens.css">
     <link rel="stylesheet" href="/css/faq.css">
 </head>
 <body>
+    <script src="/js/common/actions.js"></script>
     <script src="/js/common/navbar.js"></script>
 
+    <!-- The shared banner from tokens.css, the same one the status page opens
+         with: gradient ground, a slow diagonal sheen, and the heading rising
+         into place. -->
+    <!-- The shared banner from tokens.css, the same one the status page opens
+         with: gradient ground, a slow diagonal sheen, and the heading rising
+         into place. -->
+    <!-- The shared banner from tokens.css, the same one the status page opens
+         with: gradient ground, a slow diagonal sheen, and the heading rising
+         into place. -->
+    <!-- The shared banner from tokens.css, the same one the status page opens
+         with: gradient ground, a slow diagonal sheen, and the heading rising
+         into place. -->
+    <div class="hero">
+        <span class="hero-pill">Support</span>
+        <h1>Questions, answered</h1>
+        <p>Accounts, withdrawals, security and the API. If none of these covers it, the team is a
+            message away at the bottom of the page.</p>
+    </div>
+
     <div class="container">
-        <h1>Frequently Asked Questions</h1>
-        <p class="subtitle">Find answers to common questions about Etheroute</p>
 
-        <!-- Account & Registration -->
-        <div class="faq-section">
-            <h2 class="faq-category">Account & Registration</h2>
-
-            <div class="faq-item">
-                <div class="faq-question" onclick="toggleFaq(this)">
-                    <h3>How do I create an account?</h3>
-                    <div class="faq-toggle">▼</div>
-                </div>
-                <div class="faq-answer">
-                    <div class="faq-answer-content">
-                        <p>Click on "Get Started" in the top navigation bar and select the "Sign Up" tab. Enter your desired username and a strong password (minimum 8 characters). Agree to our Terms of Service and Privacy Policy, then click "Create Account". That's it!</p>
-                        <div class="highlight"><strong>No KYC Required:</strong> We don't ask for personal information like email or real name. Just a username and password.</div>
-                    </div>
-                </div>
+        <!-- Seventeen questions in four groups: without a filter you scroll past
+             all of them to reach one. Sticky, so the categories stay reachable
+             once you are deep in the list. -->
+        <div class="faq-filter">
+            <div class="faq-search">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5" stroke-linecap="round"/>
+                </svg>
+                <input type="search" id="faqSearch" placeholder="Search questions&hellip;" aria-label="Search questions"
+                       autocomplete="off">
             </div>
-
-            <div class="faq-item">
-                <div class="faq-question" onclick="toggleFaq(this)">
-                    <h3>Do you require KYC (Know Your Customer) verification?</h3>
-                    <div class="faq-toggle">▼</div>
-                </div>
-                <div class="faq-answer">
-                    <div class="faq-answer-content">
-                        <p>No. Etheroute does not require any KYC verification. We only collect a username and password. No personal information, email, ID, or address is needed. This is part of our privacy-first approach.</p>
-                    </div>
-                </div>
+            <div class="faq-cats" id="faqCats" role="group" aria-label="Filter by category">
+                    <button type="button" data-cat="all" aria-pressed="true">All</button>
+                    <button type="button" data-cat="account" aria-pressed="false">Account</button>
+                    <button type="button" data-cat="withdrawals" aria-pressed="false">Withdrawals</button>
+                    <button type="button" data-cat="security" aria-pressed="false">Security</button>
+                    <button type="button" data-cat="technical" aria-pressed="false">Technical</button>
             </div>
-
-            <div class="faq-item">
-                <div class="faq-question" onclick="toggleFaq(this)">
-                    <h3>What if I forget my password?</h3>
-                    <div class="faq-toggle">▼</div>
-                </div>
-                <div class="faq-answer">
-                    <div class="faq-answer-content">
-                        <p>Since we don't collect email addresses, password recovery works through security questions. Contact our support team at <a href="https://t.me/etheroute" target="_blank">t.me/etheroute</a> with your username and we can help you reset your password securely.</p>
-                    </div>
-                </div>
-            </div>
-
-            <div class="faq-item">
-                <div class="faq-question" onclick="toggleFaq(this)">
-                    <h3>Is my password secure?</h3>
-                    <div class="faq-toggle">▼</div>
-                </div>
-                <div class="faq-answer">
-                    <div class="faq-answer-content">
-                        <p>Yes. Passwords are hashed and encrypted using industry-standard encryption protocols. We never store plain-text passwords, and your password is only known to you.</p>
-                    </div>
-                </div>
-            </div>
+            <p class="faq-count" id="faqCount" aria-live="polite" role="status">18 questions</p>
         </div>
 
-        <!-- Withdrawals & Transactions -->
-        <div class="faq-section">
-            <h2 class="faq-category">Withdrawals & Transactions</h2>
-
-            <div class="faq-item">
-                <div class="faq-question" onclick="toggleFaq(this)">
-                    <h3>Which cryptocurrencies can I withdraw?</h3>
-                    <div class="faq-toggle">▼</div>
+        <div id="faqList">
+            <section class="qa-group" data-group="account" data-reveal>
+                <h2 class="qa-group__title">Account &amp; Registration</h2>
+                <div class="qa" data-text="how do i create an account? click on &quot;get started&quot; in the top navigation bar and select the &quot;sign up&quot; tab. enter your desired username and a strong password (minimum 8 characters). agree to our terms of service and privacy policy, then click &quot;create account&quot;. that&#x27;s it! no kyc required: we don&#x27;t ask for personal information like email or real name. just a username and password.">
+                    <button class="qa__q" type="button" aria-controls="faq-a1">
+                        <h3>How do I create an account?</h3><svg class="qa__chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+                    </button>
+                    <div class="qa__a" id="faq-a1"><div class="qa__inner">
+<p>Click on "Get Started" in the top navigation bar and select the "Sign Up" tab. Enter your desired username and a strong password (minimum 8 characters). Agree to our Terms of Service and Privacy Policy, then click "Create Account". That's it!</p>
+                        <div class="qa__note"><p><strong>No KYC Required:</strong> We don't ask for personal information like email or real name. Just a username and password.</p></div>
+                    </div></div>
                 </div>
-                <div class="faq-answer">
-                    <div class="faq-answer-content">
-                        <p>We support withdrawals on four major blockchain networks:</p>
+                <div class="qa" data-text="do you require kyc (know your customer) verification? no. etheroute does not require any kyc verification. we only collect a username and password. no personal information, email, id, or address is needed. this is part of our privacy-first approach.">
+                    <button class="qa__q" type="button" aria-controls="faq-a2">
+                        <h3>Do you require KYC (Know Your Customer) verification?</h3><svg class="qa__chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+                    </button>
+                    <div class="qa__a" id="faq-a2"><div class="qa__inner">
+<p>No. Etheroute does not require any KYC verification. We only collect a username and password. No personal information, email, ID, or address is needed. This is part of our privacy-first approach.</p>
+                    </div></div>
+                </div>
+                <div class="qa" data-text="what if i forget my password? since we don&#x27;t collect email addresses, password recovery works through security questions. contact our support team at t.me/etheroute with your username and we can help you reset your password securely.">
+                    <button class="qa__q" type="button" aria-controls="faq-a3">
+                        <h3>What if I forget my password?</h3><svg class="qa__chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+                    </button>
+                    <div class="qa__a" id="faq-a3"><div class="qa__inner">
+<p>Since we don't collect email addresses, password recovery works through security questions. Contact our support team at <a href="https://t.me/etheroute" target="_blank">t.me/etheroute</a> with your username and we can help you reset your password securely.</p>
+                    </div></div>
+                </div>
+                <div class="qa" data-text="is my password secure? yes. passwords are hashed and encrypted using industry-standard encryption protocols. we never store plain-text passwords, and your password is only known to you.">
+                    <button class="qa__q" type="button" aria-controls="faq-a4">
+                        <h3>Is my password secure?</h3><svg class="qa__chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+                    </button>
+                    <div class="qa__a" id="faq-a4"><div class="qa__inner">
+<p>Yes. Passwords are hashed and encrypted using industry-standard encryption protocols. We never store plain-text passwords, and your password is only known to you.</p>
+                    </div></div>
+                </div>
+            </section>
+            <section class="qa-group" data-group="withdrawals" data-reveal>
+                <h2 class="qa-group__title">Withdrawals &amp; Transactions</h2>
+                <div class="qa" data-text="which chains and coins do you support? ten networks across three families, all behind one account and one api: ethereum (eth) and its l2s base , arbitrum one and optimism — the coin on all three l2s is eth polygon (pol) , bnb chain (bnb) and avalanche (avax) bitcoin (btc) and litecoin (ltc) solana (sol) each chain pays in its own native coin: a wallet on base receives eth, a wallet on bnb chain receives bnb. every one of them takes payments, has an address you can generate from the dashboard, and can be withdrawn from. the live list, with confirmation thresholds and explorer links, is at get /api/chains .">
+                    <button class="qa__q" type="button" aria-controls="faq-a18">
+                        <h3>Which chains and coins do you support?</h3><svg class="qa__chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+                    </button>
+                    <div class="qa__a" id="faq-a18"><div class="qa__inner">
+<p>Ten networks across three families, all behind one account and one API:</p>
                         <ul>
-                            <li><strong>Ethereum (ETH)</strong> - ERC-20 compatible</li>
-                            <li><strong>Bitcoin (BTC)</strong> - Bitcoin network</li>
-                            <li><strong>Solana (SOL)</strong> - Solana network</li>
-                            <li><strong>Litecoin (LTC)</strong> - Litecoin network</li>
+                            <li><strong>Ethereum (ETH)</strong> and its L2s <strong>Base</strong>, <strong>Arbitrum One</strong> and <strong>Optimism</strong> &mdash; the coin on all three L2s is ETH</li>
+                            <li><strong>Polygon (POL)</strong>, <strong>BNB Chain (BNB)</strong> and <strong>Avalanche (AVAX)</strong></li>
+                            <li><strong>Bitcoin (BTC)</strong> and <strong>Litecoin (LTC)</strong></li>
+                            <li><strong>Solana (SOL)</strong></li>
                         </ul>
-                    </div>
+                        <p>Each chain pays in its own native coin: a wallet on Base receives ETH, a wallet on BNB Chain receives BNB. Every one of them takes payments, has an address you can generate from the dashboard, and can be withdrawn from. The live list, with confirmation thresholds and explorer links, is at <code>GET /api/chains</code>.</p>
+                    </div></div>
                 </div>
-            </div>
-
-            <div class="faq-item">
-                <div class="faq-question" onclick="toggleFaq(this)">
-                    <h3>What are the withdrawal fees?</h3>
-                    <div class="faq-toggle">▼</div>
+                <div class="qa" data-text="which cryptocurrencies can i withdraw? any of the ten chains we support, into whichever one you like: eth, pol, bnb, avax, btc, ltc and sol, plus eth on base, arbitrum one and optimism. a withdrawal sweeps what you have received into one destination address. wallets already on the destination chain are sent directly, with no swap; anything on another chain is converted at a fixed rate that is quoted on the review screen before you confirm, so the figure you see is the figure that arrives.">
+                    <button class="qa__q" type="button" aria-controls="faq-a5">
+                        <h3>Which cryptocurrencies can I withdraw?</h3><svg class="qa__chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+                    </button>
+                    <div class="qa__a" id="faq-a5"><div class="qa__inner">
+<p>Any of the ten chains we support, into whichever one you like: ETH, POL, BNB, AVAX, BTC, LTC and SOL, plus ETH on Base, Arbitrum One and Optimism.</p>
+                        <p>A withdrawal sweeps what you have received into one destination address. Wallets already on the destination chain are sent directly, with no swap; anything on another chain is converted at a fixed rate that is quoted on the review screen before you confirm, so the figure you see is the figure that arrives.</p>
+                    </div></div>
                 </div>
-                <div class="faq-answer">
-                    <div class="faq-answer-content">
-                        <p>We charge a <strong>5% platform fee</strong> on all withdrawals. Additionally, blockchain network fees may apply depending on current network conditions. Both fees are clearly displayed before you confirm your withdrawal.</p>
-                        <div class="highlight"><strong>Example:</strong> If you withdraw $100, the 5% fee is $5, so you receive $95 to your wallet (plus any blockchain fees).</div>
-                    </div>
+                <div class="qa" data-text="what are the withdrawal fees? we charge a 5% platform fee on all withdrawals. additionally, blockchain network fees may apply depending on current network conditions. both fees are clearly displayed before you confirm your withdrawal. example: if you withdraw $100, the 5% fee is $5, so you receive $95 to your wallet (plus any blockchain fees).">
+                    <button class="qa__q" type="button" aria-controls="faq-a6">
+                        <h3>What are the withdrawal fees?</h3><svg class="qa__chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+                    </button>
+                    <div class="qa__a" id="faq-a6"><div class="qa__inner">
+<p>We charge a <strong>5% platform fee</strong> on all withdrawals. Additionally, blockchain network fees may apply depending on current network conditions. Both fees are clearly displayed before you confirm your withdrawal.</p>
+                        <div class="qa__note"><p><strong>Example:</strong> If you withdraw $100, the 5% fee is $5, so you receive $95 to your wallet (plus any blockchain fees).</p></div>
+                    </div></div>
                 </div>
-            </div>
-
-            <div class="faq-item">
-                <div class="faq-question" onclick="toggleFaq(this)">
-                    <h3>How long does a withdrawal take?</h3>
-                    <div class="faq-toggle">▼</div>
-                </div>
-                <div class="faq-answer">
-                    <div class="faq-answer-content">
-                        <p>Withdrawal times depend on the blockchain network:</p>
+                <div class="qa" data-text="how long does a withdrawal take? a direct transfer — a wallet already on the chain you are cashing out to — is done once the payout chain confirms it. what that takes, chain by chain: solana: under a second arbitrum one: a few seconds base, optimism, avalanche: about 6 seconds (3 blocks) bnb chain: about 9 seconds (3 blocks) ethereum: about 40 seconds (3 blocks) polygon: about 40 seconds (20 blocks) litecoin: about 5 minutes (2 blocks) bitcoin: about 10 minutes (1 block), longer when the network is busy a wallet on a different chain is swapped first, and the swap provider&#x27;s own processing time comes on top — a few minutes as a rule, and up to an hour when bitcoin is on either side. a payout sitting in processing that long is normal, not a failure. the dashboard shows each transfer&#x27;s progress, and the api and webhooks report every change of state.">
+                    <button class="qa__q" type="button" aria-controls="faq-a7">
+                        <h3>How long does a withdrawal take?</h3><svg class="qa__chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+                    </button>
+                    <div class="qa__a" id="faq-a7"><div class="qa__inner">
+<p>A direct transfer &mdash; a wallet already on the chain you are cashing out to &mdash; is done once the payout chain confirms it. What that takes, chain by chain:</p>
                         <ul>
-                            <li><strong>Ethereum:</strong> 30 seconds to 2 minutes</li>
-                            <li><strong>Bitcoin:</strong> 10 to 30 minutes</li>
-                            <li><strong>Solana:</strong> 15 to 45 seconds</li>
-                            <li><strong>Litecoin:</strong> 2 to 5 minutes</li>
+                            <li><strong>Solana:</strong> under a second</li>
+                            <li><strong>Arbitrum One:</strong> a few seconds</li>
+                            <li><strong>Base, Optimism, Avalanche:</strong> about 6 seconds (3 blocks)</li>
+                            <li><strong>BNB Chain:</strong> about 9 seconds (3 blocks)</li>
+                            <li><strong>Ethereum:</strong> about 40 seconds (3 blocks)</li>
+                            <li><strong>Polygon:</strong> about 40 seconds (20 blocks)</li>
+                            <li><strong>Litecoin:</strong> about 5 minutes (2 blocks)</li>
+                            <li><strong>Bitcoin:</strong> about 10 minutes (1 block), longer when the network is busy</li>
                         </ul>
-                        <p>These times depend on network congestion. We provide real-time status updates via our REST-API.</p>
-                    </div>
+                        <p>A wallet on a different chain is swapped first, and the swap provider&#x27;s own processing time comes on top &mdash; a few minutes as a rule, and up to an hour when Bitcoin is on either side. A payout sitting in <strong>processing</strong> that long is normal, not a failure. The dashboard shows each transfer&#x27;s progress, and the API and webhooks report every change of state.</p>
+                    </div></div>
                 </div>
-            </div>
-
-            <div class="faq-item">
-                <div class="faq-question" onclick="toggleFaq(this)">
-                    <h3>Can I cancel a withdrawal?</h3>
-                    <div class="faq-toggle">▼</div>
+                <div class="qa" data-text="can i cancel a withdrawal? once a withdrawal is confirmed on the blockchain, it cannot be reversed . cryptocurrency transactions are irreversible by design. always verify the receiving address before confirming a withdrawal.">
+                    <button class="qa__q" type="button" aria-controls="faq-a8">
+                        <h3>Can I cancel a withdrawal?</h3><svg class="qa__chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+                    </button>
+                    <div class="qa__a" id="faq-a8"><div class="qa__inner">
+<p>Once a withdrawal is confirmed on the blockchain, it <strong>cannot be reversed</strong>. Cryptocurrency transactions are irreversible by design. Always verify the receiving address before confirming a withdrawal.</p>
+                    </div></div>
                 </div>
-                <div class="faq-answer">
-                    <div class="faq-answer-content">
-                        <p>Once a withdrawal is confirmed on the blockchain, it <strong>cannot be reversed</strong>. Cryptocurrency transactions are irreversible by design. Always verify the receiving address before confirming a withdrawal.</p>
-                    </div>
+                <div class="qa" data-text="what is the minimum withdrawal amount? the minimum withdrawal amount is $5 usd (and gas fees) per chain . this ensures your withdrawal fees remain reasonable relative to your withdrawal amount.">
+                    <button class="qa__q" type="button" aria-controls="faq-a9">
+                        <h3>What is the minimum withdrawal amount?</h3><svg class="qa__chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+                    </button>
+                    <div class="qa__a" id="faq-a9"><div class="qa__inner">
+<p>The minimum withdrawal amount is <strong>$5 USD (and gas fees) per chain</strong>. This ensures your withdrawal fees remain reasonable relative to your withdrawal amount.</p>
+                    </div></div>
                 </div>
-            </div>
-
-            <div class="faq-item">
-                <div class="faq-question" onclick="toggleFaq(this)">
-                    <h3>What is the minimum withdrawal amount?</h3>
-                    <div class="faq-toggle">▼</div>
+                <div class="qa" data-text="are there withdrawal limits? no daily withdrawal limits exist. you can withdraw as much as you want, as many times as you want. limits depend only on your available balance.">
+                    <button class="qa__q" type="button" aria-controls="faq-a10">
+                        <h3>Are there withdrawal limits?</h3><svg class="qa__chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+                    </button>
+                    <div class="qa__a" id="faq-a10"><div class="qa__inner">
+<p>No daily withdrawal limits exist. You can withdraw as much as you want, as many times as you want. Limits depend only on your available balance.</p>
+                    </div></div>
                 </div>
-                <div class="faq-answer">
-                    <div class="faq-answer-content">
-                        <p>The minimum withdrawal amount is <strong>$5 USD (and gas fees) per chain</strong>. This ensures your withdrawal fees remain reasonable relative to your withdrawal amount.</p>
-                    </div>
+            </section>
+            <section class="qa-group" data-group="security" data-reveal>
+                <h2 class="qa-group__title">Security &amp; Privacy</h2>
+                <div class="qa" data-text="is my data safe? yes. we use bank-grade encryption for all data in transit and at rest. your wallet addresses are encrypted, and your transactions are secured. see our privacy policy for more details.">
+                    <button class="qa__q" type="button" aria-controls="faq-a11">
+                        <h3>Is my data safe?</h3><svg class="qa__chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+                    </button>
+                    <div class="qa__a" id="faq-a11"><div class="qa__inner">
+<p>Yes. We use bank-grade encryption for all data in transit and at rest. Your wallet addresses are encrypted, and your transactions are secured. See our <a href="/privacy" style="color: #1a1a1a; font-weight: 600;">Privacy Policy</a> for more details.</p>
+                    </div></div>
                 </div>
-            </div>
-
-            <div class="faq-item">
-                <div class="faq-question" onclick="toggleFaq(this)">
-                    <h3>Are there withdrawal limits?</h3>
-                    <div class="faq-toggle">▼</div>
+                <div class="qa" data-text="do you store my private keys? no. we never store, access, or have any control over your private keys. you maintain complete control of your wallets. we only process withdrawals on your behalf.">
+                    <button class="qa__q" type="button" aria-controls="faq-a12">
+                        <h3>Do you store my private keys?</h3><svg class="qa__chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+                    </button>
+                    <div class="qa__a" id="faq-a12"><div class="qa__inner">
+<p>No. We never store, access, or have any control over your private keys. You maintain complete control of your wallets. We only process withdrawals on your behalf.</p>
+                    </div></div>
                 </div>
-                <div class="faq-answer">
-                    <div class="faq-answer-content">
-                        <p>No daily withdrawal limits exist. You can withdraw as much as you want, as many times as you want. Limits depend only on your available balance.</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Security & Privacy -->
-        <div class="faq-section">
-            <h2 class="faq-category">Security & Privacy</h2>
-
-            <div class="faq-item">
-                <div class="faq-question" onclick="toggleFaq(this)">
-                    <h3>Is my data safe?</h3>
-                    <div class="faq-toggle">▼</div>
-                </div>
-                <div class="faq-answer">
-                    <div class="faq-answer-content">
-                        <p>Yes. We use bank-grade encryption for all data in transit and at rest. Your wallet addresses are encrypted, and your transactions are secured. See our <a href="/privacy" style="color: #1a1a1a; font-weight: 600;">Privacy Policy</a> for more details.</p>
-                    </div>
-                </div>
-            </div>
-
-            <div class="faq-item">
-                <div class="faq-question" onclick="toggleFaq(this)">
-                    <h3>Do you store my private keys?</h3>
-                    <div class="faq-toggle">▼</div>
-                </div>
-                <div class="faq-answer">
-                    <div class="faq-answer-content">
-                        <p>No. We never store, access, or have any control over your private keys. You maintain complete control of your wallets. We only process withdrawals on your behalf.</p>
-                    </div>
-                </div>
-            </div>
-
-            <div class="faq-item">
-                <div class="faq-question" onclick="toggleFaq(this)">
-                    <h3>What data do you collect?</h3>
-                    <div class="faq-toggle">▼</div>
-                </div>
-                <div class="faq-answer">
-                    <div class="faq-answer-content">
-                        <p>We collect:</p>
+                <div class="qa" data-text="what data do you collect? we collect: username (your identifier) wallet addresses (to process withdrawals) transaction history we do not collect personal information like email, phone, name, or location.">
+                    <button class="qa__q" type="button" aria-controls="faq-a13">
+                        <h3>What data do you collect?</h3><svg class="qa__chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+                    </button>
+                    <div class="qa__a" id="faq-a13"><div class="qa__inner">
+<p>We collect:</p>
                         <ul>
                             <li>Username (your identifier)</li>
                             <li>Wallet addresses (to process withdrawals)</li>
                             <li>Transaction history</li>
                         </ul>
                         <p>We do NOT collect personal information like email, phone, name, or location.</p>
-                    </div>
+                    </div></div>
                 </div>
-            </div>
-
-            <div class="faq-item">
-                <div class="faq-question" onclick="toggleFaq(this)">
-                    <h3>How do I delete my account?</h3>
-                    <div class="faq-toggle">▼</div>
+                <div class="qa" data-text="how do i delete my account? you can request account deletion at any time by contacting our support team at t.me/etheroute with your username. we will delete your account and associated data within 30 days, except for transaction records which may be retained for legal compliance.">
+                    <button class="qa__q" type="button" aria-controls="faq-a14">
+                        <h3>How do I delete my account?</h3><svg class="qa__chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+                    </button>
+                    <div class="qa__a" id="faq-a14"><div class="qa__inner">
+<p>You can request account deletion at any time by contacting our support team at <a href="https://t.me/etheroute" target="_blank">t.me/etheroute</a> with your username. We will delete your account and associated data within 30 days, except for transaction records which may be retained for legal compliance.</p>
+                    </div></div>
                 </div>
-                <div class="faq-answer">
-                    <div class="faq-answer-content">
-                        <p>You can request account deletion at any time by contacting our support team at <a href="https://t.me/etheroute" target="_blank">t.me/etheroute</a> with your username. We will delete your account and associated data within 30 days, except for transaction records which may be retained for legal compliance.</p>
-                    </div>
+            </section>
+            <section class="qa-group" data-group="technical" data-reveal>
+                <h2 class="qa-group__title">Technical</h2>
+                <div class="qa" data-text="do you offer an api? yes! we offer a rest api for programmatic access. check our api documentation for integration details and endpoints.">
+                    <button class="qa__q" type="button" aria-controls="faq-a15">
+                        <h3>Do you offer an API?</h3><svg class="qa__chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+                    </button>
+                    <div class="qa__a" id="faq-a15"><div class="qa__inner">
+<p>Yes! We offer a REST API for programmatic access. Check our <a href="#" style="color: #1a1a1a; font-weight: 600;">API documentation</a> for integration details and endpoints.</p>
+                    </div></div>
                 </div>
-            </div>
+                <div class="qa" data-text="how do i get real-time status updates? we use rest-api connections to push real-time updates. your client automatically subscribes to transaction and payout updates. you&#x27;ll see live status changes as your withdrawal progresses.">
+                    <button class="qa__q" type="button" aria-controls="faq-a16">
+                        <h3>How do I get real-time status updates?</h3><svg class="qa__chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+                    </button>
+                    <div class="qa__a" id="faq-a16"><div class="qa__inner">
+<p>We use REST-API connections to push real-time updates. Your client automatically subscribes to transaction and payout updates. You'll see live status changes as your withdrawal progresses.</p>
+                    </div></div>
+                </div>
+                <div class="qa" data-text="what happens if the blockchain network is congested? during high network congestion, transactions may take longer and network fees may be higher. we use smart fee estimation to optimize your transaction costs. you can see estimated fees before confirming your withdrawal.">
+                    <button class="qa__q" type="button" aria-controls="faq-a17">
+                        <h3>What happens if the blockchain network is congested?</h3><svg class="qa__chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+                    </button>
+                    <div class="qa__a" id="faq-a17"><div class="qa__inner">
+<p>During high network congestion, transactions may take longer and network fees may be higher. We use smart fee estimation to optimize your transaction costs. You can see estimated fees before confirming your withdrawal.</p>
+                    </div></div>
+                </div>
+            </section>
         </div>
 
-        <!-- Technical -->
-        <div class="faq-section">
-            <h2 class="faq-category">Technical</h2>
+        <p class="faq-empty" id="faqEmpty" hidden>No question matches <b id="faqTerm"></b>. Try a different
+            word, or ask the team below.</p>
 
-            <div class="faq-item">
-                <div class="faq-question" onclick="toggleFaq(this)">
-                    <h3>Do you offer an API?</h3>
-                    <div class="faq-toggle">▼</div>
-                </div>
-                <div class="faq-answer">
-                    <div class="faq-answer-content">
-                        <p>Yes! We offer a REST API for programmatic access. Check our <a href="#" style="color: #1a1a1a; font-weight: 600;">API documentation</a> for integration details and endpoints.</p>
-                    </div>
-                </div>
+        <!-- The Help Center's Get in touch block, verbatim. It replaces a box
+             holding a bolded label and a bare URL. -->
+        <section class="contact">
+            <h2 data-reveal>Still have questions?</h2>
+            <p data-reveal data-reveal-delay="60">If the answer isn&rsquo;t here, any of these reaches the team.
+                For anything security-related, use them right away so it gets prioritised.</p>
+            <div class="channels-grid">
+                <a class="channel" href="https://discord.gg/etheroute" target="_blank" rel="noopener" data-reveal data-reveal-delay="120">
+                    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.317 4.369a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.211.375-.445.865-.607 1.25a18.27 18.27 0 0 0-5.487 0c-.162-.385-.395-.875-.607-1.25a.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.056 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.873-1.295 1.226-1.994a.076.076 0 0 0-.042-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.294.075.075 0 0 1 .078-.01c3.928 1.793 8.18 1.793 12.062 0a.075.075 0 0 1 .079.009c.12.098.246.198.373.295a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.076.076 0 0 0-.041.107c.352.699.764 1.365 1.225 1.994a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-4.786-.838-8.95-3.549-12.617a.06.06 0 0 0-.031-.03zM8.02 15.331c-1.183 0-2.157-.965-2.157-2.156 0-1.193.948-2.157 2.157-2.157 1.211 0 2.176.964 2.157 2.157 0 1.19-.946 2.156-2.157 2.156zm7.975 0c-1.183 0-2.157-.965-2.157-2.156 0-1.193.948-2.157 2.157-2.157 1.211 0 2.176.964 2.157 2.157 0 1.19-.946 2.156-2.157 2.156z"/></svg>
+                    Discord Community
+                </a>
+                <a class="channel" href="https://t.me/etheroute" target="_blank" rel="noopener" data-reveal data-reveal-delay="170">
+                    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.446 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12l-6.869 4.332-2.96-.924c-.644-.203-.658-.644.136-.954l11.566-4.461c.542-.203 1.013.131.832.941z"/></svg>
+                    Telegram Support
+                </a>
+                <a class="channel" href="mailto:support@etheroute.io" data-reveal data-reveal-delay="220">
+                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2" stroke="currentColor" stroke-width="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" stroke="currentColor" stroke-width="2"/></svg>
+                    Email Support
+                </a>
             </div>
+        </section>
 
-            <div class="faq-item">
-                <div class="faq-question" onclick="toggleFaq(this)">
-                    <h3>How do I get real-time status updates?</h3>
-                    <div class="faq-toggle">▼</div>
-                </div>
-                <div class="faq-answer">
-                    <div class="faq-answer-content">
-                        <p>We use REST-API connections to push real-time updates. Your client automatically subscribes to transaction and payout updates. You'll see live status changes as your withdrawal progresses.</p>
-                    </div>
-                </div>
-            </div>
-
-            <div class="faq-item">
-                <div class="faq-question" onclick="toggleFaq(this)">
-                    <h3>What happens if the blockchain network is congested?</h3>
-                    <div class="faq-toggle">▼</div>
-                </div>
-                <div class="faq-answer">
-                    <div class="faq-answer-content">
-                        <p>During high network congestion, transactions may take longer and network fees may be higher. We use smart fee estimation to optimize your transaction costs. You can see estimated fees before confirming your withdrawal.</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="contact-section">
-            <h2>Still have questions?</h2>
-            <p>Can't find the answer you're looking for? Contact our support team.</p>
-            <p style="margin-top: 16px;">
-                <strong>Telegram:</strong> <a href="https://t.me/etheroute" target="_blank">t.me/etheroute</a><br>
-                <strong>Response time:</strong> Usually within 24 hours
-            </p>
-        </div>
     </div>
 
     <!-- Footer -->
     <div class="footer">
         <div class="footer-content">
             <div class="footer-grid">
-                <div class="footer-section">
+                <div class="footer-section" data-reveal>
                     <h4>Support</h4>
                     <a href="/docs" class="footer-link">Documentation</a>
                     <a href="/api-reference" class="footer-link">API Reference</a>
                     <a href="/help" class="footer-link">Help Center</a>
                 </div>
-                <div class="footer-section">
+                <div class="footer-section" data-reveal data-reveal-delay="80">
                     <h4>Company</h4>
                     <a href="/about" class="footer-link">About Us</a>
-                    <a href="https://discord.gg" class="footer-link" target="_blank">Discord</a>
+                    <a href="https://discord.gg/etheroute" class="footer-link" target="_blank" rel="noopener">Discord</a>
                     <a href="https://t.me/etheroute" class="footer-link" target="_blank">Telegram</a>
                 </div>
-                <div class="footer-section">
+                <div class="footer-section" data-reveal data-reveal-delay="160">
                     <h4>Legal</h4>
                     <a href="/privacy" class="footer-link">Privacy Policy</a>
                     <a href="/terms" class="footer-link">Terms of Service</a>
                     <a href="/compliance" class="footer-link">Compliance</a>
                 </div>
             </div>
-            <div class="footer-bottom">
+            <div class="footer-bottom" data-reveal data-reveal-delay="240">
                 <p>&copy; 2026 Etheroute. All rights reserved. | Secure Multi-Chain Withdrawal Platform</p>
             </div>
         </div>
@@ -300,5 +299,6 @@
 
     <script src="/js/faq.js"></script>
     <script src="/js/common/icons.js"></script>
+    <script src="/js/common/reveal.js"></script>
 </body>
 </html>

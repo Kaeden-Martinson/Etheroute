@@ -4,6 +4,7 @@ const { derivePath } = require('ed25519-hd-key');
 const nacl = require('tweetnacl');
 const { v4: uuidv4 } = require('uuid');
 const { db } = require('../../config/database');
+const KeyVault = require('../crypto/KeyVault');
 const ProxyService = require('../ProxyService');
 
 class SolanaWalletService {
@@ -15,6 +16,12 @@ class SolanaWalletService {
       mainnet: 'https://solana-mainnet.gateway.tatum.io/',
       publicEndpoint: 'https://api.mainnet-beta.solana.com', // For read operations without restrictions
     };
+
+    // Endpoints a signed transaction is submitted to, in order.
+    this.broadcastEndpoints = [
+      'https://solana-mainnet.gateway.tatum.io/',
+      'https://api.mainnet-beta.solana.com',
+    ];
     
     // Lazy load connections
     this._connections = {};
@@ -218,7 +225,8 @@ class SolanaWalletService {
       };
 
       // Save to database
-      return db.create('wallets', wallet);
+      // Encrypt privateKey and seedPhrase before they touch the database.
+      return db.create('wallets', KeyVault.sealWallet(wallet));
     } catch (error) {
       throw new Error(`Failed to create Solana wallet: ${error.message}`);
     }
@@ -272,6 +280,7 @@ class SolanaWalletService {
       }
 
       const sigData = await sigResponse.json();
+      
       if (sigData.error) {
         return {
           address,
@@ -294,19 +303,30 @@ class SolanaWalletService {
               jsonrpc: '2.0',
               id: 1,
               method: 'getTransaction',
-              params: [sig.signature, { encoding: 'json' }],
+              params: [sig.signature, { encoding: 'json', maxSupportedTransactionVersion: 0 }],
             }),
           });
 
           if (txResponse.ok) {
             const txData = await txResponse.json();
+
             if (txData.result) {
+              const accountKeys  = txData.result?.transaction?.message?.accountKeys || [];
+              const preBals      = txData.result?.meta?.preBalances  || [];
+              const postBals     = txData.result?.meta?.postBalances || [];
+              const balanceChanges = accountKeys.map((address, i) => ({
+                address,
+                delta: ((postBals[i] || 0) - (preBals[i] || 0)) / 1e9, // lamports → SOL
+              }));
+
               transactions.push({
-                signature: sig.signature,
-                timestamp: sig.blockTime,
-                slot: sig.slot,
-                status: sig.confirmationStatus,
-                fee: txData.result?.meta?.fee || 0,
+                signature:      sig.signature,
+                timestamp:      sig.blockTime,
+                slot:           sig.slot,
+                status:         sig.confirmationStatus,
+                fee:            txData.result?.meta?.fee || 0,
+                sender:         accountKeys[0] || null,  // fee-payer / initiator
+                balanceChanges,
               });
             }
           }
@@ -410,7 +430,8 @@ class SolanaWalletService {
       
       // Build transaction
       // Convert SOL to lamports (1 SOL = 1,000,000 lamports), rounding to integer
-      const lamports = Math.floor(amount * LAMPORTS_PER_SOL);
+      // Round, not floor, so a quoted decimal string lands on the exact figure.
+      const lamports = Math.round(Number(amount) * LAMPORTS_PER_SOL);
       
       const transaction = new Transaction().add(
         SystemProgram.transfer({
@@ -450,12 +471,29 @@ class SolanaWalletService {
       transaction.recentBlockhash = blockhash;
       transaction.feePayer = keypair.publicKey;
 
-      // Sign and send
+      // Sign once, then submit the same bytes to each endpoint until one
+      // accepts. A rejection from the runtime (bad blockhash, insufficient
+      // funds for rent) is final and not retried elsewhere.
       transaction.sign(keypair);
-      const txHash = await connection.sendRawTransaction(transaction.serialize());
-      
-      console.log(`[SolanaWalletService] Transaction sent: ${txHash}`);
-      return txHash;
+      const raw = transaction.serialize();
+      const failures = [];
+
+      for (const url of this.broadcastEndpoints) {
+        try {
+          const txHash = await new Connection(url, 'confirmed').sendRawTransaction(raw);
+          console.log(`[SolanaWalletService] Transaction sent via ${url}: ${txHash}`);
+          return txHash;
+        } catch (error) {
+          const message = error.message || String(error);
+          if (/insufficient|blockhash|rent|signature|invalid/i.test(message)) {
+            throw error;
+          }
+          failures.push(`${url}: ${message}`);
+          console.warn(`[SolanaWalletService] Broadcast via ${url} failed, trying next: ${message}`);
+        }
+      }
+
+      throw new Error(`Failed to broadcast on every endpoint: ${failures.join(' | ')}`);
     } catch (error) {
       throw new Error(`Failed to send Solana transaction: ${error.message}`);
     }

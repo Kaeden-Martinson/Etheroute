@@ -1,80 +1,55 @@
 const { Router } = require('express');
 const { db } = require('../config/database');
-const { ApiError } = require('../utils/errors');
 
 const router = Router();
 
+const PERIODS = {
+  hour: { buckets: 60, stepMs: 60 * 1000 },
+  day: { buckets: 24, stepMs: 60 * 60 * 1000 },
+  week: { buckets: 7, stepMs: 24 * 60 * 60 * 1000 },
+};
+
+function labelFor(period, date) {
+  const hh = String(date.getHours()).padStart(2, '0');
+  if (period === 'hour') {
+    return hh + ':' + String(date.getMinutes()).padStart(2, '0');
+  }
+  if (period === 'day') {
+    return hh + ':00';
+  }
+  return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][date.getDay()];
+}
+
 /**
- * Get API calls statistics for a user
- * GET /api/api-calls/stats
+ * Usage statistics for the authenticated caller.
+ *
+ * Calls are bucketed by absolute timestamp range rather than by comparing
+ * calendar fields, so a call made at the same hour on a different day no longer
+ * lands in today's bucket.
+ *
+ * GET /api/api-calls/stats?period=day
  */
 router.get('/stats', (req, res, next) => {
   try {
-    const { clientId, period = 'day' } = req.body;
+    const period = PERIODS[req.query.period] ? req.query.period : 'day';
+    const { buckets, stepMs } = PERIODS[period];
 
-    if (!clientId) {
-      throw new ApiError(400, 'API Key or clientId is required');
-    }
+    const calls = db.findBy('apiCalls', { clientId: req.auth.clientId });
+    const timestamps = calls
+      .map((call) => new Date(call.timestamp).getTime())
+      .filter((time) => !Number.isNaN(time));
 
-    const user = db.getById('users', clientId);
-    if (!user) {
-      throw new ApiError(404, 'User not found');
-    }
+    // Align the newest bucket to the current step boundary.
+    const end = Math.floor(Date.now() / stepMs) * stepMs + stepMs;
 
-    // Get API calls for this user
-    const allCalls = db.getAll('apiCalls') || [];
-    const userCalls = allCalls.filter(call => call.clientId === clientId);
+    const labels = [];
+    const values = [];
 
-    // Generate labels and data based on period
-    let labels = [];
-    let values = [];
-    const now = new Date();
-
-    if (period === 'hour') {
-      // Last 60 minutes
-      for (let i = 59; i >= 0; i--) {
-        const time = new Date(now);
-        time.setMinutes(time.getMinutes() - i);
-        const hour = time.getHours().toString().padStart(2, '0');
-        const minute = time.getMinutes().toString().padStart(2, '0');
-        labels.push(`${hour}:${minute}`);
-        
-        const count = userCalls.filter(call => {
-          const callTime = new Date(call.timestamp);
-          return callTime.getHours() === time.getHours() &&
-                 callTime.getMinutes() === time.getMinutes();
-        }).length;
-        values.push(count);
-      }
-    } else if (period === 'day') {
-      // Last 24 hours
-      for (let i = 23; i >= 0; i--) {
-        const time = new Date(now);
-        time.setHours(time.getHours() - i);
-        labels.push(time.getHours().toString().padStart(2, '0') + ':00');
-        
-        const count = userCalls.filter(call => {
-          const callTime = new Date(call.timestamp);
-          return callTime.getHours() === time.getHours() &&
-                 callTime.getDate() === time.getDate();
-        }).length;
-        values.push(count);
-      }
-    } else if (period === 'week') {
-      // Last 7 days
-      for (let i = 6; i >= 0; i--) {
-        const time = new Date(now);
-        time.setDate(time.getDate() - i);
-        const dayName = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][time.getDay()];
-        labels.push(dayName);
-        
-        const count = userCalls.filter(call => {
-          const callTime = new Date(call.timestamp);
-          return callTime.getDate() === time.getDate() &&
-                 callTime.getMonth() === time.getMonth();
-        }).length;
-        values.push(count);
-      }
+    for (let i = buckets - 1; i >= 0; i -= 1) {
+      const bucketEnd = end - i * stepMs;
+      const bucketStart = bucketEnd - stepMs;
+      labels.push(labelFor(period, new Date(bucketStart)));
+      values.push(timestamps.filter((time) => time >= bucketStart && time < bucketEnd).length);
     }
 
     res.json({
@@ -82,8 +57,8 @@ router.get('/stats', (req, res, next) => {
       period,
       labels,
       values,
-      periodTotal: values.reduce((sum, v) => sum + v, 0),
-      totalCalls: userCalls.length
+      periodTotal: values.reduce((sum, value) => sum + value, 0),
+      totalCalls: calls.length,
     });
   } catch (error) {
     next(error);
@@ -91,31 +66,38 @@ router.get('/stats', (req, res, next) => {
 });
 
 /**
- * Track an API call
- * POST /api/api-calls/track
+ * The last requests the account made, newest first, with the figures the
+ * dashboard's API page shows beside them. The log is written for every
+ * authenticated call, key or session, and this is the one place it is read.
+ *
+ * The page polls this route while it is open, and those polls are not usage
+ * anyone wants to see, so calls to the log itself are left out.
+ *
+ * GET /api/api-calls/recent?limit=20
  */
-router.post('/track', (req, res, next) => {
+router.get('/recent', (req, res, next) => {
   try {
-    const { endpoint, method, statusCode, clientId } = req.body;
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 20, 1), 100);
+    const dayAgo = Date.now() - 24 * 60 * 60 * 1000;
 
-    if (!clientId || !endpoint || !method) {
-      throw new ApiError(400, 'clientId, endpoint, and method are required');
-    }
-
-    const apiCall = {
-      id: require('crypto').randomUUID(),
-      clientId,
-      endpoint,
-      method,
-      statusCode: statusCode || 201,
-      timestamp: new Date().toISOString()
-    };
-
-    db.create('apiCalls', apiCall);
+    const calls = db.findBy('apiCalls', { clientId: req.auth.clientId })
+      .filter((call) => !String(call.endpoint || '').includes('/api-calls/'))
+      .map((call) => ({ ...call, time: new Date(call.timestamp).getTime() }))
+      .filter((call) => !Number.isNaN(call.time))
+      .sort((a, b) => b.time - a.time);
+    const day = calls.filter((call) => call.time >= dayAgo);
 
     res.json({
       success: true,
-      message: 'API call tracked'
+      totalCalls: calls.length,
+      last24h: day.length,
+      errors24h: day.filter((call) => Number(call.statusCode) >= 400).length,
+      calls: calls.slice(0, limit).map((call) => ({
+        method: call.method,
+        endpoint: call.endpoint,
+        statusCode: call.statusCode,
+        timestamp: call.timestamp,
+      })),
     });
   } catch (error) {
     next(error);

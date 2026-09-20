@@ -1,26 +1,28 @@
 const { Router } = require('express');
 const { db } = require('../config/database');
+const AuthService = require('../services/AuthService');
 const { ApiError } = require('../utils/errors');
 
 const router = Router();
 
 /**
- * Get authenticated user profile
+ * The authenticated caller's own profile.
+ *
+ * There is deliberately no endpoint to list or read other users - the customer
+ * table is not a public directory, and the previous `GET /` and `GET /:id`
+ * routes exposed every account on the platform.
+ *
  * GET /api/clients/me
  */
 router.get('/me', (req, res, next) => {
   try {
-    const clientId = req.body.clientId || req.clientId;
+    const user = db.getById('users', req.auth.clientId);
+    if (!user) throw new ApiError(404, 'User not found');
 
-    if (!clientId) {
-      throw new ApiError(401, 'API Key is required');
-    }
-
-    const user = db.getById('users', clientId);
-
-    if (!user) {
-      throw new ApiError(404, 'User not found');
-    }
+    // How many recovery codes are left is the one security fact the account
+    // page can show without revealing anything: the codes themselves were
+    // shown once, at registration, and only their hashes are kept.
+    const codes = AuthService.recoveryCodeStatus(db, user.id);
 
     res.json({
       id: user.id,
@@ -28,70 +30,8 @@ router.get('/me', (req, res, next) => {
       createdAt: user.createdAt,
       lastLogin: user.lastLogin,
       developer: !!user.developer,
-    });
-  } catch (error) {
-    next(error);
-  }
-});
-
-/**
- * Get all users
- * GET /api/clients
- */
-router.get('/', (req, res, next) => {
-  try {
-    const users = db.getAll('users');
-
-    res.json(
-      users.map((user) => ({
-        id: user.id,
-        username: user.username,
-        createdAt: user.createdAt,
-        lastLogin: user.lastLogin,
-        developer: !!user.developer,
-      }))
-    );
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Get user by ID
-router.get('/:id', (req, res, next) => {
-  try {
-    const { id } = req.params;
-    const user = db.getById('users', id);
-
-    if (!user) {
-      throw new ApiError(404, 'User not found');
-    }
-
-    res.json({
-      id: user.id,
-      username: user.username,
-      createdAt: user.createdAt,
-      lastLogin: user.lastLogin,
-      developer: !!user.developer,
-    });
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Update user by ID
-router.put('/:id', (req, res, next) => {
-  try {
-    const { id } = req.params;
-    const user = db.getById('users', id);
-    if (!user) {
-      throw new ApiError(404, 'User not found');
-    }
-
-    // Only username is stored, cannot update other fields
-    res.json({
-      id: user.id,
-      username: user.username,
-      createdAt: user.createdAt,
+      recoveryCodesRemaining: codes.remaining,
+      recoveryCodesTotal: codes.total,
     });
   } catch (error) {
     next(error);

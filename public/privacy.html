@@ -5,23 +5,36 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Privacy Policy - Etheroute</title>
     <link rel="icon" type="image/svg+xml" href="/svg/favicon.svg">
-    <link rel="stylesheet" href="/css/privacy.css">
+    <script src="/js/common/theme.js"></script>
+    <link rel="stylesheet" href="/css/tokens.css">
+    <link rel="stylesheet" href="/css/legal.css">
 </head>
 <body>
+    <script src="/js/common/actions.js"></script>
     <script src="/js/common/navbar.js"></script>
 
-    <div class="container">
+    <div class="hero">
+        <span class="hero-pill">Legal</span>
         <h1>Privacy Policy</h1>
-        <div class="last-updated">Last updated: May 22, 2026</div>
+        <p>How we handle — and deliberately avoid collecting — your data.</p>
+    </div>
 
-        <h2>1. Introduction</h2>
+    <div class="legal">
+        <nav class="legal-toc" aria-label="On this page" hidden>
+            <h2>On this page</h2>
+            <ol id="legalToc"></ol>
+        </nav>
+
+        <article class="legal-doc" id="legalDoc">
+            <time class="last-updated" datetime="2026-05-22">Last updated 22 May 2026</time>
+
+
+        <h2 id="introduction" data-reveal>1. Introduction</h2>
         <p>Etheroute ("we," "us," "our," or "Company") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and protect your information when you use our Service.</p>
 
-        <div class="highlight">
-            <strong>NO KYC POLICY:</strong> Etheroute does not collect personally identifiable information like names, email addresses, or other identifying data. We only collect the minimum information necessary to provide our cryptocurrency withdrawal service.
-        </div>
+        <div class="note"><p><strong>NO KYC POLICY:</strong> Etheroute does not collect personally identifiable information like names, email addresses, or other identifying data. We only collect the minimum information necessary to provide our cryptocurrency withdrawal service.</p></div>
 
-        <h2>2. Information We Collect</h2>
+        <h2 id="information-we-collect" data-reveal>2. Information We Collect</h2>
         <h3>2.1 Account Information</h3>
         <p>When you create an account, we collect:</p>
         <ul>
@@ -35,7 +48,7 @@
             <li>Cryptocurrency wallet addresses (provided by you)</li>
             <li>Transaction amounts and dates</li>
             <li>Transaction status and blockchain confirmations</li>
-            <li>Chain/network information (ETH, BTC, SOL, LTC)</li>
+            <li>Chain/network information (the blockchain a wallet or payment is on)</li>
         </ul>
 
         <h3>2.3 Technical Information</h3>
@@ -44,7 +57,7 @@
             <li>Usage logs and timestamps</li>
         </ul>
 
-        <h2>3. How We Use Your Information</h2>
+        <h2 id="how-we-use-your-information" data-reveal>3. How We Use Your Information</h2>
         <p>We use collected information for:</p>
         <ul>
             <li>Processing and completing cryptocurrency withdrawals</li>
@@ -55,7 +68,7 @@
             <li>Security and technical support</li>
         </ul>
 
-        <h2>4. Data Security</h2>
+        <h2 id="data-security" data-reveal>4. Data Security</h2>
         <h3>4.1 Encryption</h3>
         <p>All sensitive information, including passwords and wallet addresses, are encrypted both in transit and at rest using industry-standard encryption protocols.</p>
 
@@ -65,10 +78,10 @@
         <h3>4.3 Security Limitations</h3>
         <p>While we implement comprehensive security measures, no system is 100% secure. We cannot guarantee absolute security of your information.</p>
 
-        <h2>5. Data Retention</h2>
+        <h2 id="data-retention" data-reveal>5. Data Retention</h2>
         <p>We retain user data for as long as necessary to provide our Service and maintain transaction records. Transaction history may be retained for compliance and dispute resolution purposes.</p>
 
-        <h2>6. Third-Party Services</h2>
+        <h2 id="third-party-services" data-reveal>6. Third-Party Services</h2>
         <h3>6.1 Blockchain Networks</h3>
         <p>When you withdraw cryptocurrency, your transaction data is recorded on the blockchain, which is public and immutable. This is beyond our control.</p>
 
@@ -78,70 +91,70 @@
         <h3>6.3 Other Service Providers</h3>
         <p>We may use third-party service providers for infrastructure and support. These providers are contractually obligated to protect your information.</p>
 
-        <h2>7. Your Rights and Choices</h2>
+        <h2 id="your-rights-and-choices" data-reveal>7. Your Rights and Choices</h2>
         <h3>7.1 Data Access</h3>
         <p>You can request access to your account information at any time through your account dashboard.</p>
 
         <h3>7.2 Data Deletion</h3>
         <p>You may request deletion of your account and associated data. However, we may retain transaction records as required by law.</p>
 
-        <h2>8. Cryptocurrency Addresses and Privacy</h2>
+        <h2 id="cryptocurrency-addresses-and-privacy" data-reveal>8. Cryptocurrency Addresses and Privacy</h2>
         <p>Cryptocurrency transactions are pseudonymous but not anonymous. Your wallet addresses and transaction amounts are visible on the blockchain, even though your username is not directly linked.</p>
 
-        <h2>9. Children's Privacy</h2>
+        <h2 id="childrens-privacy" data-reveal>9. Children's Privacy</h2>
         <p>Our Service is not intended for children under 18 years of age. We do not knowingly collect information from children. If we become aware of any such collection, we will delete the information immediately.</p>
 
-        <h2>10. International Users</h2>
+        <h2 id="international-users" data-reveal>10. International Users</h2>
         <p>Our servers are located in the United States. By using our Service, you consent to the transfer of your information to the United States, which may have different privacy protections than your home country.</p>
 
-        <h2>11. Changes to This Privacy Policy</h2>
+        <h2 id="changes-to-this-privacy-policy" data-reveal>11. Changes to This Privacy Policy</h2>
         <p>We may update this Privacy Policy from time to time. We will notify you of any material changes by posting the new policy and updating the "Last Updated" date. Your continued use of the Service constitutes acceptance of the updated Privacy Policy.</p>
 
-        <h2>12. Legal Compliance</h2>
+        <h2 id="legal-compliance" data-reveal>12. Legal Compliance</h2>
         <p>We comply with applicable data protection laws and regulations. We may disclose information when required by law, such as in response to subpoenas, court orders, or government requests.</p>
 
-        <h2>13. Data Breach Notification</h2>
+        <h2 id="data-breach-notification" data-reveal>13. Data Breach Notification</h2>
         <p>In the event of a data breach involving your information, we will notify you as soon as possible via email or account notification.</p>
 
-        <h2>14. Contact Information</h2>
+        <h2 id="contact-information" data-reveal>14. Contact Information</h2>
         <p>If you have questions or concerns about this Privacy Policy or our privacy practices, please contact us at support@etheroute.io</p>
 
-        <h2>15. Your California Privacy Rights</h2>
+        <h2 id="your-california-privacy-rights" data-reveal>15. Your California Privacy Rights</h2>
         <p>If you are a California resident, you have the right to request information about the categories of personal information we collect and the purposes for which we use it.</p>
 
-        <div class="highlight">
-            <strong>COMMITMENT TO PRIVACY:</strong> We are committed to maintaining your privacy while providing the best possible cryptocurrency withdrawal service. Your data is valuable and we treat it with utmost care.
-        </div>
+        <div class="note"><p><strong>COMMITMENT TO PRIVACY:</strong> We are committed to maintaining your privacy while providing the best possible cryptocurrency withdrawal service. Your data is valuable and we treat it with utmost care.</p></div>
+        </article>
     </div>
 
     <!-- Footer -->
     <div class="footer">
         <div class="footer-content">
             <div class="footer-grid">
-                <div class="footer-section">
+                <div class="footer-section" data-reveal>
                     <h4>Support</h4>
                     <a href="/docs" class="footer-link">Documentation</a>
                     <a href="/api-reference" class="footer-link">API Reference</a>
                     <a href="/help" class="footer-link">Help Center</a>
                 </div>
-                <div class="footer-section">
+                <div class="footer-section" data-reveal data-reveal-delay="80">
                     <h4>Company</h4>
                     <a href="/about" class="footer-link">About Us</a>
-                    <a href="https://discord.gg" class="footer-link" target="_blank">Discord</a>
+                    <a href="https://discord.gg/etheroute" class="footer-link" target="_blank" rel="noopener">Discord</a>
                     <a href="https://t.me/etheroute" class="footer-link" target="_blank">Telegram</a>
                 </div>
-                <div class="footer-section">
+                <div class="footer-section" data-reveal data-reveal-delay="160">
                     <h4>Legal</h4>
                     <a href="/privacy" class="footer-link">Privacy Policy</a>
                     <a href="/terms" class="footer-link">Terms of Service</a>
                     <a href="/compliance" class="footer-link">Compliance</a>
                 </div>
             </div>
-            <div class="footer-bottom">
+            <div class="footer-bottom" data-reveal data-reveal-delay="240">
                 <p>&copy; 2026 Etheroute. All rights reserved. | Secure Multi-Chain Withdrawal Platform</p>
             </div>
         </div>
     </div>
-    <script src="/js/privacy.js"></script>
-    <script src="/js/common/icons.js"></script></body>
+    <script src="/js/common/icons.js"></script>    <script src="/js/legal.js"></script>
+    <script src="/js/common/reveal.js"></script>
+</body>
 </html>

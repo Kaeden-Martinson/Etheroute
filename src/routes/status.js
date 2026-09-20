@@ -1,13 +1,16 @@
 const { Router } = require('express');
 const StatusService = require('../services/StatusService');
-const { ApiError } = require('../utils/errors');
+const { optionalAuth, requireAuth, requireDeveloper } = require('../middleware/auth');
 
 const router = Router();
 
-router.get('/', (req, res) => {
-  const clientId = req.body?.clientId || req.query?.clientId || null;
+/**
+ * Public status snapshot. Incident detail is included only for developers.
+ * GET /api/status
+ */
+router.get('/', optionalAuth, (req, res) => {
+  const clientId = req.auth ? req.auth.clientId : null;
   const viewer = StatusService.getViewerContext(clientId);
-
   const snapshot = StatusService.getStatusSnapshot();
 
   res.json({
@@ -19,8 +22,11 @@ router.get('/', (req, res) => {
   });
 });
 
-router.get('/incidents', (req, res) => {
-  const clientId = req.body?.clientId || req.query?.clientId || null;
+/**
+ * GET /api/status/incidents
+ */
+router.get('/incidents', optionalAuth, (req, res) => {
+  const clientId = req.auth ? req.auth.clientId : null;
   const viewer = StatusService.getViewerContext(clientId);
 
   if (!viewer.canViewIncidents) {
@@ -32,21 +38,20 @@ router.get('/incidents', (req, res) => {
     incidents: StatusService.getIncidents().map((incident) => ({
       ...incident,
       durationMinutes: incident.resolvedAt
-        ? Number(((new Date(incident.resolvedAt).getTime() - new Date(incident.startedAt).getTime()) / 60000).toFixed(1))
+        ? Number(
+            ((new Date(incident.resolvedAt).getTime() - new Date(incident.startedAt).getTime()) / 60000).toFixed(1)
+          )
         : null,
     })),
   });
 });
 
-router.post('/incidents', (req, res, next) => {
+/**
+ * Incident management. Requires an authenticated developer account - previously
+ * these were gated on a caller-supplied clientId, which anyone could set.
+ */
+router.post('/incidents', requireAuth, requireDeveloper, (req, res, next) => {
   try {
-    const clientId = req.body?.clientId || req.query?.clientId || null;
-    const viewer = StatusService.getViewerContext(clientId);
-
-    if (!viewer.canRecordIncidents) {
-      throw new ApiError(403, 'Developer access required');
-    }
-
     const incident = StatusService.recordIncident(req.body || {});
     res.status(201).json({ success: true, incident });
   } catch (error) {
@@ -54,15 +59,8 @@ router.post('/incidents', (req, res, next) => {
   }
 });
 
-router.post('/incidents/:id/resolve', (req, res, next) => {
+router.post('/incidents/:id/resolve', requireAuth, requireDeveloper, (req, res, next) => {
   try {
-    const clientId = req.body?.clientId || req.query?.clientId || null;
-    const viewer = StatusService.getViewerContext(clientId);
-
-    if (!viewer.canRecordIncidents) {
-      throw new ApiError(403, 'Developer access required');
-    }
-
     const incident = StatusService.resolveIncident(req.params.id, req.body || {});
     res.json({ success: true, incident });
   } catch (error) {
@@ -70,15 +68,8 @@ router.post('/incidents/:id/resolve', (req, res, next) => {
   }
 });
 
-router.delete('/incidents/:id', (req, res, next) => {
+router.delete('/incidents/:id', requireAuth, requireDeveloper, (req, res, next) => {
   try {
-    const clientId = req.body?.clientId || req.query?.clientId || null;
-    const viewer = StatusService.getViewerContext(clientId);
-
-    if (!viewer.canRecordIncidents) {
-      throw new ApiError(403, 'Developer access required');
-    }
-
     const incident = StatusService.deleteIncident(req.params.id);
     res.json({ success: true, incident });
   } catch (error) {

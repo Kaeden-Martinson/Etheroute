@@ -3,22 +3,80 @@
  * Create order → Send tokens to deposit address → Sideshift handles swap
  */
 
-const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
-const { ethers } = require('ethers');
+const axios = require('axios');
 const sideshiftAccountService = require('./SideshiftAccountService');
+const ChainTxStatus = require('./ChainTxStatus');
+const chains = require('../config/chains');
+
+// How long to wait on Sideshift before giving up. A quote that takes longer
+// than this is not going to be used anyway.
+const REQUEST_TIMEOUT_MS = 20_000;
+
+/**
+ * The text Sideshift put in an error response, for the log line.
+ */
+function describeAxiosError(error) {
+  if (error.response) {
+    const body = error.response.data;
+    const detail = typeof body === 'string' ? body : JSON.stringify(body);
+    return `HTTP ${error.response.status} ${error.response.statusText || ''} - ${detail}`.trim();
+  }
+  if (error.code === 'ECONNABORTED') return `timed out after ${REQUEST_TIMEOUT_MS}ms`;
+  return error.message;
+}
+
+/** A failure to reach the proxy at all, as opposed to an answer from Sideshift. */
+function isProxyFailure(error) {
+  if (error.response && error.response.status === 407) return true;
+  if (error.response) return false;
+  return /ECONNREFUSED|ECONNRESET|ETIMEDOUT|EHOSTUNREACH|ENETUNREACH|socket hang up|tunneling socket|Proxy connection/i.test(`${error.code || ''} ${error.message || ''}`);
+}
 
 class SideshiftService {
   constructor(priceService) {
     this.priceService = priceService;
     this.apiUrl = 'https://sideshift.ai/api/v2';
 
-    // Chain to Sideshift asset mappings
-    this.assetMap = {
-      'BTC': 'btc',
-      'ETH': 'eth',
-      'SOL': 'sol',
-      'LTC': 'ltc'
-    };
+    this.http = axios.create({
+      baseURL: this.apiUrl,
+      timeout: REQUEST_TIMEOUT_MS,
+      // Each account carries its own proxy agent, passed per request. Turning
+      // off axios's built-in proxy support stops it from also honouring an
+      // HTTPS_PROXY environment variable and tunnelling twice.
+      proxy: false,
+    });
+
+  }
+
+  /**
+   * Send a request through the account's proxy, falling back to a direct
+   * connection if the proxy itself cannot be reached. The account is still
+   * the one signing; only the route changes.
+   */
+  async request(method, url, { account, agent, secret }, body, extra = {}) {
+    const config = { ...extra, headers: { 'x-sideshift-secret': secret } };
+    const send = (httpsAgent) => (method === 'get'
+      ? this.http.get(url, { ...config, httpsAgent })
+      : this.http.post(url, body, { ...config, httpsAgent }));
+
+    if (!agent) return send(undefined);
+
+    try {
+      return await send(agent);
+    } catch (error) {
+      if (!isProxyFailure(error)) throw error;
+      sideshiftAccountService.markProxyBad(account.id, describeAxiosError(error));
+      return send(undefined);
+    }
+  }
+
+  /**
+   * Sideshift's coin ticker and network name for one of our chain codes.
+   * An L2 is the same coin on another network: BASE is `eth` on `base`.
+   */
+  asset(code) {
+    const chain = chains.get(code);
+    return { coin: chain.sideshift.coin, network: chain.sideshift.network };
   }
 
   /**
@@ -29,70 +87,112 @@ class SideshiftService {
    * @returns {Promise<Object>} Gas quote
    */
 
+  /**
+   * Approximate cost in USD of a plain on-chain send, per network. Used for
+   * same-chain payouts, which skip Sideshift entirely and are just a transfer.
+   */
+  static get DIRECT_TRANSFER_GAS_USD() {
+    return Object.fromEntries(chains.list().map((c) => [c.code, c.directGasUsd]));
+  }
+
+  /**
+   * USD rate for a chain, or 0 when prices have not loaded.
+   */
+  usdRate(chain) {
+    return this.priceService[`${String(chain).toLowerCase()}ToUsdRate`] || 0;
+  }
+
   async getGasQuote(fromChain, toChain, amount) {
-    // Deal with same chain to chain gas estimation by doing a small swap quote
-    if (fromChain === toChain) { // only will be ETH for now since we only support ETH direct transfers, but can expand if needed
+    // Same chain in and out is not a swap at all - it is a direct send, so
+    // there is no Sideshift order, no swap spread and no $5 minimum. Only the
+    // network fee comes off. This applies to all four chains now, not just ETH.
+    if (fromChain === toChain) {
+      const gasUsd = SideshiftService.DIRECT_TRANSFER_GAS_USD[fromChain] ?? 0.50;
+      const rate = this.usdRate(fromChain);
+      const gasNative = rate > 0 ? gasUsd / rate : 0;
+
       return {
-        outputEth: amount - .15 / this.priceService.ethToUsdRate, // Approximate amount after gas cost
-        changeInEth: .15 / this.priceService.ethToUsdRate, // Approximate cost of a direct transfer on mainnet
-        estimatedGasUsd: .15, // Approximate cost of a direct transfer on mainnet
-      }
-    };
+        outputAmount: Math.max(0, amount - gasNative),
+        changeInOutput: -gasNative,
+        estimatedGasUsd: gasUsd,
+      };
+    }
 
-    const { account, agent, affiliateId, secret } = sideshiftAccountService.getAccount('quote');
+    const selected = sideshiftAccountService.getAccount('quote');
+    const { account, affiliateId } = selected;
 
+    const deposit = this.asset(fromChain);
+    const settle = this.asset(toChain);
     const requestData = {
-      depositCoin: this.assetMap[fromChain] || fromChain.toLowerCase(),
-      depositNetwork: 'mainnet',
-      settleCoin: this.assetMap[toChain] || toChain.toLowerCase(),
-      settleNetwork: 'mainnet',
+      depositCoin: deposit.coin,
+      depositNetwork: deposit.network,
+      settleCoin: settle.coin,
+      settleNetwork: settle.network,
       depositAmount: amount.toFixed(8).toString(), // Sideshift expects string amounts with up to 8 decimals
       settleAmount: null,
       affiliateId,
     }
 
     try {
-      const response = await fetch(`${this.apiUrl}/quotes`, {
-        method: 'POST',
-        agent,
-        headers: {
-          'Content-Type': 'application/json',
-          'x-sideshift-secret': secret
-        },
-        body: JSON.stringify(requestData)
-      });
-
-      sideshiftAccountService.recordUsage(account.id, 'quote');
-
-      if (!response.ok) {
-        console.log(response)
-        throw new Error(`HTTP error! status: ${response.status} - ${response.statusText}`, response);
+      let response;
+      try {
+        response = await this.request('post', '/quotes', selected, requestData);
+      } finally {
+        // The request counts against the account's limit whether or not
+        // Sideshift liked it.
+        sideshiftAccountService.recordUsage(account.id, 'quote');
       }
 
-      const data = await response.json();
+      const data = response.data;
 
       console.log('[SideshiftService] Received gas quote response:', data);
 
-      const outputEth = data.settleAmount;
-      const changeInEth = outputEth - amount * (this.priceService.getEthRate(fromChain.toLowerCase()) || 0);
-      const estimatedGasUsd = changeInEth * this.priceService.ethToUsdRate;
-      
+      // What the swap actually pays out, in the destination chain's units.
+      const outputAmount = Number(data.settleAmount);
+
+      // Cost of the swap in USD: what the input was worth, minus what the
+      // output is worth. Previously this was computed through an ETH-only rate
+      // pair, which gave a wrong figure for any other destination.
+      const inputUsd = amount * this.usdRate(fromChain);
+      const outputUsd = outputAmount * this.usdRate(toChain);
+      const estimatedGasUsd = Math.max(0, inputUsd - outputUsd);
+
       return {
-        outputEth,
-        changeInEth,
-        estimatedGasUsd: estimatedGasUsd * -1,
+        outputAmount,
+        changeInOutput: outputAmount - amount,
+        estimatedGasUsd,
+        // Everything a fixed-rate shift needs to be created from this quote.
+        // The deposit amount is kept as Sideshift's own string: a fixed shift
+        // settles only a deposit of exactly that figure, so it must reach the
+        // sender untouched by float arithmetic.
+        quoteId: data.id,
+        quoteExpiresAt: data.expiresAt,
+        depositAmount: String(data.depositAmount),
+        settleAmount: String(data.settleAmount),
+        rate: data.rate,
+        accountId: account.id,
+        affiliateId: data.affiliateId || affiliateId,
       };
     } catch (error) {
-      console.error('Error:', error);
+      console.error(`[SideshiftService] Quote ${fromChain} -> ${toChain} failed: ${describeAxiosError(error)}`);
     }
   };
 
   /**
-   * Create a swap order
-   * @param {Object} params - Order parameters
+   * Create a swap order.
+   *
+   * With a `quote` this is a fixed-rate shift: the rate the client was shown
+   * is the rate they get, for 15 minutes from the quote, provided exactly
+   * `quote.depositAmount` arrives. Without one it is a variable shift, whose
+   * rate is set whenever the deposit lands - the previous behaviour, and the
+   * reason the figure on the review screen was never actually honoured.
+   *
+   * @param {Object} params
    * @param {string} params.fromChain - Source chain (BTC, ETH, SOL, LTC)
    * @param {string} params.toChain - Destination chain
    * @param {string} params.destinationAddress - Wallet to receive output
+   * @param {string} params.refundAddress - Where a failed shift is refunded
+   * @param {Object} [params.quote] - A result of getGasQuote, for a fixed shift
    * @returns {Promise<Object>} Order details with deposit address
    */
   async createOrder(params) {
@@ -102,44 +202,55 @@ class SideshiftService {
         toChain,
         destinationAddress,
         refundAddress,
+        quote = null,
       } = params;
 
-      const { account, agent, affiliateId, secret } = sideshiftAccountService.getAccount('shift');
+      const fixed = Boolean(quote && quote.quoteId);
 
-      const from = this.assetMap[fromChain] || fromChain.toLowerCase();
-      const to = this.assetMap[toChain] || toChain.toLowerCase();
+      // The shift must be created on the account that made the quote.
+      const selected = sideshiftAccountService.getAccount('shift', fixed ? quote.accountId : null);
+      const { account, affiliateId } = selected;
 
-      const requestBody = {
-        settleNetwork: null,
-        depositNetwork: "mainnet",
-        depositCoin: from,
-        settleCoin: to,
-        settleAddress: destinationAddress,
-        refundAddress: refundAddress,
-        affiliateId,
-      };
+      let requestBody;
+      let endpoint;
 
-      const response = await fetch(`${this.apiUrl}/shifts/variable`, {
-        method: 'POST',
-        agent,
-        headers: {
-          'x-sideshift-secret': secret,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestBody),
-      });
-
-      sideshiftAccountService.recordUsage(account.id, 'shift');
-
-      if (!response.ok) {
-        const error = await response.text();
-        throw new Error(`Failed to create order: ${response.statusText} - ${error}`);
+      if (fixed) {
+        endpoint = '/shifts/fixed';
+        requestBody = {
+          quoteId: quote.quoteId,
+          settleAddress: destinationAddress,
+          refundAddress,
+          affiliateId: quote.affiliateId || affiliateId,
+        };
+      } else {
+        endpoint = '/shifts/variable';
+        const deposit = this.asset(fromChain);
+        const settle = this.asset(toChain);
+        requestBody = {
+          depositCoin: deposit.coin,
+          depositNetwork: deposit.network,
+          settleCoin: settle.coin,
+          settleNetwork: settle.network,
+          settleAddress: destinationAddress,
+          refundAddress,
+          affiliateId,
+        };
       }
 
-      const order = await response.json();
+      let response;
+      try {
+        response = await this.request('post', endpoint, selected, requestBody);
+      } catch (error) {
+        throw new Error(`Failed to create ${fixed ? 'fixed' : 'variable'} order: ${describeAxiosError(error)}`);
+      } finally {
+        sideshiftAccountService.recordUsage(account.id, 'shift');
+      }
+
+      const order = response.data;
 
       return {
         orderId: order.id,
+        type: fixed ? 'fixed' : 'variable',
         status: order.status,
         depositAddress: order.depositAddress,
         depositCoin: order.depositCoin,
@@ -147,7 +258,15 @@ class SideshiftService {
         settleAddress: order.settleAddress,
         refundAddress: order.refundAddress,
         expiresAt: order.expiresAt,
-        extraId: order.extraId || null,
+        extraId: order.extraId || order.depositMemo || null,
+        // Fixed: the exact deposit the shift will settle, and what it pays
+        // out. Variable: the acceptable deposit range.
+        depositAmount: order.depositAmount != null ? String(order.depositAmount) : null,
+        settleAmount: order.settleAmount != null ? String(order.settleAmount) : null,
+        depositMin: order.depositMin != null ? Number(order.depositMin) : null,
+        depositMax: order.depositMax != null ? Number(order.depositMax) : null,
+        rate: order.rate ?? (quote ? quote.rate : null),
+        quoteId: fixed ? quote.quoteId : null,
         createdAt: new Date().toISOString(),
       };
     } catch (error) {
@@ -157,72 +276,51 @@ class SideshiftService {
   }
 
   /**
-   * Get order status - handles both Sideshift orders and direct ETH transfers
-   * @param {string} orderId - Order ID (can be "direct_transfer_xxx" or Sideshift order ID)
-   * @param {string} txHash - Optional transaction hash (required for direct transfers)
-   * @returns {Promise<Object>} Order status
+   * Get order status - handles both Sideshift orders and direct transfers.
+   *
+   * @param {string} orderId - "direct_transfer_xxx" or a Sideshift order id
+   * @param {string} txHash - Transaction hash (required for direct transfers)
+   * @param {string} chain - Chain the direct transfer was broadcast on
+   * @returns {Promise<Array<Object>>} Order status, as a one-element array to
+   *   match the shape of Sideshift's /shifts?ids= response
    */
-  async getOrderStatus(orderId, txHash) {
+  async getOrderStatus(orderId, txHash, chain = 'ETH') {
     try {
-      // Check if this is a direct ETH transfer
       if (orderId.startsWith('direct_transfer_')) {
         if (!txHash) {
           throw new Error('Direct transfer requires transaction hash');
         }
-        
-        console.log(`[SideshiftService] Checking direct ETH transfer status via RPC: ${txHash}`);
-        
-        // Use Ethereum RPC to check transaction receipt
-        const provider = new ethers.JsonRpcProvider('https://ethereum-rpc.publicnode.com');
-        const receipt = await provider.getTransactionReceipt(txHash);
-        
-        if (!receipt) {
-          // Transaction still pending or not found
-          console.log(`[SideshiftService] Direct transfer ${txHash} still pending (no receipt yet)`);
-          return [{
-            id: orderId,
-            status: 'waiting',
-            transactionHash: txHash,
-            type: 'direct_transfer'
-          }];
-        }
-        
-        // Check if transaction succeeded or failed
-        if (receipt.status === 1) {
-          console.log(`[SideshiftService] Direct transfer ${txHash} settled (status: 1)`);
-          return [{
-            id: orderId,
-            status: 'settled',
-            transactionHash: txHash,
-            blockNumber: receipt.blockNumber,
-            type: 'direct_transfer'
-          }];
-        } else {
-          console.log(`[SideshiftService] Direct transfer ${txHash} failed (status: ${receipt.status})`);
-          return [{
-            id: orderId,
-            status: 'failed',
-            transactionHash: txHash,
-            blockNumber: receipt.blockNumber,
-            type: 'direct_transfer'
-          }];
-        }
+
+        // A direct transfer settles on its own chain, so it is checked there.
+        // This used to ask the Ethereum RPC regardless of chain, which could
+        // never find a BTC, LTC or SOL hash - every non-ETH direct payout
+        // "waited" until the monitor gave up and marked it failed.
+        const onChain = await ChainTxStatus.getTransferStatus(chain, txHash);
+        console.log(`[SideshiftService] Direct ${chain} transfer ${txHash}: ${onChain.status} (${onChain.confirmations} conf)`);
+
+        return [{
+          id: orderId,
+          status: onChain.status === 'not_found' ? 'waiting' : onChain.status,
+          onChainStatus: onChain.status,
+          confirmations: onChain.confirmations,
+          transactionHash: txHash,
+          blockNumber: onChain.blockHeight,
+          type: 'direct_transfer',
+          chain,
+        }];
       }
-      
+
       // Handle Sideshift order
-      const { agent, secret } = sideshiftAccountService.getAccount('quote');
-      const response = await fetch(`${this.apiUrl}/shifts?ids=${orderId}`, {
-        agent,
-        headers: {
-          'x-sideshift-secret': secret,
-        },
-      });
+      const selected = sideshiftAccountService.getAccount('quote');
 
-      if (!response.ok) {
-        throw new Error(`Failed to fetch order: ${response.statusText}`);
+      let response;
+      try {
+        response = await this.request('get', '/shifts', selected, null, { params: { ids: orderId } });
+      } catch (error) {
+        throw new Error(`Failed to fetch order: ${describeAxiosError(error)}`);
       }
 
-      return await response.json();
+      return response.data;
     } catch (error) {
       console.error('[SideshiftService] Error fetching order status:', error.message);
       throw error;

@@ -127,6 +127,10 @@ class LoggerService {
   }
 
   _patchConsole() {
+    // Route console.log through the logger as debug so the verbose operational
+    // logging scattered through the services is timestamped, written to the log
+    // files, and — crucially — suppressed at the default 'info' level in
+    // production. Set LOG_LEVEL=debug to see it again.
     console.log = (...args) => this.debug(...args);
     console.info = (...args) => this.info(...args);
     console.warn = (...args) => this.warn(...args);
