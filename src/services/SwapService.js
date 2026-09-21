@@ -3,6 +3,7 @@ const SideshiftService = require('./SideshiftService');
 const DexService = require('./DexService');
 const ThorchainService = require('./ThorchainService');
 const GasFloatService = require('./GasFloatService');
+const FeeCollectionService = require('./FeeCollectionService');
 const chains = require('../config/chains');
 const { validateCryptoAddress } = require('../utils/validators');
 const { config } = require('../config/env');
@@ -81,6 +82,7 @@ class SwapService {
         this.thorchain = ThorchainService;
         this.dex = DexService;
         this.gasFloat = GasFloatService;
+        this.feeCollection = FeeCollectionService;
         this.preference = CROSS_CHAIN_PREFER;
     }
 
@@ -591,6 +593,15 @@ class SwapService {
                 }
                 const gasUsd = chainGas.usd * this.txCountFor(kind, chain, leg.asset);
 
+                // On a Bitcoin-style chain a plain send (direct, or the
+                // deposit to a shift) can pay the platform in the same
+                // transaction: a second output, nothing left to hold. A
+                // THORChain deposit is not given one - the vault's parser
+                // is owed a transaction it expects.
+                const feeOutput = leg.native && (kind === 'direct' || kind === 'sideshift')
+                    ? this.feeCollection.feeOutputFor(chain, feeAmount)
+                    : null;
+
                 plan.transfers.push({
                     type: TYPE_OF[kind],
                     route: kind,
@@ -607,6 +618,9 @@ class SwapService {
                     walletValueUSD: sweepable * rate,
                     platformFeeNative: feeAmount,
                     platformFeeUSD: feeAmount * rate,
+                    // The fee paid to the platform in this very transaction,
+                    // when the chain allows it; otherwise it stays held.
+                    ...(feeOutput && { feeOutput }),
                     // The gas the float advanced for this wallet's tokens,
                     // charged here in the token. Sent to the wallet right
                     // before this leg runs.

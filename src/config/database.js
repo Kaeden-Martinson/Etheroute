@@ -410,12 +410,32 @@ function parseJsonOrNull(filePath) {
  * imported. The JSON file is left where it was and is not read again.
  */
 function importLegacyJson() {
-  if (!fresh) return;
+  if (!fresh) {
+    warnIfJsonMovedOn();
+    return;
+  }
   const data = parseJsonOrNull(LEGACY_JSON_FILE) || parseJsonOrNull(LEGACY_BACKUP_FILE);
   if (!data || typeof data !== 'object') return;
   const imported = db.replaceAll(data);
   conn.prepare('INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)').run('importedJsonAt', new Date().toISOString());
   console.info(`[database] Imported ${imported} records from ${path.basename(LEGACY_JSON_FILE)} into ${path.basename(DB_FILE)}. The JSON file is no longer read; keep it until you have a snapshot you trust, then delete it.`);
+}
+
+/**
+ * The JSON file written after it was imported means a build that still
+ * used it ran since - and what it wrote is not in the store. Said loudly
+ * rather than merged silently: which copy is right is the operator's call
+ * (scripts/restore.js --json <file> imports one).
+ */
+function warnIfJsonMovedOn() {
+  try {
+    const row = conn.prepare('SELECT value FROM meta WHERE key = ?').get('importedJsonAt');
+    if (!row || !fs.existsSync(LEGACY_JSON_FILE)) return;
+    const modified = fs.statSync(LEGACY_JSON_FILE).mtime;
+    if (modified.getTime() > new Date(row.value).getTime() + 5000) {
+      console.error(`[database] ${path.basename(LEGACY_JSON_FILE)} was written at ${modified.toISOString()}, after it was imported at ${row.value}. A build that still used the JSON file has run since; anything it recorded is not in ${path.basename(DB_FILE)}. If the JSON is the truer copy: stop the server and run "node scripts/restore.js --json ${LEGACY_JSON_FILE}". Otherwise delete or rename the JSON file to silence this.`);
+    }
+  } catch { /* a warning, never a failure to start */ }
 }
 
 importLegacyJson();

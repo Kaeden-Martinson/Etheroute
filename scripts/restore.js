@@ -6,9 +6,12 @@
  *   node scripts/restore.js                 # list available snapshots
  *   node scripts/restore.js --latest        # restore the newest snapshot
  *   node scripts/restore.js database-2026-09-16T18-00-00-000Z.sqlite
+ *   node scripts/restore.js --json /path/to/database.json
  *
  * A snapshot from before the SQLite store (database-<stamp>.json) restores
- * too: its records are imported in place of what is there.
+ * too: its records are imported in place of what is there. --json imports
+ * any JSON export the same way (a database.json an older build wrote after
+ * the move, say).
  *
  * The current database is saved to database.pre-restore.<ts>.sqlite first,
  * so a restore is itself reversible. Stop the server before restoring.
@@ -44,12 +47,17 @@ function main() {
     return;
   }
 
-  const chosen = arg === '--latest' ? snaps[snaps.length - 1] : arg;
+  const fromJson = arg === '--json' ? process.argv[3] : null;
+  if (arg === '--json' && !fromJson) {
+    console.error('--json needs the path of the JSON file to import.');
+    process.exit(1);
+  }
+  const chosen = fromJson ? path.basename(fromJson) : (arg === '--latest' ? snaps[snaps.length - 1] : arg);
   if (!chosen) {
     console.error('No snapshot to restore.');
     process.exit(1);
   }
-  const src = path.join(BACKUP_DIR, chosen);
+  const src = fromJson ? path.resolve(fromJson) : path.join(BACKUP_DIR, chosen);
   if (!fs.existsSync(src)) {
     console.error('Snapshot not found:', src);
     process.exit(1);

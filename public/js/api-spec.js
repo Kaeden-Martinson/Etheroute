@@ -466,6 +466,7 @@ function verify(secret, header, rawBody, toleranceSeconds = 300) {
       icon: 'transactionsIcon',
       intro: [
         'Transactions are the individual on-chain transfers a payout broadcasts. Statuses: <code>PENDING</code>, <code>PROCESSING</code> (broadcast, awaiting confirmation), <code>CONFIRMED</code>, <code>FAILED</code> with a <code>failureReason</code> such as <code>INSUFFICIENT_FUNDS</code>, <code>ORDER_REFUNDED</code> or <code>QUOTE_EXPIRED</code>.',
+        'Types: <code>DIRECT_TRANSFER</code>, <code>DEX_SWAP</code> and <code>SWAP</code> are a payout\'s legs; <code>DEPOSIT</code> is a checkout that settled into one of your wallets; <code>FEE_COLLECTION</code> is the platform collecting the fee it had held from earlier withdrawals (<code>platformFeeHeld</code> on the wallet comes down by the same amount). On Bitcoin-style chains the fee usually leaves in the withdrawal\'s own transaction instead, as a second output.',
       ],
       endpoints: [
         {

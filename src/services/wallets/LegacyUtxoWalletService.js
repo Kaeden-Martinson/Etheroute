@@ -566,8 +566,24 @@ class LegacyUtxoWalletService {
   }
 
   /**
+   * The outputs a send carries beside the recipient: `options.extraOutputs`
+   * as `[{ address, amount }]` (the platform's fee rides in the same
+   * transaction this way), each above the dust limit.
+   */
+  extraOutputsOf(options) {
+    return (options && Array.isArray(options.extraOutputs) ? options.extraOutputs : []).map((o) => {
+      const parsed = this.parseAddress(o.address);
+      if (!parsed) throw new Error(`Invalid ${this.spec.name} address: ${o.address}`);
+      const value = Math.round(Number(o.amount) * SATS);
+      if (!(value >= this.spec.dustSats)) throw new Error(`Extra output of ${o.amount} ${this.code} to ${o.address} is below the dust limit`);
+      return { script: parsed.script, value, address: o.address };
+    });
+  }
+
+  /**
    * Send `amount` (decimal) to `toAddress`. `options.memo` adds an OP_RETURN
-   * output after the recipient and the change, as a swap network asks.
+   * output after the recipient and the change, as a swap network asks;
+   * `options.extraOutputs` pay other addresses in the same transaction.
    */
   async sendTransaction(privateKey, toAddress, amount, options = {}) {
     try {
@@ -578,6 +594,9 @@ class LegacyUtxoWalletService {
       if (amountSats < this.spec.dustSats) throw new Error(`${amount} ${this.code} is below the dust limit of ${this.spec.dustSats / SATS}`);
       const memo = options && options.memo ? String(options.memo) : null;
       const memoBytes = memo ? 9 + LegacyUtxoWalletService.opReturnScript(memo).length : 0;
+      const extras = this.extraOutputsOf(options);
+      const outputs = [{ script: recipient.script, value: amountSats }, ...extras.map((o) => ({ script: o.script, value: o.value }))];
+      const outputSats = outputs.reduce((sum, o) => sum + o.value, 0);
 
       const from = this.addressFromPrivateKey(privateKey);
       const utxos = (await this.getUtxos(from)).sort((a, b) => b.value - a.value);
@@ -592,20 +611,20 @@ class LegacyUtxoWalletService {
       for (const utxo of utxos) {
         selected.push(utxo);
         total += utxo.value;
-        feeSats = Math.max(Math.ceil(feeRate * LegacyUtxoWalletService.size(selected.length, 2, memoBytes)), this.spec.minFeeSats);
-        if (total >= amountSats + feeSats) break;
+        feeSats = Math.max(Math.ceil(feeRate * LegacyUtxoWalletService.size(selected.length, 1 + outputs.length, memoBytes)), this.spec.minFeeSats);
+        if (total >= outputSats + feeSats) break;
       }
-      if (total < amountSats + feeSats) throw new Error(`Insufficient funds: need ${amountSats + feeSats} satoshis, have ${total}`);
+      if (total < outputSats + feeSats) throw new Error(`Insufficient funds: need ${outputSats + feeSats} satoshis, have ${total}`);
 
       const built = this.buildTransaction({
         privateKey,
         utxos: selected,
-        outputs: [{ script: recipient.script, value: amountSats }],
+        outputs,
         changeScript: this.parseAddress(from).script,
         feeSats,
         memo,
       });
-      console.log(`${this.tag} ${selected.length} input(s), fee ${feeSats} sats at ${feeRate} sat/B, change ${built.change} sats, ${built.size} bytes`);
+      console.log(`${this.tag} ${selected.length} input(s), fee ${feeSats} sats at ${feeRate} sat/B, change ${built.change} sats, ${built.size} bytes${extras.length ? `, ${extras.length} extra output(s)` : ''}`);
       const txid = await this.broadcastRawTransaction(built.hex);
       console.log(`${this.tag} Transaction sent: ${txid}`);
       return txid;

@@ -759,6 +759,11 @@ function isIncoming(tx) {
     return String(tx.type || '').toUpperCase() === 'DEPOSIT';
 }
 
+/** The platform's fee leaving the wallet: the "held" figure being collected. */
+function isFeeCollection(tx) {
+    return String(tx.type || '').toUpperCase() === 'FEE_COLLECTION';
+}
+
 function txMatchesFilter(tx) {
     const incoming = isIncoming(tx);
     const status = String(tx.status || '').toUpperCase();
@@ -832,7 +837,7 @@ function displayTransactionsList(transactions, needle = '') {
 
         return `<tr class="row" tabindex="0" aria-expanded="false" aria-controls="${detailId}">
             <td class="when"><b>${escapeHtml(when.day)}</b><span>${escapeHtml(when.time)}</span></td>
-            <td><span class="type"><i class="${incoming ? 'in' : 'out'}"></i>${incoming ? 'Received' : 'Payout'}</span></td>
+            <td><span class="type"><i class="${incoming ? 'in' : 'out'}"></i>${incoming ? 'Received' : (isFeeCollection(tx) ? 'Platform fee' : 'Payout')}</span></td>
             <td class="amt num"><b>${incoming ? '' : '\u2212'}${escapeHtml(token ? Number(tx.nativeAmount).toFixed(2) : formatBalance(tx.nativeAmount))} ${symbol}</b>${Number.isFinite(usd) ? `<span>$${usd.toFixed(2)}</span>` : ''}</td>
             <td class="chain">${chainName}${tag}</td>
             <td>${hashCell}</td>
@@ -940,7 +945,7 @@ function displayTransactions(transactions) {
 
     const rows = transactions.map((tx) => {
         const incoming = isIncoming(tx);
-        const what = incoming ? 'Payment received' : 'Payout sent';
+        const what = incoming ? 'Payment received' : (isFeeCollection(tx) ? 'Platform fee collected' : 'Payout sent');
         const chain = escapeHtml(PAYOUT_CHAINS[tx.chain]?.name || tx.chain || '');
         const token = tx.asset && tx.asset !== chainSymbol(tx.chain) ? escapeHtml(tx.asset) : '';
         const symbol = token || escapeHtml(chainSymbol(tx.chain));

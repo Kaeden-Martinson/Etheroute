@@ -532,7 +532,7 @@ class LitecoinWalletService {
     if (address.startsWith('L') || address.startsWith('M') || address.startsWith('1') || address.startsWith('3')) {
       try {
         const decoded = bitcoin.address.fromBase58Check(address);
-        
+
         // Determine address type from version byte
         if (address.startsWith('L') || address.startsWith('M')) {
           // Litecoin P2PKH (version 0x30 for L, 0x32 for M)
@@ -589,10 +589,43 @@ class LitecoinWalletService {
    * output carrying it (a swap network's instruction), after the recipient
    * and the change.
    */
+  /** The output script paying `address`, for any of the forms parseAddress knows. */
+  scriptForAddress(address) {
+    const info = this.parseAddress(address);
+    if (info.type === 'p2pkh') {
+      // OP_DUP OP_HASH160 <20-byte-hash> OP_EQUALVERIFY OP_CHECKSIG
+      return Buffer.concat([Buffer.from([0x76, 0xa9, 0x14]), info.hash, Buffer.from([0x88, 0xac])]);
+    }
+    if (info.type === 'p2wpkh') {
+      // OP_0 <20-byte-hash>
+      return Buffer.concat([Buffer.from([0, info.data.length]), info.data]);
+    }
+    if (info.type === 'p2sh') {
+      // OP_HASH160 <20-byte-hash> OP_EQUAL
+      return Buffer.concat([Buffer.from([0xa9, 0x14]), info.hash, Buffer.from([0x87])]);
+    }
+    throw new Error(`Unsupported address type: ${info.type}`);
+  }
+
+  /**
+   * The outputs a send carries beside the recipient: `options.extraOutputs`
+   * as `[{ address, amount }]` (the platform's fee rides in the same
+   * transaction this way), each above the dust limit.
+   */
+  extraOutputsOf(options) {
+    return (options && Array.isArray(options.extraOutputs) ? options.extraOutputs : []).map((o) => {
+      const value = Math.round(Number(o.amount) * 100000000);
+      if (!(value >= LitecoinWalletService.DUST_SATS)) throw new Error(`Extra output of ${o.amount} LTC to ${o.address} is below the dust limit`);
+      return { script: this.scriptForAddress(o.address), value, address: o.address };
+    });
+  }
+
   async sendTransaction(privateKey, toAddress, amount, options = {}) {
     try {
       const memo = options && options.memo ? LitecoinWalletService.opReturnScript(options.memo) : null;
       const memoBytes = memo ? 9 + memo.length : 0;
+      const extras = this.extraOutputsOf(options);
+      const extraSatoshis = extras.reduce((sum, o) => sum + o.value, 0);
       const privateKeyBuffer = Buffer.from(privateKey, 'hex');
       const pubKey = ecc.pointFromScalar(privateKeyBuffer, true);
 
@@ -615,7 +648,7 @@ class LitecoinWalletService {
         console.warn(`[LitecoinWalletService] ${error.message}; sending through BlockCypher`);
         return this.fallback.sendTransaction(privateKey, toAddress, amount, options);
       }
-      
+
       // Check if response is valid before parsing
       if (!response.ok) {
         const errorText = await response.text();
@@ -630,7 +663,7 @@ class LitecoinWalletService {
         console.error(`[LitecoinWalletService] Failed to parse JSON. Response: ${text.substring(0, 200)}`);
         throw new Error(`Failed to parse API response: ${text.substring(0, 100)}`);
       }
-      
+
       if (!Array.isArray(data) || data.length === 0) {
         throw new Error('No unspent outputs (UTXOs) available');
       }
@@ -646,7 +679,7 @@ class LitecoinWalletService {
       let selectedUtxos = [];
       let totalValue = 0;
       let feeSatoshis = 0;
-      let totalNeeded = amountSatoshis;
+      let totalNeeded = amountSatoshis + extraSatoshis;
 
       for (const utxo of utxos) {
         selectedUtxos.push({
@@ -656,10 +689,10 @@ class LitecoinWalletService {
         });
         totalValue += utxo.value;
         feeSatoshis = Math.max(
-          Math.ceil(feeRate * (LitecoinWalletService.virtualSize(selectedUtxos.length, 2) + memoBytes)),
+          Math.ceil(feeRate * (LitecoinWalletService.virtualSize(selectedUtxos.length, 2 + extras.length) + memoBytes)),
           LitecoinWalletService.MIN_FEE_SATS
         );
-        totalNeeded = amountSatoshis + feeSatoshis;
+        totalNeeded = amountSatoshis + extraSatoshis + feeSatoshis;
         if (totalValue >= totalNeeded) break;
       }
 
@@ -672,7 +705,7 @@ class LitecoinWalletService {
         feeSatoshis += changeSatoshis;
         changeSatoshis = 0;
       }
-      console.log(`[LitecoinWalletService] ${selectedUtxos.length} input(s), fee ${feeSatoshis} sats at ${feeRate} sat/vB, change ${changeSatoshis} sats`);
+      console.log(`[LitecoinWalletService] ${selectedUtxos.length} input(s), fee ${feeSatoshis} sats at ${feeRate} sat/vB, change ${changeSatoshis} sats${extras.length ? `, ${extras.length} extra output(s) ${extraSatoshis} sats` : ''}`);
 
       // Build transaction using P2PKH (compatible with Litecoin)
       const { output: scriptOutput } = bitcoin.payments.p2pkh({ 
@@ -708,11 +741,11 @@ class LitecoinWalletService {
         try {
           const txResponse = await this.mempool(`/tx/${utxo.txid}`);
           const txData = await txResponse.json();
-          
+
           // Build a minimal transaction from the data we have
           // This is a workaround - ideally we'd get the full raw transaction
           const tx = new bitcoin.Transaction();
-          
+
           // Add inputs from previous transaction
           if (txData.vin && Array.isArray(txData.vin)) {
             for (const vin of txData.vin) {
@@ -723,7 +756,7 @@ class LitecoinWalletService {
               }
             }
           }
-          
+
           // Add outputs
           if (txData.vout && Array.isArray(txData.vout)) {
             for (const vout of txData.vout) {
@@ -748,40 +781,19 @@ class LitecoinWalletService {
         }
       }
 
-      // Parse and convert recipient address to script
+      // Outputs: the recipient, any extra outputs, the change, then the memo.
       const recipientInfo = this.parseAddress(toAddress);
       console.log(`[LitecoinWalletService] Recipient address type: ${recipientInfo.type} - ${recipientInfo.description}`);
-      
-      let recipientScript;
-
-      if (recipientInfo.type === 'p2pkh') {
-        // P2PKH script: OP_DUP OP_HASH160 <20-byte-hash> OP_EQUALVERIFY OP_CHECKSIG
-        recipientScript = Buffer.concat([
-          Buffer.from([0x76, 0xa9, 0x14]),
-          recipientInfo.hash,
-          Buffer.from([0x88, 0xac]),
-        ]);
-      } else if (recipientInfo.type === 'p2wpkh') {
-        // Bech32 P2WPKH script: OP_0 <20-byte-hash>
-        recipientScript = Buffer.concat([
-          Buffer.from([0, recipientInfo.data.length]),
-          recipientInfo.data,
-        ]);
-      } else if (recipientInfo.type === 'p2sh') {
-        // P2SH script: OP_HASH160 <20-byte-hash> OP_EQUAL
-        recipientScript = Buffer.concat([
-          Buffer.from([0xa9, 0x14]),
-          recipientInfo.hash,
-          Buffer.from([0x87]),
-        ]);
-      } else {
-        throw new Error(`Unsupported address type: ${recipientInfo.type}`);
-      }
+      const recipientScript = this.scriptForAddress(toAddress);
 
       psbt.addOutput({
         script: Uint8Array.from(recipientScript),
         value: BigInt(amountSatoshis),
       });
+
+      for (const extra of extras) {
+        psbt.addOutput({ script: Uint8Array.from(extra.script), value: BigInt(extra.value) });
+      }
 
       // Add change output if needed
       if (changeSatoshis > 0) {

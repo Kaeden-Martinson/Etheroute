@@ -17,6 +17,7 @@ const MaintenanceService = require('./services/MaintenanceService');
 const ChainHealthService = require('./services/ChainHealthService');
 const BalanceWatcher = require('./services/BalanceWatcher');
 const BackupService = require('./services/BackupService');
+const FeeCollectionService = require('./services/FeeCollectionService');
 const AlertService = require('./services/AlertService');
 
 const { requireAuth } = require('./middleware/auth');
@@ -293,6 +294,7 @@ function start() {
   BackupService.start();
   ChainHealthService.start();
   BalanceWatcher.start();
+  FeeCollectionService.start();
 
   return server;
 }
@@ -307,6 +309,7 @@ function shutdown(signal) {
   BackupService.stop();
   ChainHealthService.stop();
   BalanceWatcher.stop();
+  FeeCollectionService.stop();
   UsageLog.flush();
 
   if (!server) process.exit(0);

@@ -219,7 +219,7 @@ describe('The wallets carry a memo', () => {
       const source = read(`src/services/wallets/${file}.js`);
       assert.ok(source.includes('async sendTransaction(privateKey, toAddress, amount, options = {}) {'), file);
       assert.ok(source.includes(`const memo = options && options.memo ? ${file}.opReturnScript(options.memo) : null;`), file);
-      assert.ok(source.includes('virtualSize(selectedUtxos.length, 2) + memoBytes)'), `${file} sizes the memo into the fee`);
+      assert.ok(source.includes('virtualSize(selectedUtxos.length, 2 + extras.length) + memoBytes)'), `${file} sizes the memo (and any extra output) into the fee`);
       const send = source.slice(source.indexOf('async sendTransaction('));
       assert.ok(send.indexOf('// Add change output if needed') < send.indexOf('psbt.addOutput({ script: Uint8Array.from(memo), value: 0n });'), `${file}: recipient, change, then the memo`);
     }

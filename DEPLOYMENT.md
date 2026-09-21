@@ -173,7 +173,42 @@ A maintenance sweep runs every 60 seconds:
   browsers are polling it.
 - **Expired checkout sessions** are closed, sending `checkout.session.expired`.
 - **Webhook retries** are dispatched with exponential backoff.
-- **Idempotency keys** older than 24 hours are pruned.
+- **Idempotency keys** older than 24 hours are pruned, and usage rows older
+  than `USAGE_RETENTION_DAYS` (30).
+
+### Collecting the platform fee
+
+A withdrawal keeps `PLATFORM_FEE_RATE` of what it sweeps. On Bitcoin, Litecoin,
+Bitcoin Cash and Dogecoin that share leaves in the withdrawal's own transaction,
+as a second output to your address; elsewhere a transfer has one recipient, so
+the fee stays in the merchant's wallet (shown to them as `platformFeeHeld`, and
+excluded from what they can withdraw) until it is worth a transaction of its
+own. A daily sweep then sends each wallet's held fee to your address once it
+clears `FEE_COLLECT_MIN_USD` (10) and `FEE_COLLECT_GAS_MULTIPLE` (20) times the
+gas, one transaction per wallet, tokens as tokens. Set one address per family:
+
+```
+PLATFORM_FEE_ADDRESS_EVM=0x…      # every EVM chain
+PLATFORM_FEE_ADDRESS_BTC=bc1…
+PLATFORM_FEE_ADDRESS_LTC=…  PLATFORM_FEE_ADDRESS_BCH=…  PLATFORM_FEE_ADDRESS_DOGE=…
+PLATFORM_FEE_ADDRESS_SOL=…  PLATFORM_FEE_ADDRESS_XRP=…
+```
+
+A family with no address keeps holding. Every collection is a `feeCollections`
+row and, for a sweep, a `FEE_COLLECTION` transaction on the merchant's ledger,
+watched to confirmation like any other; a sweep that fails on its chain is held
+again. The book, a dry run, a sweep on demand:
+
+```bash
+node scripts/collect-fees.js              # held per wallet, collected per chain
+node scripts/collect-fees.js --dry-run    # what a sweep would send, and why not the rest
+node scripts/collect-fees.js --collect    # send it (add --chain ETH to limit)
+node scripts/collect-fees.js --reconcile  # cap held figures at what the wallets hold
+```
+
+`--reconcile` is for figures recorded before fees were tracked exactly, which
+can exceed what the wallet has; the sweep never sends more than the wallet can
+spare after its gas reserve in any case.
 
 ### Rate limits and the upstream APIs
 

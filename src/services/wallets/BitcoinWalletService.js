@@ -91,7 +91,7 @@ class BitcoinWalletService {
       throw new Error(`Failed to generate Bitcoin wallet: ${error.message}`);
     }
   }
-  
+
   /**
    * Get wallet balance in BTC using blockchain.info API
    * @param {string} address - Bitcoin wallet address
@@ -233,7 +233,7 @@ class BitcoinWalletService {
   async getTransactionHistoryFromMempool(address, limit = 10) {
     try {
       const response = await this.mempool(`/address/${address}/txs`);
-      
+
       if (!response.ok) {
         throw new Error(`API error: ${response.statusText}`);
       }
@@ -478,7 +478,7 @@ class BitcoinWalletService {
     if (address.startsWith('1') || address.startsWith('3')) {
       try {
         const decoded = bitcoin.address.fromBase58Check(address);
-        
+
         if (address.startsWith('1')) {
           // Bitcoin P2PKH (version 0x00)
           return {
@@ -516,16 +516,54 @@ class BitcoinWalletService {
    * @param {number} amount - Amount in BTC
    * @returns {Promise<string>} Transaction hash/ID
    */
+  /** The output script paying `address`, for any of the forms parseAddress knows. */
+  scriptForAddress(address) {
+    const info = this.parseAddress(address);
+    if (info.type === 'p2pkh') {
+      // OP_DUP OP_HASH160 <20-byte-hash> OP_EQUALVERIFY OP_CHECKSIG
+      return Buffer.concat([Buffer.from([0x76, 0xa9, 0x14]), info.hash, Buffer.from([0x88, 0xac])]);
+    }
+    if (info.type === 'p2wpkh' || info.type === 'p2wsh') {
+      // OP_0 <20- or 32-byte program>
+      return Buffer.concat([Buffer.from([0, info.data.length]), info.data]);
+    }
+    if (info.type === 'p2tr') {
+      // OP_1 <32-byte key>
+      return Buffer.concat([Buffer.from([0x51]), Buffer.from([info.data.length]), info.data]);
+    }
+    if (info.type === 'p2sh') {
+      // OP_HASH160 <20-byte-hash> OP_EQUAL
+      return Buffer.concat([Buffer.from([0xa9, 0x14]), info.hash, Buffer.from([0x87])]);
+    }
+    throw new Error(`Unsupported address type: ${info.type}`);
+  }
+
+  /**
+   * The outputs a send carries beside the recipient: `options.extraOutputs`
+   * as `[{ address, amount }]` (the platform's fee rides in the same
+   * transaction this way), each above the dust limit.
+   */
+  extraOutputsOf(options) {
+    return (options && Array.isArray(options.extraOutputs) ? options.extraOutputs : []).map((o) => {
+      const value = Math.round(Number(o.amount) * 100000000);
+      if (!(value >= BitcoinWalletService.DUST_SATS)) throw new Error(`Extra output of ${o.amount} BTC to ${o.address} is below the dust limit`);
+      return { script: this.scriptForAddress(o.address), value, address: o.address };
+    });
+  }
+
   /**
    * Send `amount` BTC to `toAddress`. `options.memo` adds an OP_RETURN
    * output carrying it (a swap network's instruction), after the recipient
-   * and the change, as the networks ask.
+   * and the change, as the networks ask. `options.extraOutputs` pay other
+   * addresses in the same transaction, right after the recipient.
    */
   async sendTransaction(privateKey, toAddress, amount, options = {}) {
     try {
       const memo = options && options.memo ? BitcoinWalletService.opReturnScript(options.memo) : null;
       // the OP_RETURN output: 8 bytes of value, a length byte, the script
       const memoBytes = memo ? 9 + memo.length : 0;
+      const extras = this.extraOutputsOf(options);
+      const extraSatoshis = extras.reduce((sum, o) => sum + o.value, 0);
       const privateKeyBuffer = Buffer.from(privateKey, 'hex');
       const { address } = bitcoin.payments.p2wpkh({
         pubkey: ecc.pointFromScalar(privateKeyBuffer, true),
@@ -543,7 +581,7 @@ class BitcoinWalletService {
         console.warn(`[BitcoinWalletService] ${error.message}; listing unspent outputs through BlockCypher`);
         data = await this.fallback.getUtxos(address);
       }
-      
+
       if (!Array.isArray(data) || data.length === 0) {
         throw new Error('No unspent outputs (UTXOs) available');
       }
@@ -565,7 +603,7 @@ class BitcoinWalletService {
       let selectedUtxos = [];
       let totalValue = 0;
       let feeSatoshis = 0;
-      let totalNeeded = amountSatoshis;
+      let totalNeeded = amountSatoshis + extraSatoshis;
 
       for (const utxo of utxos) {
         selectedUtxos.push({
@@ -575,10 +613,10 @@ class BitcoinWalletService {
         });
         totalValue += utxo.value;
         feeSatoshis = Math.max(
-          Math.ceil(feeRate * (BitcoinWalletService.virtualSize(selectedUtxos.length, 2) + memoBytes)),
+          Math.ceil(feeRate * (BitcoinWalletService.virtualSize(selectedUtxos.length, 2 + extras.length) + memoBytes)),
           BitcoinWalletService.MIN_FEE_SATS
         );
-        totalNeeded = amountSatoshis + feeSatoshis;
+        totalNeeded = amountSatoshis + extraSatoshis + feeSatoshis;
         if (totalValue >= totalNeeded) break;
       }
 
@@ -593,7 +631,7 @@ class BitcoinWalletService {
         feeSatoshis += changeSatoshis;
         changeSatoshis = 0;
       }
-      console.log(`[BitcoinWalletService] ${selectedUtxos.length} input(s), fee ${feeSatoshis} sats at ${feeRate} sat/vB, change ${changeSatoshis} sats`);
+      console.log(`[BitcoinWalletService] ${selectedUtxos.length} input(s), fee ${feeSatoshis} sats at ${feeRate} sat/vB, change ${changeSatoshis} sats${extras.length ? `, ${extras.length} extra output(s) ${extraSatoshis} sats` : ''}`);
 
       // Build transaction
       const pubKey = ecc.pointFromScalar(privateKeyBuffer, true); // Compressed public key
@@ -612,54 +650,19 @@ class BitcoinWalletService {
         });
       }
 
-      // Add outputs
-      // Parse and convert recipient address to script
+      // Outputs: the recipient, any extra outputs, the change, then the memo.
       const recipientInfo = this.parseAddress(toAddress);
       console.log(`[BitcoinWalletService] Recipient address type: ${recipientInfo.type} - ${recipientInfo.description}`);
-      
-      let recipientScript;
-
-      if (recipientInfo.type === 'p2pkh') {
-        // P2PKH script: OP_DUP OP_HASH160 <20-byte-hash> OP_EQUALVERIFY OP_CHECKSIG
-        recipientScript = Buffer.concat([
-          Buffer.from([0x76, 0xa9, 0x14]), // OP_DUP OP_HASH160 <20>
-          recipientInfo.hash,
-          Buffer.from([0x88, 0xac]), // OP_EQUALVERIFY OP_CHECKSIG
-        ]);
-      } else if (recipientInfo.type === 'p2wpkh') {
-        // Bech32 P2WPKH script: OP_0 <20-byte-hash>
-        recipientScript = Buffer.concat([
-          Buffer.from([0, recipientInfo.data.length]),
-          recipientInfo.data,
-        ]);
-      } else if (recipientInfo.type === 'p2wsh') {
-        // Bech32 P2WSH script: OP_0 <32-byte-hash>
-        recipientScript = Buffer.concat([
-          Buffer.from([0, recipientInfo.data.length]),
-          recipientInfo.data,
-        ]);
-      } else if (recipientInfo.type === 'p2tr') {
-        // Taproot script: OP_1 <32-byte-key>
-        recipientScript = Buffer.concat([
-          Buffer.from([0x51]), // OP_1
-          Buffer.from([recipientInfo.data.length]),
-          recipientInfo.data,
-        ]);
-      } else if (recipientInfo.type === 'p2sh') {
-        // P2SH script: OP_HASH160 <20-byte-hash> OP_EQUAL
-        recipientScript = Buffer.concat([
-          Buffer.from([0xa9, 0x14]), // OP_HASH160 <20>
-          recipientInfo.hash,
-          Buffer.from([0x87]), // OP_EQUAL
-        ]);
-      } else {
-        throw new Error(`Unsupported address type: ${recipientInfo.type}`);
-      }
+      const recipientScript = this.scriptForAddress(toAddress);
 
       psbt.addOutput({
         script: Uint8Array.from(recipientScript),
         value: BigInt(amountSatoshis),
       });
+
+      for (const extra of extras) {
+        psbt.addOutput({ script: Uint8Array.from(extra.script), value: BigInt(extra.value) });
+      }
 
       // Add change output if needed
       if (changeSatoshis > 0) {

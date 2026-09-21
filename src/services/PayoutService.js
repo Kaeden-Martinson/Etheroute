@@ -9,6 +9,7 @@ const TransactionService = require('./TransactionService');
 const SideshiftService = require('./SideshiftService');
 const ThorchainService = require('./ThorchainService');
 const GasFloatService = require('./GasFloatService');
+const FeeCollectionService = require('./FeeCollectionService');
 const BalanceWatcher = require('./BalanceWatcher');
 const KeyVault = require('./crypto/KeyVault');
 const { config } = require('../config/env');
@@ -637,9 +638,15 @@ class PayoutService {
             txHash = await this.sendTransfer(transfer.chain, sourceWallet, depositAddress, coinAmount);
           } else {
             // A shift's deposit may carry a tag (the XRP Ledger tells
-            // deposits apart by one); a direct send never does.
+            // deposits apart by one); a direct send never does. A
+            // Bitcoin-style send may carry the platform's fee as a second
+            // output.
             const tag = transfer.route === 'sideshift' ? order.extraId : null;
-            txHash = await this.sendTransfer(transfer.chain, sourceWallet, depositAddress, sendAmount, asset, tag ? { destinationTag: tag } : {});
+            const feeOutput = transfer.feeOutput && transfer.feeOutput.amount > 0 ? transfer.feeOutput : null;
+            txHash = await this.sendTransfer(transfer.chain, sourceWallet, depositAddress, sendAmount, asset, {
+              ...(tag && { destinationTag: tag }),
+              ...(feeOutput && { extraOutputs: [feeOutput] }),
+            });
           }
         } catch (broadcastError) {
           const errorMsg = broadcastError.message;
@@ -753,8 +760,9 @@ class PayoutService {
         broadcastedTransfers.push({ ...transfer, txHash, transactionId: transaction.id });
         console.log(`[PayoutService] Transaction broadcasted: ${txHash} (${transaction.id}) - Status: PROCESSING`);
 
-        // The funds have left; the platform fee is what stayed behind.
-        this._recordServiceFee(storedWallet, transfer);
+        // The funds have left; the platform fee is what stayed behind - or,
+        // on a chain that let it ride along, what left with them.
+        this._recordServiceFee(storedWallet, transfer, txHash, payoutId);
 
         // The wallet's stored figure is wrong from this moment: read it again
         // now, and the recipient's too if it is one of ours.
@@ -1015,6 +1023,7 @@ class PayoutService {
               status: 'FAILED',
               failureReason: failureReason || 'UNKNOWN_ERROR',
             });
+            FeeCollectionService.onPayoutTransferResolved(transfer.txHash, 'failed');
             failedTxs.add(transfer.transactionId);
             console.log(`[PayoutService] ✗ FAILED: Order ${orderId} (${failureReason})`);
           } else if (isConfirmed) {
@@ -1022,6 +1031,7 @@ class PayoutService {
             this._updatePayoutTransfer(payoutId, transfer.fromAddress, {
               status: 'CONFIRMED',
             });
+            FeeCollectionService.onPayoutTransferResolved(transfer.txHash, 'confirmed');
             confirmedTxs.add(transfer.transactionId);
             console.log(`[PayoutService] ✓ CONFIRMED: Order ${orderId} completed`);
           }
@@ -1114,6 +1124,8 @@ class PayoutService {
     if (outcome.confirmed) {
       TransactionService.updateTransactionStatus(transaction.id, 'CONFIRMED', null);
       this._updatePayoutTransferByTransaction(transaction.id, { status: 'CONFIRMED' });
+      FeeCollectionService.onTransactionResolved(transaction, 'confirmed');
+      FeeCollectionService.onPayoutTransferResolved(txHash, 'confirmed');
       BalanceWatcher.nudge([], [transaction.fromAddress, transaction.finalAddress]);
       return 'confirmed';
     }
@@ -1121,6 +1133,8 @@ class PayoutService {
     if (outcome.failed) {
       TransactionService.markTransactionFailed(transaction.id, outcome.reason, `Order ${transaction.orderId} ${status}`);
       this._updatePayoutTransferByTransaction(transaction.id, { status: 'FAILED', failureReason: outcome.reason });
+      FeeCollectionService.onTransactionResolved(transaction, 'failed');
+      FeeCollectionService.onPayoutTransferResolved(txHash, 'failed');
       // a refund has come back to the source wallet
       BalanceWatcher.nudge([], [transaction.fromAddress]);
       return 'failed';
@@ -1188,7 +1202,13 @@ class PayoutService {
    * next time. The figure is the exact amount the plan withheld for this
    * wallet, not a USD share worked back through the price feed.
    */
-  _recordServiceFee(wallet, transfer) {
+  _recordServiceFee(wallet, transfer, txHash = null, payoutId = null) {
+    // A fee that rode in the transaction is collected, not held.
+    if (transfer.feeOutput && transfer.feeOutput.amount > 0) {
+      FeeCollectionService.recordInPayout(wallet, transfer, txHash, payoutId);
+      console.log(`[PayoutService] Platform fee collected in the transaction for wallet ${wallet.id} (${transfer.chain}): ${transfer.feeOutput.amount} ${chains.get(transfer.chain).symbol} to ${transfer.feeOutput.address}`);
+      return;
+    }
     // The fee, plus the gas the float advanced and this leg paid back in
     // its asset: both stay in the wallet and both are the platform's.
     const advance = transfer.gasTopUp && Number(transfer.gasTopUp.chargedInAsset) > 0 ? Number(transfer.gasTopUp.chargedInAsset) : 0;
