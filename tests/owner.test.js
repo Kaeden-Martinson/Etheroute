@@ -199,6 +199,109 @@ describe('The API across every merchant', () => {
     assert.strictEqual(typeof reconcile.body.changed, 'number');
   });
 
+  test('overview carries the trend, the deltas, the stuck transfers and the float', async () => {
+    const r = await call('GET', '/api/owner/overview', { token: owner.token });
+    const d = r.body;
+    assert.strictEqual(d.trend.length, 30);
+    const today = d.trend[d.trend.length - 1];
+    assert.ok(today.withdrawnUsd >= 100 && today.feesUsd >= 5 && today.paidInUsd >= 25, JSON.stringify(today));
+    assert.ok('previous30d' in d.payouts && 'previous30d' in d.checkout);
+    assert.ok(Array.isArray(d.transactions.stuck));
+    assert.ok('enabled' in d.gasFloat);
+    assert.strictEqual(typeof d.server.errorsLastHour, 'number');
+    assert.ok('nextRunAt' in d.fees);
+  });
+
+  test('payouts carry their legs; transfers carry age and whether they are past the usual time', async () => {
+    const list = await call('GET', '/api/owner/payouts?status=PARTIAL', { token: owner.token });
+    const p = list.body.payouts.find((x) => x.clientId === other.id);
+    assert.deepStrictEqual(p.legs.map((l) => l.status), ['FAILED', 'CONFIRMED']);
+    assert.ok('route' in p.legs[0] && 'txHash' in p.legs[0] && 'platformFeeUSD' in p.legs[0]);
+
+    // an old in-flight transfer on Bitcoin: past the usual hour
+    db.create('transactions', { clientId: other.id, type: 'DIRECT_TRANSFER', status: 'PROCESSING', chain: 'BTC', nativeAmount: 0.001, usdAmount: 60, transactionHash: 'oldbtc', fromAddress: 'bc1qold', orderId: 'direct_transfer_old', createdAt: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString() });
+    const inflight = await call('GET', '/api/owner/transactions', { token: owner.token });
+    const old = inflight.body.transactions.find((t) => t.transactionHash === 'oldbtc');
+    assert.ok(old.ageSeconds >= 5 * 3600 - 5);
+    assert.ok(old.usualSeconds >= 600);
+    assert.strictEqual(old.stuck, true);
+    const fresh = inflight.body.transactions.find((t) => t.transactionHash === '0xinflight');
+    assert.strictEqual(fresh.stuck, false);
+  });
+
+  test('a transfer can be re-checked on demand, one or all', async () => {
+    const PayoutService = require('../src/services/PayoutService');
+    const original = PayoutService.reconcileTransaction;
+    const seen = [];
+    PayoutService.reconcileTransaction = async (t) => { seen.push(t.transactionHash); return 'pending'; };
+    try {
+      const tx = db.findOneBy('transactions', { transactionHash: '0xinflight' });
+      const one = await call('POST', `/api/owner/transactions/${tx.id}/recheck`, { token: owner.token });
+      assert.strictEqual(one.status, 200);
+      assert.strictEqual(one.body.outcome, 'pending');
+      assert.strictEqual(one.body.transaction.id, tx.id);
+      assert.deepStrictEqual(seen, ['0xinflight']);
+      const done = db.findOneBy('transactions', { transactionHash: '0xfailed' });
+      const settled = await call('POST', `/api/owner/transactions/${done.id}/recheck`, { token: owner.token });
+      assert.strictEqual(settled.body.outcome, 'failed', 'a settled transfer is not asked again');
+      assert.strictEqual((await call('POST', '/api/owner/transactions/nope/recheck', { token: owner.token })).status, 404);
+      const all = await call('POST', '/api/owner/transactions/recheck', { token: owner.token });
+      assert.strictEqual(all.status, 200);
+      assert.strictEqual(typeof all.body.resolved, 'number');
+      assert.ok(seen.length >= 2, 'every in-flight transfer was asked');
+    } finally {
+      PayoutService.reconcileTransaction = original;
+    }
+  });
+
+  test('search finds every kind that carries the term', async () => {
+    const byHash = await call('GET', '/api/owner/search?q=0xINFLIGHT', { token: owner.token });
+    assert.strictEqual(byHash.status, 200);
+    assert.strictEqual(byHash.body.transactions.length, 1, 'a hash matches whole, case aside');
+    const byAddress = await call('GET', `/api/owner/search?q=${'0x' + 'a'.repeat(40)}`, { token: owner.token });
+    assert.strictEqual(byAddress.body.wallets.length, 1);
+    assert.ok(byAddress.body.transactions.length >= 2, 'the transfers from that address');
+    assert.ok(!('privateKey' in byAddress.body.wallets[0]));
+    const byRef = await call('GET', '/api/owner/search?q=ord-1', { token: owner.token });
+    assert.strictEqual(byRef.body.sessions.length, 1);
+    const byName = await call('GET', `/api/owner/search?q=${other.username.slice(0, 6)}`, { token: owner.token });
+    assert.ok(byName.body.merchants.some((m) => m.id === other.id));
+    const byRecipient = await call('GET', `/api/owner/search?q=${'0x' + 'b'.repeat(40)}`, { token: owner.token });
+    assert.ok(byRecipient.body.payouts.length >= 1);
+    assert.strictEqual((await call('GET', '/api/owner/search?q=ab', { token: owner.token })).status, 400, 'too short');
+  });
+
+  test('the log tail, the snapshot and the chain check are the operator\'s', async () => {
+    const logger = require('../src/services/logger');
+    logger.warn('[Test] a warning the panel should show apikey=SECRET123 ok');
+    const logs = await call('GET', '/api/owner/logs?lines=50', { token: owner.token });
+    assert.strictEqual(logs.status, 200);
+    assert.ok(logs.body.lines.length >= 1);
+    assert.strictEqual(logs.body.lines[0].level, 'warn');
+    assert.match(logs.body.lines[0].message, /apikey=\[redacted\]/);
+    assert.ok(!logs.body.lines[0].message.includes('SECRET123'));
+    assert.strictEqual(typeof logs.body.errorsLastHour, 'number');
+
+    const snap = await call('POST', '/api/owner/server/snapshot', { token: owner.token });
+    assert.strictEqual(snap.status, 200);
+    assert.match(snap.body.file, /^database-.*\.sqlite$/);
+
+    const ChainHealthService = require('../src/services/ChainHealthService');
+    const originalRun = ChainHealthService.runOnce;
+    let ran = 0;
+    ChainHealthService.runOnce = async () => { ran += 1; };
+    try {
+      const check = await call('POST', '/api/owner/chains/check', { token: owner.token });
+      assert.strictEqual(check.status, 200);
+      assert.strictEqual(ran, 1);
+      assert.ok(Array.isArray(check.body.chains));
+    } finally {
+      ChainHealthService.runOnce = originalRun;
+    }
+    const srv = await call('GET', '/api/owner/server', { token: owner.token });
+    assert.ok('commit' in srv.body && 'errorsLastHour' in srv.body);
+  });
+
   test('usage, chains and server describe the platform without secrets', async () => {
     const usage = await call('GET', '/api/owner/usage?period=day', { token: owner.token });
     assert.strictEqual(usage.body.labels.length, 24);
@@ -261,7 +364,11 @@ describe('The CLI and the page', () => {
       assert.ok(new RegExp(`function ${name}\\(`).test(js), `${name} is defined`);
       assert.ok(js.includes(name), `${name} is exposed`);
     }
-    for (const id of ['ovVolume', 'ovAttention', 'merchantRows', 'mWalletRows', 'payoutRows', 'txRows', 'sessionRows', 'feeHeldRows', 'feePlanOut', 'usageChart', 'chainRows', 'serverConfig', 'notOwner']) assert.ok(html.includes(`id="${id}"`), id);
+    for (const id of ['ovVolume', 'ovChart', 'ovAttention', 'ownerSearch', 'searchResults', 'merchantRows', 'mWalletRows', 'payoutRows', 'txRows', 'recheckAllBtn', 'sessionRows', 'feeHeldRows', 'feePlanOut', 'feeNext', 'usageChart', 'chainRows', 'chainChips', 'checkChainsBtn', 'serverConfig', 'serverLog', 'snapshotBtn', 'notOwner']) assert.ok(html.includes(`id="${id}"`), id);
+    assert.ok(html.includes('data-on-submit="submitSearch"'));
+    for (const name of ['submitSearch', 'togglePayout', 'recheckOne', 'recheckAll', 'filterChains', 'checkChainsNow', 'snapshotNow', 'drawFlowChart', 'legsHtml', 'ticksHtml']) assert.ok(new RegExp(`function ${name}\\(`).test(js), name);
+    assert.ok(js.includes("e.key !== '/'"), 'slash focuses the search');
+    assert.ok(js.includes('is-stuck'), 'age past the usual time is marked');
     assert.ok(js.includes("api('/owner/overview')") && js.includes("api('/owner/fees/collect'") && js.includes('window.confirm('), 'a sweep asks first');
     // the dashboard shows the way in to owners alone
     const dash = read('public/dashboard.html');

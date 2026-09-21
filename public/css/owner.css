@@ -32,7 +32,77 @@
 .own-back { color: var(--ink-3); cursor: pointer; }
 .own-back:hover { color: var(--ink); }
 
-.own-search input { width: 240px; }
+/* The search, at the top of the rail on every page. */
+.own-search { display: flex; align-items: center; gap: 6px; margin: 0 6px 14px; padding: 0 8px 0 10px; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--surface); }
+.own-search input { flex: 1; min-width: 0; border: 0; background: transparent; font: inherit; font-size: 12.5px; color: var(--ink); padding: 8px 0; outline: none; }
+.own-search input::placeholder { color: var(--ink-3); }
+.own-search:focus-within { border-color: var(--ink); box-shadow: var(--focus-ring); }
+.own-search kbd { font: 600 10px var(--font-sans, inherit); color: var(--ink-3); border: 1px solid var(--line); border-radius: 4px; padding: 1px 5px; }
+.own-search__go { border: 0; background: transparent; color: var(--ink-3); font: 700 16px/1 var(--font-sans, inherit); padding: 4px 2px; cursor: pointer; }
+.own-search__go:hover { color: var(--ink); }
+.own-break { word-break: break-all; font-size: 20px; }
+
+/* The merchants page's own filter box keeps the dashboard's search look. */
+.own-filter input { width: 240px; }
+
+/* A table that can be wider than a phone scrolls in its own box. */
+.own-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+/* Six facts on the overview, so each has room for its direction. */
+.dash-facts--six { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+@media (max-width: 1250px) { .dash-facts--six { grid-template-columns: repeat(3, minmax(0, 1fr)); } .dash-facts--six > div:nth-child(4) { border-left: 0; padding-left: 0; } }
+@media (max-width: 640px) { .dash-facts--six { grid-template-columns: repeat(2, minmax(0, 1fr)); } .dash-facts--six > div:nth-child(odd) { border-left: 0; padding-left: 0; } .dash-facts--six > div:nth-child(4) { border-left: 1px solid var(--line); padding-left: 24px; } }
+.own-delta { font-weight: 700; font-size: 12px; }
+.own-delta.up { color: var(--ok); } .own-delta.down { color: var(--danger); } .own-delta.flat { color: var(--ink-3); }
+.dash-facts em.up { color: var(--ok); } .dash-facts em.down { color: var(--danger); }
+
+/* The month's chart, and its legend. */
+.own-chart { margin: 0 0 32px; }
+.own-chart__head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; font-size: 13px; }
+.own-chart__head b { color: var(--ink); }
+.own-legend { font-size: 11.5px; color: var(--ink-3); display: flex; gap: 10px; flex-wrap: wrap; }
+.own-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
+.own-legend__in { background: var(--ink-3); } .own-legend__out { background: var(--ink); } .own-legend__fee { background: var(--ok); }
+.own-grid--even { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+@media (max-width: 1100px) { .own-grid--even { grid-template-columns: minmax(0, 1fr); } }
+
+/* Attention: a stripe per item, coloured by what it costs to ignore. */
+.own-attention__row::before { content: ""; width: 4px; height: 26px; border-radius: 2px; background: var(--line-strong); flex: none; align-self: center; }
+.own-attention__row.is-bad::before { background: var(--danger); }
+.own-attention__row.is-warn::before { background: var(--warn); }
+.own-attention__row.is-info::before { background: var(--info); }
+.own-attention__row a { margin-left: auto; white-space: nowrap; }
+
+/* Payout legs, under an opened row. */
+.dash-table tbody tr.own-open td { border-bottom-color: transparent; background: color-mix(in srgb, var(--ink) 3%, transparent); }
+.dash-table tbody tr.own-detail td { padding: 0 0 14px; background: color-mix(in srgb, var(--ink) 3%, transparent); }
+.own-legs { margin: 0 0 0 20px; border-left: 2px solid var(--line-strong); }
+.own-leg { display: grid; grid-template-columns: 150px 200px minmax(0, 1fr) 100px 110px; gap: 12px; padding: 8px 14px; font-size: 12.5px; align-items: center; border-bottom: 1px dashed var(--line); color: var(--ink-2); }
+.own-leg:last-child { border-bottom: 0; }
+.own-leg b { color: var(--ink); font-weight: 600; }
+.own-leg .is-bad { color: var(--danger); }
+@media (max-width: 900px) { .own-leg { grid-template-columns: minmax(0, 1fr); gap: 4px; } }
+
+/* Age in flight: red past what the chain usually takes. */
+.own-age b { display: block; color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+.own-age.is-stuck b { color: var(--danger); }
+
+/* Thirty ticks, one a day, as the status page draws them. */
+.own-ticks { display: inline-flex; gap: 2px; }
+.own-ticks i { width: 5px; height: 14px; border-radius: 1px; background: var(--ok); opacity: 0.85; }
+.own-ticks i.p { background: var(--warn); } .own-ticks i.d { background: var(--danger); } .own-ticks i.n { background: var(--line-strong); }
+
+/* The log tail. */
+.own-log { font-family: var(--font-mono, ui-monospace, 'SF Mono', Menlo, Consolas, monospace); font-size: 11.5px; line-height: 1.55; background: var(--surface-sunken); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 12px 14px; color: var(--ink-2); overflow: auto; max-height: 460px; white-space: pre-wrap; word-break: break-word; margin-top: 12px; }
+.own-log .e { color: var(--danger); } .own-log .w { color: var(--warn); } .own-log .t { color: var(--ink-3); }
+.own-log .line + .line { margin-top: 3px; }
+
+/* Search results: grouped, the term marked. */
+.own-results__group { font-size: 10.5px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-3); padding: 18px 0 6px; border-bottom: 1px solid var(--line); }
+.own-results__row { display: grid; grid-template-columns: 110px minmax(0, 1fr) 150px 130px; gap: 14px; padding: 11px 0; border-bottom: 1px solid var(--line); align-items: center; font-size: 13px; color: var(--ink-2); }
+.own-results__row mark { background: var(--warn-bg); color: inherit; padding: 0 2px; border-radius: 2px; }
+.own-results__row .own-mono { max-width: 100%; }
+@media (max-width: 900px) { .own-results__row { grid-template-columns: minmax(0, 1fr); gap: 4px; } }
 
 /* A hash or address: monospace, cut to fit, whole on hover. */
 .own-mono {

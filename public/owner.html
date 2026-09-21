@@ -49,6 +49,13 @@
         </button>
 
         <div class="rail__links" id="dashNavLinks">
+            <!-- One search for everything: an address, a hash, a reference,
+                 a merchant. "/" focuses it from anywhere. -->
+            <form class="own-search" data-on-submit="submitSearch" role="search">
+                <input type="search" id="ownerSearch" placeholder="Address, hash, reference, merchant" aria-label="Search the platform" autocomplete="off" spellcheck="false">
+                <kbd>/</kbd>
+                <button type="submit" class="own-search__go" aria-label="Search">›</button>
+            </form>
             <span class="rail__group">Platform</span>
             <a class="nav-link active" data-on-click="switchOwnerPage" data-arg="overview" aria-current="page">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
@@ -121,39 +128,56 @@
                 <div>
                     <span class="dash-head__eyebrow">Platform</span>
                     <div class="dash-balance" id="ovVolume">$0.00</div>
-                    <div class="dash-balance__meta"><span>Payout volume, all time <em class="dash-balance__age" id="ovAge"></em></span></div>
+                    <div class="dash-balance__meta"><span>Paid to merchants, last 30 days</span><span class="own-delta" id="ovVolumeDelta"></span><span class="status-live" id="ovLive">Loading…</span></div>
                 </div>
                 <div class="dash-head__actions">
                     <button class="btn-small btn-secondary" data-on-click="refreshCurrentPage" type="button">Refresh</button>
                 </div>
             </header>
 
-            <div class="dash-facts" id="ovFacts">
+            <div class="dash-facts dash-facts--six" id="ovFacts">
                 <div><b id="ovMerchants">–</b><span>Merchants <em id="ovMerchantsNew"></em></span></div>
                 <div><b id="ovOnChain">–</b><span>Held in merchant wallets</span></div>
-                <div><b id="ovPayouts30">–</b><span>Payouts, 30 days <em id="ovPayouts30Count"></em></span></div>
-                <div><b id="ovFees30">–</b><span>Fees earned, 30 days</span></div>
-                <div><b id="ovCheckout30">–</b><span>Checkout paid, 30 days <em id="ovCheckout30Count"></em></span></div>
-                <div><b id="ovInFlight">–</b><span>Transfers in flight</span></div>
-                <div><b id="ovRequests">–</b><span>Requests, 24 hours <em id="ovErrors"></em></span></div>
+                <div><b id="ovPayouts30">–</b><span>Withdrawn, 30 days <em id="ovPayouts30Count"></em></span></div>
+                <div><b id="ovFees30">–</b><span>Fees earned, 30 days <em id="ovFeesDelta"></em></span></div>
+                <div><b id="ovFeesHeld">–</b><span>Fees held, uncollected <em id="ovFeesNext"></em></span></div>
                 <div><b id="ovChains">–</b><span>Chains up <em id="ovChainsProblems"></em></span></div>
             </div>
 
-            <div class="own-grid">
+            <!-- The month as a chart: three bars a day - paid in through
+                 checkout, withdrawn, fees earned. Drawn by loadOverview(). -->
+            <div class="dash-panel own-chart">
+                <div class="own-chart__head"><b>Money flow, last 30 days</b><span class="own-legend"><i class="own-legend__in"></i>Paid in through checkout <i class="own-legend__out"></i>Withdrawn <i class="own-legend__fee"></i>Fees earned</span></div>
+                <canvas id="ovChart" height="90"></canvas>
+            </div>
+
+            <div class="own-grid own-grid--even">
+                <section class="dash-section">
+                    <div class="dash-section__head">
+                        <div><h2 class="dash-section__title">Attention</h2><p class="dash-section__sub">Ordered by what costs most to ignore</p></div>
+                    </div>
+                    <div class="own-attention" id="ovAttention"></div>
+                </section>
                 <section class="dash-section">
                     <div class="dash-section__head">
                         <div><h2 class="dash-section__title">Latest payouts</h2><p class="dash-section__sub" id="ovPayoutsSub">Across every merchant</p></div>
                         <div class="dash-section__actions"><a class="dash-section__link" data-on-click="switchOwnerPage" data-arg="payouts">All payouts</a></div>
                     </div>
-                    <table class="dash-table"><thead><tr><th>When</th><th>Merchant</th><th>To</th><th class="num">Gross</th><th class="num">Fee</th><th>Status</th></tr></thead><tbody id="ovPayoutRows"></tbody></table>
-                </section>
-                <section class="dash-section">
-                    <div class="dash-section__head">
-                        <div><h2 class="dash-section__title">Attention</h2><p class="dash-section__sub">What needs a look</p></div>
-                    </div>
-                    <div class="own-attention" id="ovAttention"></div>
+                    <div class="own-scroll"><table class="dash-table"><thead><tr><th>When</th><th>Merchant</th><th class="num">Gross</th><th>Status</th></tr></thead><tbody id="ovPayoutRows"></tbody></table></div>
                 </section>
             </div>
+        </div>
+
+        <!-- Search results -->
+        <div id="searchPage" class="dashboard-page">
+            <header class="dash-head">
+                <div>
+                    <span class="dash-head__eyebrow">Search</span>
+                    <h1 class="dash-head__title own-break" id="searchTitle">–</h1>
+                    <p class="dash-head__lede" id="searchLede"></p>
+                </div>
+            </header>
+            <div class="own-results" id="searchResults"></div>
         </div>
 
         <!-- Merchants -->
@@ -165,10 +189,10 @@
                     <p class="dash-head__lede">What each holds, what each has moved, and when they were last here. Open one for its wallets, payouts, links and transfers.</p>
                 </div>
                 <div class="dash-head__actions">
-                    <label class="search-field own-search"><input type="search" id="merchantSearch" placeholder="Search by username or id" data-on-input="filterMerchants" autocomplete="off"></label>
+                    <label class="search-field own-filter"><input type="search" id="merchantSearch" placeholder="Search by username or id" data-on-input="filterMerchants" autocomplete="off"></label>
                 </div>
             </header>
-            <table class="dash-table"><thead><tr><th>Merchant</th><th class="num">Wallets</th><th class="num">On chain</th><th class="num">Fees held</th><th class="num">Payouts</th><th class="num">Volume</th><th class="num">Paid links</th><th>Last activity</th><th></th></tr></thead><tbody id="merchantRows"></tbody></table>
+            <div class="own-scroll"><table class="dash-table"><thead><tr><th>Merchant</th><th class="num">Wallets</th><th class="num">On chain</th><th class="num">Fees held</th><th class="num">Payouts</th><th class="num">Volume</th><th class="num">Paid links</th><th>Last activity</th><th></th></tr></thead><tbody id="merchantRows"></tbody></table></div>
         </div>
 
         <!-- One merchant -->
@@ -219,7 +243,7 @@
                     </div>
                 </div>
             </header>
-            <table class="dash-table"><thead><tr><th>When</th><th>Merchant</th><th>To</th><th class="num">Gross</th><th class="num">Fee</th><th class="num">Net</th><th>Legs</th><th>Status</th></tr></thead><tbody id="payoutRows"></tbody></table>
+            <div class="own-scroll"><table class="dash-table"><thead><tr><th>When</th><th>Merchant</th><th>To</th><th class="num">Gross</th><th class="num">Fee</th><th class="num">Net</th><th>Legs</th><th>Status</th><th></th></tr></thead><tbody id="payoutRows"></tbody></table></div>
         </div>
 
         <!-- In flight -->
@@ -236,9 +260,10 @@
                         <button type="button" aria-pressed="false" data-on-click="filterTransactions" data-arg="FAILED">Failed</button>
                         <button type="button" aria-pressed="false" data-on-click="filterTransactions" data-arg="CONFIRMED">Confirmed</button>
                     </div>
+                    <button class="btn-small btn-secondary" type="button" data-on-click="recheckAll" id="recheckAllBtn">Re-check all</button>
                 </div>
             </header>
-            <table class="dash-table"><thead><tr><th>When</th><th>Merchant</th><th>Kind</th><th>Chain</th><th class="num">Amount</th><th>Hash</th><th>Last seen</th><th>Status</th></tr></thead><tbody id="txRows"></tbody></table>
+            <div class="own-scroll"><table class="dash-table"><thead><tr><th>Age</th><th>Merchant</th><th>Kind</th><th>Chain</th><th class="num">Amount</th><th>Hash</th><th>Last seen</th><th>Status</th><th></th></tr></thead><tbody id="txRows"></tbody></table></div>
         </div>
 
         <!-- Checkout -->
@@ -258,7 +283,7 @@
                     </div>
                 </div>
             </header>
-            <table class="dash-table"><thead><tr><th>When</th><th>Merchant</th><th>Chain</th><th class="num">Amount</th><th>Reference</th><th>Paid</th><th>Status</th></tr></thead><tbody id="sessionRows"></tbody></table>
+            <div class="own-scroll"><table class="dash-table"><thead><tr><th>When</th><th>Merchant</th><th>Chain</th><th class="num">Amount</th><th>Reference</th><th>Paid</th><th>Status</th></tr></thead><tbody id="sessionRows"></tbody></table></div>
         </div>
 
         <!-- Fees -->
@@ -267,7 +292,7 @@
                 <div>
                     <span class="dash-head__eyebrow">Fees</span>
                     <div class="dash-balance" id="feeHeld">$0.00</div>
-                    <div class="dash-balance__meta"><span>Held in merchants' wallets, waiting to be collected</span></div>
+                    <div class="dash-balance__meta"><span>Held in merchants' wallets, waiting to be collected</span><span id="feeNext"></span></div>
                 </div>
                 <div class="dash-head__actions">
                     <button class="btn-small btn-secondary" type="button" data-on-click="feePlan">Dry run</button>
@@ -344,9 +369,18 @@
                     <h1 class="dash-head__title" id="chainsTitle">Every chain, as the monitor sees it</h1>
                     <p class="dash-head__lede" id="chainsLede">Endpoints, the tip and the swap routes off each chain, probed every few minutes. Problems first.</p>
                 </div>
-                <div class="dash-head__actions"><a class="btn-small btn-secondary" href="/status" target="_blank" rel="noopener">Public status page</a></div>
+                <div class="dash-head__actions">
+                    <div class="dash-chips" id="chainChips">
+                        <button type="button" aria-pressed="true" data-on-click="filterChains" data-arg="problems">Problems</button>
+                        <button type="button" aria-pressed="false" data-on-click="filterChains" data-arg="all">All</button>
+                        <button type="button" aria-pressed="false" data-on-click="filterChains" data-arg="evm">EVM</button>
+                        <button type="button" aria-pressed="false" data-on-click="filterChains" data-arg="utxo">Bitcoin-style</button>
+                    </div>
+                    <button class="btn-small btn-secondary" type="button" data-on-click="checkChainsNow" id="checkChainsBtn">Check now</button>
+                    <a class="btn-small btn-secondary" href="/status" target="_blank" rel="noopener">Public status page</a>
+                </div>
             </header>
-            <table class="dash-table"><thead><tr><th>Chain</th><th>Status</th><th>Endpoints</th><th>Tip</th><th>Routes</th><th>Since</th></tr></thead><tbody id="chainRows"></tbody></table>
+            <div class="own-scroll"><table class="dash-table"><thead><tr><th>Chain</th><th>30 days</th><th>Endpoints</th><th class="num">Tip</th><th>Routes</th><th>Since</th></tr></thead><tbody id="chainRows"></tbody></table></div>
             <section class="dash-section" style="margin-top: 32px;">
                 <div class="dash-section__head"><div><h2 class="dash-section__title">Recent events</h2></div></div>
                 <div class="own-events" id="chainEventRows"></div>
@@ -361,9 +395,14 @@
                     <h1 class="dash-head__title" id="serverTitle">The process</h1>
                     <p class="dash-head__lede" id="serverLede"></p>
                 </div>
+                <div class="dash-head__actions"><button class="btn-small btn-secondary" type="button" data-on-click="snapshotNow" id="snapshotBtn">Snapshot database</button></div>
             </header>
             <div class="dash-facts" id="serverFacts"></div>
             <div class="own-grid">
+                <section class="dash-section">
+                    <div class="dash-section__head"><div><h2 class="dash-section__title">Recent errors and warnings</h2><p class="dash-section__sub" id="serverLogSub">Since the server started, newest first</p></div></div>
+                    <div class="own-log" id="serverLog"></div>
+                </section>
                 <section class="dash-section">
                     <div class="dash-section__head"><div><h2 class="dash-section__title">Configuration</h2><p class="dash-section__sub">What is set - never what to</p></div></div>
                     <div class="own-kv" id="serverConfig"></div>

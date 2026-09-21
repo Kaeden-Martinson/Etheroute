@@ -240,6 +240,14 @@ The dashboard shows an "Owner panel" link to owners alone. The API behind the
 page is `/api/owner/*`; it returns no secret and is not part of the
 integrator reference.
 
+What the panel can do beyond reading: a search across every record (an
+address, a hash, a reference, a merchant - `/` focuses it), a re-check of one
+transfer or every transfer in flight (the maintenance sweep's check, on
+demand), a health check of every chain now, a database snapshot now, and the
+fee sweep's dry run, sweep and reconcile. The Server page tails the warnings
+and errors logged since the process started, keys redacted, so a problem
+reads there before anyone opens the log file.
+
 ### Rate limits and the upstream APIs
 
 Everything on-chain is read through free public services, and each of them

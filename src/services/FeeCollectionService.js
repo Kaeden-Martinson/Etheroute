@@ -178,6 +178,7 @@ class FeeCollectionService {
     }
     return {
       configured: this.configured(),
+      nextRunAt: this.nextRunAt || null,
       addresses: Object.fromEntries(['ETH', 'BTC', 'LTC', 'BCH', 'DOGE', 'SOL', 'XRP'].filter((c) => chains.has(c)).map((c) => [c === 'ETH' ? 'EVM' : c, this.addressFor(c)])),
       thresholds: { minUsd: MIN_USD, gasMultiple: GAS_MULTIPLE },
       held: { rows: held, usd: held.reduce((sum, r) => sum + r.usd, 0), wallets: new Set(held.map((r) => r.walletId)).size },
@@ -419,7 +420,11 @@ class FeeCollectionService {
       logger.info('[FeeCollection] No PLATFORM_FEE_ADDRESS_* set; fees are held in the merchants\' wallets until one is');
       return;
     }
-    const run = () => this.collect().catch((error) => logger.error(`[FeeCollection] Sweep failed: ${error.message}`));
+    const run = () => {
+      this.nextRunAt = new Date(Date.now() + INTERVAL_MS).toISOString();
+      this.collect().catch((error) => logger.error(`[FeeCollection] Sweep failed: ${error.message}`));
+    };
+    this.nextRunAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
     setTimeout(run, 10 * 60 * 1000).unref?.();
     this.timer = setInterval(run, INTERVAL_MS);
     this.timer.unref?.();
@@ -428,6 +433,7 @@ class FeeCollectionService {
 
   stop() {
     if (this.timer) { clearInterval(this.timer); this.timer = null; }
+    this.nextRunAt = null;
   }
 }
 

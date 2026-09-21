@@ -100,6 +100,28 @@ class LoggerService {
 
     stream.write(`${color}${line}${this.colors.reset}\n`);
     this._writeFile(level, line);
+    this._remember(level, message);
+  }
+
+  /**
+   * Warnings and errors since the process started, newest first, for the
+   * owner panel: what went wrong reads there before anyone opens the log
+   * file. A ring of the last few hundred; keys in query strings are blanked.
+   */
+  _remember(level, message) {
+    if (level !== 'warn' && level !== 'error') return;
+    if (!this._recent) this._recent = [];
+    this._recent.push({ at: new Date().toISOString(), level, message: String(message).replace(/(\b(?:apikey|api_key|key|token|secret|password)=)[^&\s]+/gi, '$1[redacted]').slice(0, 600) });
+    if (this._recent.length > 500) this._recent.splice(0, this._recent.length - 500);
+  }
+
+  recent({ lines = 200, levels = ['warn', 'error'] } = {}) {
+    return (this._recent || []).filter((r) => levels.includes(r.level)).slice(-lines).reverse();
+  }
+
+  errorsSince(ms) {
+    const cutoff = Date.now() - ms;
+    return (this._recent || []).filter((r) => r.level === 'error' && new Date(r.at).getTime() >= cutoff).length;
   }
 
   debug(...args) {

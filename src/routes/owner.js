@@ -24,6 +24,7 @@ const ChainHealthService = require('../services/ChainHealthService');
 const GasFloatService = require('../services/GasFloatService');
 const UsageLog = require('../services/UsageLog');
 const KeyVault = require('../services/crypto/KeyVault');
+const logger = require('../services/logger');
 
 const router = Router();
 router.use(requireAuth, requireOwner);
@@ -95,10 +96,60 @@ function newestFirst(list, field = 'createdAt') {
 }
 
 /**
+ * How long a transfer on `chain` usually takes to settle: the chain's
+ * confirmations at its block time, with room for a slow block, never under
+ * ten minutes; a swap through another network adds half an hour. A transfer
+ * older than this is not failed - the sweep decides that - but it is marked.
+ */
+function usualSettleSeconds(chain, route) {
+  const c = chains.get(chain);
+  const blocks = c ? Math.max(1, Number(c.confirmations) || 1) * (Number(c.blockTimeSec) || 15) * 3 : 900;
+  const swap = /thorchain|sideshift/.test(String(route || '')) ? 30 * 60 : 0;
+  return Math.max(10 * 60, Math.round(blocks)) + swap;
+}
+
+function transactionRow(t, usersByName) {
+  const age = Math.max(0, Math.round((Date.now() - new Date(t.createdAt).getTime()) / 1000));
+  const usual = usualSettleSeconds(t.chain, t.route);
+  return {
+    id: t.id, clientId: t.clientId, username: usersByName.get(t.clientId) || null, type: t.type, status: t.status, chain: t.chain, asset: t.asset, route: t.route,
+    nativeAmount: t.nativeAmount, usdAmount: t.usdAmount, transactionHash: t.transactionHash, preSwapTxHash: t.preSwapTxHash || null, fromAddress: t.fromAddress, toAddress: t.toAddress, finalAddress: t.finalAddress || null,
+    createdAt: t.createdAt, completedAt: t.completedAt, failureReason: t.failureReason || null, lastKnownStatus: t.lastKnownStatus || null, lastCheckedAt: t.lastCheckedAt || null,
+    ageSeconds: age, usualSeconds: usual, stuck: IN_FLIGHT.includes(t.status) && age > usual,
+  };
+}
+
+/** A payout's legs as the panel shows them: route, hash, fee, state, and why it failed. */
+function legsOf(p) {
+  const transfers = (p.withdrawalPlan && p.withdrawalPlan.transfers) || [];
+  return transfers.map((t) => ({
+    chain: t.chain, asset: t.asset || (chains.has(t.chain) ? chains.get(t.chain).symbol : null), route: t.route || (t.type === 'DIRECT_TRANSFER' ? 'direct' : 'sideshift'), type: t.type,
+    fromAddress: t.fromAddress, nativeAmount: t.nativeAmount, expectedOutputAmount: t.expectedOutputAmount, payoutAsset: t.payoutAsset || null,
+    platformFeeUSD: Number(t.platformFeeUSD) || 0, gasUsd: Number(t.gasUsd) || 0, gasAdvanceUsd: Number(t.gasAdvanceUsd) || 0,
+    txHash: t.txHash || null, preSwapTxHash: t.preSwapTxHash || null, memo: t.thorSwap && t.thorSwap.memo ? t.thorSwap.memo : null,
+    provider: (t.dexQuote && t.dexQuote.provider) || (t.crossQuote && t.crossQuote.provider) || null,
+    status: String(t.status || 'PENDING').toUpperCase(), failureReason: t.failureReason || null, failureDetail: t.failureDetail || null,
+    feeOutput: t.feeOutput || null, transactionId: t.transactionId || null,
+  }));
+}
+
+/** Daily buckets for the last `days` days: paid in through checkout, withdrawn, fees earned. */
+function moneyFlow(days, payouts, sessions) {
+  const dayMs = DAY_MS;
+  const end = Math.floor(Date.now() / dayMs) * dayMs + dayMs;
+  const start = end - days * dayMs;
+  const buckets = Array.from({ length: days }, (_, i) => ({ date: new Date(start + i * dayMs).toISOString().slice(0, 10), paidInUsd: 0, withdrawnUsd: 0, feesUsd: 0, payouts: 0, paid: 0 }));
+  const at = (iso) => { const t = new Date(iso).getTime(); const i = Math.floor((t - start) / dayMs); return i >= 0 && i < days ? buckets[i] : null; };
+  for (const p of payouts) { const b = at(p.createdAt); if (b) { b.withdrawnUsd += Number(p.totalAmountUsd) || 0; b.feesUsd += Number(p.platformFee) || 0; b.payouts += 1; } }
+  for (const s of sessions) { if (s.status !== 'PAID') continue; const b = at(s.paidAt || s.createdAt); if (b) { b.paidInUsd += Number(s.usdAmount) || 0; b.paid += 1; } }
+  return buckets;
+}
+
+/**
  * The numbers on the front page.
  * GET /api/owner/overview
  */
-router.get('/overview', (req, res, next) => {
+router.get('/overview', async (req, res, next) => {
   try {
     const now = Date.now();
     const since = (days) => new Date(now - days * DAY_MS).toISOString();
@@ -113,9 +164,15 @@ router.get('/overview', (req, res, next) => {
 
     const payoutsByStatus = payouts.reduce((acc, p) => { acc[p.status] = (acc[p.status] || 0) + 1; return acc; }, {});
     const recentPayouts = payouts.filter((p) => String(p.createdAt) >= since(30));
+    const previousPayouts = payouts.filter((p) => String(p.createdAt) >= since(60) && String(p.createdAt) < since(30));
     const paidSessions = sessions.filter((s) => s.status === 'PAID');
     const recentPaid = paidSessions.filter((s) => String(s.paidAt || s.createdAt) >= since(30));
+    const previousPaid = paidSessions.filter((s) => String(s.paidAt || s.createdAt) >= since(60) && String(s.paidAt || s.createdAt) < since(30));
     const usersByName = new Map(users.map((u) => [u.id, u.username]));
+    const sum = (list, field) => list.reduce((acc, r) => acc + (Number(r[field]) || 0), 0);
+    const inFlight = transactions.filter((t) => IN_FLIGHT.includes(t.status)).map((t) => transactionRow(t, usersByName));
+    const floatChains = GasFloatService.enabled() ? ['ETH', 'BASE', 'ARB', 'POL'].filter((c) => chains.has(c)) : [];
+    const floatBalances = await Promise.all(floatChains.map(async (code) => { try { return { chain: code, balance: await GasFloatService.balanceOn(code) }; } catch { return { chain: code, balance: null }; } }));
 
     res.json({
       generatedAt: new Date(now).toISOString(),
@@ -133,33 +190,41 @@ router.get('/overview', (req, res, next) => {
       payouts: {
         total: payouts.length,
         byStatus: payoutsByStatus,
-        volumeUsd: payouts.reduce((sum, p) => sum + (Number(p.totalAmountUsd) || 0), 0),
-        feesUsd: payouts.reduce((sum, p) => sum + (Number(p.platformFee) || 0), 0),
-        last30d: { count: recentPayouts.length, volumeUsd: recentPayouts.reduce((sum, p) => sum + (Number(p.totalAmountUsd) || 0), 0), feesUsd: recentPayouts.reduce((sum, p) => sum + (Number(p.platformFee) || 0), 0) },
+        volumeUsd: sum(payouts, 'totalAmountUsd'),
+        feesUsd: sum(payouts, 'platformFee'),
+        last30d: { count: recentPayouts.length, volumeUsd: sum(recentPayouts, 'totalAmountUsd'), feesUsd: sum(recentPayouts, 'platformFee') },
+        previous30d: { count: previousPayouts.length, volumeUsd: sum(previousPayouts, 'totalAmountUsd'), feesUsd: sum(previousPayouts, 'platformFee') },
       },
       checkout: {
         sessions: sessions.length,
         paid: paidSessions.length,
-        paidUsd: paidSessions.reduce((sum, s) => sum + (Number(s.usdAmount) || 0), 0),
-        last30d: { paid: recentPaid.length, paidUsd: recentPaid.reduce((sum, s) => sum + (Number(s.usdAmount) || 0), 0) },
+        paidUsd: sum(paidSessions, 'usdAmount'),
+        last30d: { paid: recentPaid.length, paidUsd: sum(recentPaid, 'usdAmount') },
+        previous30d: { paid: previousPaid.length, paidUsd: sum(previousPaid, 'usdAmount') },
         open: sessions.filter((s) => ['PENDING', 'AWAITING_PAYMENT', 'VERIFYING'].includes(s.status)).length,
+        oldestOpenAt: sessions.filter((s) => ['PENDING', 'AWAITING_PAYMENT', 'VERIFYING'].includes(s.status)).map((s) => s.createdAt).sort()[0] || null,
       },
       transactions: {
-        inFlight: transactions.filter((t) => IN_FLIGHT.includes(t.status)).length,
+        inFlight: inFlight.length,
+        stuck: inFlight.filter((t) => t.stuck).map((t) => ({ id: t.id, chain: t.chain, username: t.username, ageSeconds: t.ageSeconds, usualSeconds: t.usualSeconds })),
         failedLast7d: transactions.filter((t) => t.status === 'FAILED' && String(t.createdAt) >= since(7)).length,
       },
+      trend: moneyFlow(30, payouts, sessions),
+      gasFloat: { enabled: GasFloatService.enabled(), address: GasFloatService.address || null, balances: floatBalances },
       fees: {
         configured: fees.configured,
         heldUsd: fees.held.usd,
         heldWallets: fees.held.wallets,
         collectedUsd: fees.collected.usd,
         collectedCount: fees.collected.count,
+        nextRunAt: fees.nextRunAt,
       },
       usage: {
         last24h: db.countBy('apiCalls', {}, 'timestamp', { from: since(1) }),
         errorsLast24h: db.range('apiCalls', {}, 'timestamp', { from: since(1) }).filter((c) => Number(c.statusCode) >= 400).length,
         last7d: db.countBy('apiCalls', {}, 'timestamp', { from: since(7) }),
       },
+      server: { errorsLastHour: logger.errorsSince(60 * 60 * 1000), pricesFresh: PriceService.isFresh() },
       chains: { counts: health.counts, checkedAt: health.checkedAt, problems: health.chains.filter((c) => c.status && c.status !== 'up' && c.status !== 'unknown').map((c) => ({ code: c.code, name: c.name, status: c.status })) },
       latest: {
         payouts: newestFirst(payouts).slice(0, 8).map((p) => ({ ...payoutRow(p), username: usersByName.get(p.clientId) || null })),
@@ -239,7 +304,7 @@ router.get('/payouts', (req, res, next) => {
     const status = req.query.status ? String(req.query.status).toUpperCase() : null;
     const usersByName = new Map(db.getAll('users').map((u) => [u.id, u.username]));
     const list = newestFirst(status ? db.findBy('payouts', { status }) : db.getAll('payouts'));
-    res.json({ total: list.length, payouts: list.slice(0, limitOf(req)).map((p) => ({ ...payoutRow(p), username: usersByName.get(p.clientId) || null })) });
+    res.json({ total: list.length, payouts: list.slice(0, limitOf(req)).map((p) => ({ ...payoutRow(p), username: usersByName.get(p.clientId) || null, legs: legsOf(p) })) });
   } catch (error) {
     next(error);
   }
@@ -256,12 +321,78 @@ router.get('/transactions', (req, res, next) => {
     const all = status === 'ALL' || !status
       ? db.getAll('transactions').filter((t) => !status ? IN_FLIGHT.includes(t.status) : true)
       : db.findBy('transactions', { status });
-    const list = newestFirst(all).slice(0, limitOf(req)).map((t) => ({
-      id: t.id, clientId: t.clientId, username: usersByName.get(t.clientId) || null, type: t.type, status: t.status, chain: t.chain, asset: t.asset, route: t.route,
-      nativeAmount: t.nativeAmount, usdAmount: t.usdAmount, transactionHash: t.transactionHash, fromAddress: t.fromAddress, toAddress: t.toAddress,
-      createdAt: t.createdAt, completedAt: t.completedAt, failureReason: t.failureReason || null, lastKnownStatus: t.lastKnownStatus || null, lastCheckedAt: t.lastCheckedAt || null,
-    }));
+    const list = newestFirst(all).slice(0, limitOf(req)).map((t) => transactionRow(t, usersByName));
     res.json({ total: all.length, transactions: list });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * Re-check one transfer against its chain now - the maintenance sweep's
+ * check, on demand. Returns the outcome and the row as it now stands.
+ * POST /api/owner/transactions/:id/recheck
+ */
+router.post('/transactions/:id/recheck', async (req, res, next) => {
+  try {
+    const transaction = db.getById('transactions', req.params.id);
+    if (!transaction) throw new ApiError(404, 'Transfer not found');
+    const PayoutService = require('../services/PayoutService');
+    let outcome = 'pending';
+    let error = null;
+    if (IN_FLIGHT.includes(transaction.status)) {
+      try { outcome = await PayoutService.reconcileTransaction(transaction); } catch (e) { error = e.message; }
+    } else {
+      outcome = String(transaction.status).toLowerCase();
+    }
+    const usersByName = new Map(db.getAll('users').map((u) => [u.id, u.username]));
+    res.json({ outcome, error, transaction: transactionRow(db.getById('transactions', transaction.id), usersByName) });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * Re-check every transfer in flight.
+ * POST /api/owner/transactions/recheck
+ */
+router.post('/transactions/recheck', async (req, res, next) => {
+  try {
+    const MaintenanceService = require('../services/MaintenanceService');
+    const resolved = await MaintenanceService.reconcileInFlightTransfers();
+    res.json({ resolved, inFlight: db.getAll('transactions').filter((t) => IN_FLIGHT.includes(t.status)).length });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * Everything that carries the term: wallets by address, label or id;
+ * transfers by any hash or address; payment links by id, reference, hash or
+ * address; payouts by recipient or id; merchants by name or id; fee
+ * collections by hash. Hashes and addresses match whole (case aside), ids
+ * by prefix, names and references anywhere.
+ * GET /api/owner/search?q=
+ */
+router.get('/search', (req, res, next) => {
+  try {
+    const q = String(req.query.q || '').trim();
+    if (q.length < 3) throw new ValidationError('Search needs at least three characters');
+    const needle = q.toLowerCase();
+    const whole = (v) => String(v || '').toLowerCase() === needle;
+    const prefix = (v) => String(v || '').toLowerCase().startsWith(needle);
+    const within = (v) => String(v || '').toLowerCase().includes(needle);
+    const cap = (list) => list.slice(0, 50);
+    const usersByName = new Map(db.getAll('users').map((u) => [u.id, u.username]));
+    const named = (row) => ({ ...row, username: usersByName.get(row.clientId) || null });
+
+    const merchants = cap(db.getAll('users').filter((u) => within(u.username) || prefix(u.id)).map(publicUser));
+    const wallets = cap(db.getAll('wallets').filter((w) => whole(w.address) || within(w.label) || prefix(w.id)).map((w) => named(publicWallet(w))));
+    const transactions = cap(newestFirst(db.getAll('transactions').filter((t) => whole(t.transactionHash) || whole(t.preSwapTxHash) || whole(t.fromAddress) || whole(t.toAddress) || whole(t.finalAddress) || prefix(t.id))).map((t) => transactionRow(t, usersByName)));
+    const sessions = cap(newestFirst(db.getAll('checkoutSessions').filter((s) => prefix(s.id) || within(s.reference) || whole(s.paidTxHash) || whole(s.pendingTxHash) || whole(s.walletAddress) || whole(s.clientWalletAddress))).map((s) => named({ id: s.id, status: s.status, chain: s.chain, asset: s.asset, usdAmount: s.usdAmount, nativeAmount: s.nativeAmount, reference: s.reference, createdAt: s.createdAt, paidAt: s.paidAt, paidTxHash: s.paidTxHash, walletAddress: s.walletAddress, clientId: s.clientId })));
+    const payouts = cap(newestFirst(db.getAll('payouts').filter((p) => whole(p.recipientAddress) || prefix(p.id) || legsOf(p).some((l) => whole(l.txHash) || whole(l.fromAddress)))).map((p) => ({ ...payoutRow(p), username: usersByName.get(p.clientId) || null, legs: legsOf(p) })));
+    const fees = cap(newestFirst(db.getAll('feeCollections').filter((f) => whole(f.txHash) || whole(f.address) || prefix(f.walletId))).map(named));
+    res.json({ q, total: merchants.length + wallets.length + transactions.length + sessions.length + payouts.length + fees.length, merchants, wallets, transactions, sessions, payouts, fees });
   } catch (error) {
     next(error);
   }
@@ -401,6 +532,47 @@ router.get('/chains', (req, res, next) => {
 });
 
 /**
+ * Run the health sweep now and answer with the snapshot after it.
+ * POST /api/owner/chains/check
+ */
+router.post('/chains/check', async (req, res, next) => {
+  try {
+    await ChainHealthService.runOnce();
+    res.json(ChainHealthService.getSnapshot());
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * Warnings and errors since the server started, newest first.
+ * GET /api/owner/logs?lines=200
+ */
+router.get('/logs', (req, res, next) => {
+  try {
+    const lines = Math.min(Math.max(parseInt(req.query.lines, 10) || 200, 1), 500);
+    res.json({ since: new Date(Date.now() - process.uptime() * 1000).toISOString(), errorsLastHour: logger.errorsSince(60 * 60 * 1000), lines: logger.recent({ lines }) });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * A snapshot of the database now, as the daily backup makes one.
+ * POST /api/owner/server/snapshot
+ */
+router.post('/server/snapshot', (req, res, next) => {
+  try {
+    const BackupService = require('../services/BackupService');
+    const file = BackupService.snapshot();
+    if (!file) throw new ApiError(500, 'The snapshot could not be written; see the log');
+    res.json({ file: path.basename(file), snapshots: BackupService.listSnapshots().length });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
  * The process and its configuration, without secrets: what is set, not what to.
  * GET /api/owner/server
  */
@@ -414,8 +586,15 @@ router.get('/server', async (req, res, next) => {
     const floatBalances = GasFloatService.enabled()
       ? await Promise.all(floatChains.map(async (code) => { try { return { chain: code, balance: await GasFloatService.balanceOn(code) }; } catch (error) { return { chain: code, balance: null, error: error.message }; } }))
       : [];
+    let commit = null;
+    try {
+      const head = fs.readFileSync(path.join(__dirname, '../../.git/HEAD'), 'utf-8').trim();
+      commit = head.startsWith('ref:') ? fs.readFileSync(path.join(__dirname, '../../.git', head.slice(5)), 'utf-8').trim().slice(0, 7) : head.slice(0, 7);
+    } catch { /* not a checkout */ }
     res.json({
       version: pkg.version,
+      commit,
+      errorsLastHour: logger.errorsSince(60 * 60 * 1000),
       node: process.version,
       environment: config.nodeEnv || process.env.NODE_ENV || 'development',
       uptimeSeconds: Math.round(process.uptime()),
