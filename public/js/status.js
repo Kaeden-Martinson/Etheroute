@@ -211,7 +211,8 @@ function rpcText(chain) {
   if (!rpc.ok) return `no endpoint answering${rpc.error ? ` · ${rpc.error.split(' | ')[0].replace(/^https?:\/\/[^:]+: /, '')}` : ''}`;
   const tip = rpc.tip != null ? ` · ${chain.family === 'solana' ? 'slot' : chain.family === 'xrp' ? 'ledger' : 'block'} ${Number(rpc.tip).toLocaleString('en-US')}` : '';
   const stall = rpc.stalled ? ' · tip not moving' : '';
-  const down = Array.isArray(rpc.down) && rpc.down.length ? ` · ${rpc.down.map(hostOf).join(', ')} down` : '';
+  const quota = new Set(rpc.quota || []);
+  const down = Array.isArray(rpc.down) && rpc.down.length ? ` · ${rpc.down.map((u) => `${hostOf(u)}${quota.has(u) ? ' (quota spent)' : ''}`).join(', ')} down` : '';
   return `${rpc.endpointsUp}/${rpc.endpoints} endpoint${rpc.endpoints === 1 ? '' : 's'} · ${rpc.latencyMs} ms${tip}${stall}${down}`;
 }
 

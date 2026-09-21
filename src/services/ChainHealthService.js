@@ -34,6 +34,15 @@ const EVENTS_KEPT = 2000;
 const STALL_BLOCKS = 20;
 const STALL_FLOOR_MS = 15 * 60 * 1000;
 
+// An endpoint that has verified its chain id is not asked again for a day:
+// the sweep costs each endpoint one call, not two. Public providers meter
+// by the day per address, and the sweep is a large share of what we spend.
+const CHAIN_ID_TTL_MS = 24 * 60 * 60 * 1000;
+const chainIdVerifiedAt = new Map();
+
+// A provider saying the day's free quota is spent, as opposed to being down.
+const QUOTA = /usage limit|rate limit|too many requests|quota|429/i;
+
 // An address the aggregators will build a quote for; nothing is sent. (Not
 // the low precompile-like ones: ParaSwap refuses those.)
 const PROBE_SENDER = '0x1111111111111111111111111111111111111111';
@@ -81,17 +90,26 @@ class ChainHealthService {
 
   // ── probes ──────────────────────────────────────────────────────────────
 
-  /** Every RPC endpoint asked for the chain id and the tip, in parallel. */
+  /**
+   * Every RPC endpoint asked for the tip, in parallel - and for its chain id
+   * the first time (then once a day), so an endpoint answering as the
+   * wrong chain is caught without doubling the sweep's cost.
+   */
   async probeEvm(chain) {
     const urls = chains.rpcUrls(chain.code);
     const results = await Promise.all(urls.map(async (url) => {
       const started = Date.now();
       try {
-        const [id, tipHex] = await Promise.all([rpcCall(url, 'eth_chainId'), rpcCall(url, 'eth_blockNumber')]);
-        if (parseInt(id, 16) !== chain.chainId) throw new Error(`answers as chain ${parseInt(id, 16)}`);
+        const verified = chainIdVerifiedAt.get(url);
+        if (!verified || Date.now() - verified > CHAIN_ID_TTL_MS) {
+          const id = await rpcCall(url, 'eth_chainId');
+          if (parseInt(id, 16) !== chain.chainId) throw new Error(`answers as chain ${parseInt(id, 16)}`);
+          chainIdVerifiedAt.set(url, Date.now());
+        }
+        const tipHex = await rpcCall(url, 'eth_blockNumber');
         return { url, ok: true, tip: parseInt(tipHex, 16), latencyMs: Date.now() - started };
       } catch (error) {
-        return { url, ok: false, error: error.message, latencyMs: Date.now() - started };
+        return { url, ok: false, error: error.message, quota: QUOTA.test(error.message), latencyMs: Date.now() - started };
       }
     }));
     const up = results.filter((r) => r.ok);
@@ -103,6 +121,8 @@ class ChainHealthService {
       latencyMs: up.length ? Math.min(...up.map((r) => r.latencyMs)) : null,
       error: up.length ? null : results.map((r) => `${r.url}: ${r.error}`).join(' | '),
       down: results.filter((r) => !r.ok).map((r) => r.url),
+      // the subset of `down` that is a spent quota rather than an outage
+      quota: results.filter((r) => !r.ok && r.quota).map((r) => r.url),
     };
   }
 
@@ -283,13 +303,14 @@ class ChainHealthService {
     // Some endpoints answering and some not is still up - the app fails
     // over - but it is worth a line on the page and an event when it changes.
     const down = (rpc.down || []).slice().sort();
+    const quota = (rpc.quota || []).slice().sort();
     const state = {
       id: chain.code,
       code: chain.code,
       name: chain.name,
       symbol: chain.symbol,
       family: chain.family,
-      rpc: { ok: rpc.ok, endpointsUp: rpc.endpointsUp, endpoints: rpc.endpoints, tip: rpc.tip, latencyMs: rpc.latencyMs, error: rpc.error, stalled: rpc.stalled, partial: rpc.ok && down.length > 0, down },
+      rpc: { ok: rpc.ok, endpointsUp: rpc.endpointsUp, endpoints: rpc.endpoints, tip: rpc.tip, latencyMs: rpc.latencyMs, error: rpc.error, stalled: rpc.stalled, partial: rpc.ok && down.length > 0, down, quota },
       routes,
       dexDetail,
       lastTip,
@@ -310,7 +331,7 @@ class ChainHealthService {
     }
     const beforeDown = (before.rpc && before.rpc.down) ? before.rpc.down.slice().sort() : null;
     if (beforeDown !== null && rpc.ok && beforeDown.join() !== down.join()) {
-      changes.push({ component: 'endpoints', from: `${rpc.endpoints - beforeDown.length}/${rpc.endpoints}`, to: `${rpc.endpointsUp}/${rpc.endpoints}`, detail: down.length ? `not answering: ${down.map((u) => u.replace(/^https?:\/\//, '')).join(', ')}` : 'all answering', quiet: true });
+      changes.push({ component: 'endpoints', from: `${rpc.endpoints - beforeDown.length}/${rpc.endpoints}`, to: `${rpc.endpointsUp}/${rpc.endpoints}`, detail: down.length ? `not answering: ${down.map((u) => `${u.replace(/^https?:\/\//, '')}${quota.includes(u) ? ' (quota spent)' : ''}`).join(', ')}` : 'all answering', quiet: true });
     }
     if (before.status && before.status !== state.status) {
       changes.push({ component: 'chain', from: before.status, to: state.status, detail: '' });
@@ -441,7 +462,7 @@ class ChainHealthService {
       if (!s) return { code: chain.code, name: chain.name, symbol: chain.symbol, family: chain.family, status: 'unknown', rpc: null, routes: {}, since: null, checkedAt: null, days: this.days(chain.code, events, now) };
       return {
         code: s.code, name: s.name, symbol: s.symbol, family: s.family, status: s.status,
-        rpc: { ok: s.rpc.ok, endpointsUp: s.rpc.endpointsUp, endpoints: s.rpc.endpoints, tip: s.rpc.tip, latencyMs: s.rpc.latencyMs, stalled: s.rpc.stalled, partial: Boolean(s.rpc.partial), down: s.rpc.down || [], error: s.rpc.error },
+        rpc: { ok: s.rpc.ok, endpointsUp: s.rpc.endpointsUp, endpoints: s.rpc.endpoints, tip: s.rpc.tip, latencyMs: s.rpc.latencyMs, stalled: s.rpc.stalled, partial: Boolean(s.rpc.partial), down: s.rpc.down || [], quota: s.rpc.quota || [], error: s.rpc.error },
         routes: s.routes || {},
         since: s.since,
         checkedAt: s.checkedAt,

@@ -228,10 +228,13 @@ describe('Wired in', () => {
     assert.strictEqual(pkg.scripts['chains:health'], 'node scripts/chain-health.js');
   });
 
-  test('the probes ask each endpoint for the chain id as well as the tip', () => {
+  test('the probes ask each endpoint for the tip, and for its chain id once a day', () => {
     const source = read('src/services/ChainHealthService.js');
-    assert.ok(source.includes("rpcCall(url, 'eth_chainId'), rpcCall(url, 'eth_blockNumber')"));
+    assert.ok(source.includes("const id = await rpcCall(url, 'eth_chainId');"));
+    assert.ok(source.includes("const tipHex = await rpcCall(url, 'eth_blockNumber');"));
+    assert.ok(source.includes('const CHAIN_ID_TTL_MS = 24 * 60 * 60 * 1000;'), 'one call per endpoint per sweep, not two');
     assert.ok(source.includes('answers as chain'));
+    assert.ok(source.includes('quota: results.filter((r) => !r.ok && r.quota).map((r) => r.url),'), 'a spent quota is told apart from an outage');
     assert.ok(source.includes("ProxyService.fetch(`${chain.explorerApi}/blocks/tip/height`)"));
     assert.ok(source.includes("rpcCall(SOLANA_RPC, 'getSlot'"));
     assert.ok(source.includes("const PROBE_SENDER = '0x1111111111111111111111111111111111111111';"), 'an address ParaSwap accepts');

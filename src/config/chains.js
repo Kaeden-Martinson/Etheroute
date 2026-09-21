@@ -1806,14 +1806,22 @@ function coingeckoIds() {
   return [...new Set(list().map((chain) => chain.coingeckoId))];
 }
 
-/** RPC endpoints for an EVM chain: the env override if set, else the defaults. */
+/**
+ * RPC endpoints for an EVM chain: the env override if set, else the
+ * defaults. 1rpc.io meters free use per address per day; with ONE_RPC_KEY
+ * set its URLs carry the key (https://1rpc.io/<key>/<network>) and get the
+ * key's allowance instead.
+ */
 function rpcUrls(code) {
   const chain = get(code);
   const configured = (process.env[chain.rpcEnv] || '')
     .split(',')
     .map((url) => url.trim())
     .filter(Boolean);
-  return configured.length > 0 ? configured : chain.rpc || [];
+  const urls = configured.length > 0 ? configured : chain.rpc || [];
+  const key = String(process.env.ONE_RPC_KEY || '').trim();
+  if (!key) return urls;
+  return urls.map((url) => (url.startsWith('https://1rpc.io/') && !url.includes(`/${key}/`) ? url.replace('https://1rpc.io/', `https://1rpc.io/${key}/`) : url));
 }
 
 /**

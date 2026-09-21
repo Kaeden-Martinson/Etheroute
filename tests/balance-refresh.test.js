@@ -152,7 +152,7 @@ describe('Wired into money moving', () => {
     assert.ok(js.includes('const AUTO_REFRESH_MS = 60 * 1000;'));
     assert.ok(js.includes('function startAutoRefresh()'));
     assert.ok(js.includes("document.addEventListener('visibilitychange'"));
-    assert.ok(js.includes("rpc.down.map(hostOf).join(', ')} down"));
+    assert.ok(js.includes("(quota spent)' : ''}`).join(', ')} down"), 'a spent quota is named as such');
     assert.ok(js.includes("' is-partial'"));
     const html = read('public/status.html');
     assert.ok(html.includes('id="statusLive"'));
