@@ -133,19 +133,43 @@ const PAGES = {
   '/owner': 'owner.html',
 };
 
-for (const [route, file] of Object.entries(PAGES)) {
-  app.get(route, (req, res, next) => {
-    res.sendFile(path.join(PUBLIC_DIR, file), (error) => {
-      if (error) next(error);
-    });
-  });
+/**
+ * The origin a page is served on, for the absolute URLs link previews need
+ * (og:image must be absolute; a relative one is ignored). SITE_URL pins it;
+ * otherwise it is the request's own scheme and host - https behind a proxy
+ * that sets X-Forwarded-Proto, given TRUST_PROXY.
+ */
+function siteUrl(req) {
+  const pinned = String(process.env.SITE_URL || '').trim().replace(/\/+$/, '');
+  if (pinned) return pinned;
+  return `${req.protocol}://${req.get('host')}`;
 }
 
-app.get('/checkout/:sessionId', (req, res, next) => {
-  res.sendFile(path.join(PUBLIC_DIR, 'checkout.html'), (error) => {
-    if (error) next(error);
-  });
-});
+// Pages are read once and kept; in development they are read on each
+// request so an edit shows on refresh.
+const pageCache = new Map();
+function pageHtml(file) {
+  if (config.isProduction && pageCache.has(file)) return pageCache.get(file);
+  const html = require('fs').readFileSync(path.join(PUBLIC_DIR, file), 'utf-8');
+  pageCache.set(file, html);
+  return html;
+}
+
+function sendPage(file) {
+  return (req, res, next) => {
+    try {
+      res.type('html').send(pageHtml(file).replace(/__SITE_URL__/g, siteUrl(req)));
+    } catch (error) {
+      next(error);
+    }
+  };
+}
+
+for (const [route, file] of Object.entries(PAGES)) {
+  app.get(route, sendPage(file));
+}
+
+app.get('/checkout/:sessionId', sendPage('checkout.html'));
 
 // ── Health checks ────────────────────────────────────────────────────────────
 

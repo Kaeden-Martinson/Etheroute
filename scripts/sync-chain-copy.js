@@ -85,10 +85,17 @@ function one(text, source, replacement, what) {
   return text.replace(re, replacement);
 }
 
+// ── link previews, on every public page ──────────────────────────────────────
+// The preview tags say "on N chains" wherever they count; every page gets
+// the same pass, however many times (or few) it says it.
+for (const page of ['index', 'about', 'docs', 'api-reference', 'faq', 'help', 'status', 'terms', 'privacy', 'compliance', 'auth', 'checkout']) {
+  // only inside a meta tag's content: the FAQ counts other things in its body
+  rewrite(`${page}.html`, (s) => s.replace(new RegExp(`(<meta [^>]*content="[^"]*?on )${COUNT}( chains)`, 'g'), `$1${N}$2`));
+}
+
 // ── landing ──────────────────────────────────────────────────────────────────
 rewrite('index.html', (s) => {
   s = one(s, `supporting ${COUNT} networks including`, `supporting ${N} networks including`, 'landing meta');
-  s = one(s, `crypto across ${COUNT} blockchain networks\\.`, `crypto across ${N} blockchain networks.`, 'landing og');
   s = one(s, `Accept payments across ${COUNT} networks`, `Accept payments across ${N} networks`, 'landing hero');
   s = one(s, `${COUNT} chains behind one integration, confirmation`, `${N} chains behind one integration, confirmation`, 'landing settle lede');
   s = one(s, `<span class="live-line__item"><b>\\d+</b> networks</span>`, `<span class="live-line__item"><b>${N}</b> networks</span>`, 'landing live line');

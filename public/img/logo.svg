@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- The Etheroute mark: the reeded coin with the hollow E. Ink on light; set color for dark. -->
+<svg style="color:#1a1a1a" width="512" height="512" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" >
+    <defs><mask id="etheroute-logo-hollow" maskUnits="userSpaceOnUse" x="-16" y="-16" width="64" height="64">
+      <rect x="-16" y="-16" width="64" height="64" fill="#fff"/>
+      <g transform="translate(13 16) scale(0.734 1) translate(-16 -16)" stroke="#000" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14.05 9.15V11.4M17.95 9.15V11.4M14.05 20.6V22.85M17.95 20.6V22.85" stroke-width="2"/>
+        <path d="M19.6 11.4H12.4V20.6H19.6" stroke-width="1.9"/>
+        <path d="M12.4 16H18.4" stroke-width="1.9"/>
+      </g>
+    </mask></defs>
+    <g transform="rotate(22 16 16) translate(16 16) scale(1.111) translate(-16 -16)" stroke="currentColor" stroke-linejoin="round">
+      <path d="M13 3.2H18.6A9.4 12.8 0 0 1 18.6 28.8H13A9.4 12.8 0 0 0 13 3.2Z" stroke-width="1.4"/>
+      <path d="M14.95 3.48h5.6M16.69 4.23h5.6M18.30 5.42h5.6M19.70 7.02h5.6M20.84 8.95h5.6M21.70 11.15h5.6M22.22 13.53h5.6M22.40 16h5.6M22.22 18.47h5.6M21.70 20.85h5.6M20.84 23.05h5.6M19.70 24.98h5.6M18.30 26.58h5.6M16.69 27.77h5.6M14.95 28.52h5.6" stroke-width="1"/>
+      <path d="M13 3.2A9.4 12.8 0 1 1 13 28.8A9.4 12.8 0 1 1 13 3.2Z" stroke-width="1.7"/>
+      <g fill="currentColor" stroke="none"><circle cx="21.18" cy="16" r=".42"/><circle cx="20.85" cy="19.14" r=".42"/><circle cx="19.88" cy="22.02" r=".42"/><circle cx="18.36" cy="24.42" r=".42"/><circle cx="16.40" cy="26.13" r=".42"/><circle cx="14.16" cy="27.02" r=".42"/><circle cx="11.84" cy="27.02" r=".42"/><circle cx="9.60" cy="26.13" r=".42"/><circle cx="7.64" cy="24.42" r=".42"/><circle cx="6.12" cy="22.02" r=".42"/><circle cx="5.15" cy="19.14" r=".42"/><circle cx="4.82" cy="16" r=".42"/><circle cx="5.15" cy="12.86" r=".42"/><circle cx="6.12" cy="9.98" r=".42"/><circle cx="7.64" cy="7.58" r=".42"/><circle cx="9.60" cy="5.87" r=".42"/><circle cx="11.84" cy="4.98" r=".42"/><circle cx="14.16" cy="4.98" r=".42"/><circle cx="16.40" cy="5.87" r=".42"/><circle cx="18.36" cy="7.58" r=".42"/><circle cx="19.88" cy="9.98" r=".42"/><circle cx="20.85" cy="12.86" r=".42"/></g>
+      <!-- The mask goes on a wrapper with no transform of its own. Put it on
+           the same element that carries the placement and the transform lands
+           on the hole a second time, because a mask resolves in the user space
+           the element's own transform establishes — the hollow then sits offset
+           from the letter it is supposed to be cut out of. -->
+      <g mask="url(#etheroute-logo-hollow)"><g transform="translate(13 16) scale(0.734 1) translate(-16 -16)" stroke-linecap="round">
+        <path d="M14.05 9.15V11.4M17.95 9.15V11.4M14.05 20.6V22.85M17.95 20.6V22.85" stroke-width="3.3"/>
+        <path d="M19.6 11.4H12.4V20.6H19.6" stroke-width="3.2"/>
+        <path d="M12.4 16H18.4" stroke-width="3.2"/>
+      </g></g>
+    </g>
+  </svg>
