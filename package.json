@@ -14,7 +14,10 @@
     "chains:add": "node scripts/add-chain.js",
     "chains:verify": "node scripts/verify-chains.js",
     "chains:sync": "node scripts/sync-chain-copy.js",
-    "chains:health": "node scripts/chain-health.js"
+    "chains:health": "node scripts/chain-health.js",
+    "wallets:platform": "node scripts/platform-wallets.js",
+    "fees:collect": "node scripts/collect-fees.js",
+    "owner": "node scripts/owner.js"
   },
   "keywords": [
     "crypto",

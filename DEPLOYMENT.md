@@ -194,6 +194,14 @@ PLATFORM_FEE_ADDRESS_LTC=…  PLATFORM_FEE_ADDRESS_BCH=…  PLATFORM_FEE_ADDRESS
 PLATFORM_FEE_ADDRESS_SOL=…  PLATFORM_FEE_ADDRESS_XRP=…
 ```
 
+`node scripts/platform-wallets.js generate` makes a wallet for every family
+that has no address yet, all from one 24-word phrase, and writes the addresses
+to `.env` - along with the keys and the phrase, under names the server never
+reads. Those are there for you to copy somewhere offline and then delete: a key
+on the server is a hot wallet, and the fee wallets are meant to be cold. An
+address already set is never replaced without `--force` (it may hold funds).
+`list` shows what is set. The XRP account exists once it has received 1 XRP.
+
 A family with no address keeps holding. Every collection is a `feeCollections`
 row and, for a sweep, a `FEE_COLLECTION` transaction on the merchant's ledger,
 watched to confirmation like any other; a sweep that fails on its chain is held

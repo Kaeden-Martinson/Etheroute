@@ -312,7 +312,8 @@ describe('Wired in', () => {
     const out = execFileSync(process.execPath, ['scripts/collect-fees.js', '--dry-run'], {
       cwd: path.join(__dirname, '..'),
       encoding: 'utf-8',
-      env: { ...process.env, DATA_DIR: dir, PLATFORM_FEE_ADDRESS_EVM: EVM_FEE },
+      // the families' addresses are pinned so the box's own .env cannot leak into the assertions
+      env: { ...process.env, DATA_DIR: dir, PLATFORM_FEE_ADDRESS_EVM: EVM_FEE, PLATFORM_FEE_ADDRESS_BTC: '', PLATFORM_FEE_ADDRESS_LTC: '', PLATFORM_FEE_ADDRESS_BCH: '', PLATFORM_FEE_ADDRESS_DOGE: '', PLATFORM_FEE_ADDRESS_SOL: '', PLATFORM_FEE_ADDRESS_XRP: '' },
       timeout: 60000,
     });
     assert.match(out, /Would collect: 0/);
