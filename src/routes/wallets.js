@@ -8,6 +8,8 @@ const { validateChain } = require('../utils/validators');
 const { ApiError, ValidationError } = require('../utils/errors');
 const { assertOwnership } = require('../middleware/auth');
 const chains = require('../config/chains');
+const { config } = require('../config/env');
+const GasEstimator = require('../services/GasEstimator');
 
 const router = Router();
 
@@ -219,32 +221,74 @@ router.patch('/:walletId', (req, res, next) => {
 });
 
 /**
- * Deactivate a wallet.
+ * Close a wallet.
  * DELETE /api/wallets/delete
  *
- * Soft delete: the record holds the only copy of the signing key, so destroying
- * it would strand any funds still at that address. A wallet with a balance or an
- * in-flight transaction cannot be removed at all.
+ * A soft delete: the record holds the only copy of the signing key, so
+ * destroying it would strand any funds still at that address. The wallet is
+ * read from its chain first, and closing is refused while it holds anything
+ * the merchant could still withdraw (over the chain's withdrawal minimum) or
+ * has a transaction in flight. What is left - the platform's held fee, and
+ * the remainder too small to withdraw - is forfeited to the platform, and
+ * the response says exactly what that was.
  */
-router.delete('/delete', (req, res, next) => {
+router.delete('/delete', async (req, res, next) => {
   try {
     const { walletId } = req.body;
     if (!walletId) throw new ValidationError('walletId is required');
 
-    const wallet = assertOwnership(db.getById('wallets', walletId), req, 'Wallet');
-
-    if ((wallet.balance || 0) > 0) {
-      throw new ApiError(409, 'Cannot remove a wallet that still holds a balance. Withdraw the funds first.');
-    }
+    let wallet = assertOwnership(db.getById('wallets', walletId), req, 'Wallet');
+    if (wallet.isActive === false) throw new ApiError(409, 'This wallet is already closed.');
 
     const walletTxs = db.findBy('transactions', { fromAddress: wallet.address });
     if (walletTxs.some((t) => t.status === 'PENDING' || t.status === 'PROCESSING')) {
-      throw new ApiError(409, 'Cannot remove a wallet with a transaction in progress.');
+      throw new ApiError(409, 'Cannot close a wallet with a transaction in progress.');
     }
 
-    WalletService.deactivateWallet(walletId);
+    // The figures this decides on must be the chain's, not minutes old.
+    try {
+      await BalanceWatcher.updateWalletBalance(wallet);
+    } catch {
+      // the stored figure, then
+    }
+    wallet = db.getById('wallets', walletId);
 
-    res.json({ message: 'Wallet removed successfully' });
+    const chain = chains.get(wallet.chain);
+    const rate = PriceService.rateFor(wallet.chain) || 0;
+    const gas = await GasEstimator.estimate(wallet.chain);
+    const feeRate = config.payouts.platformFeeRate;
+    // A plain send of the coin, or of a token (about three plain sends'
+    // worth of gas), on this chain: what a withdrawal would need.
+    const SwapService = require('../services/SwapService');
+    const coinMinimumUsd = SwapService.minimumBalanceUsd(wallet.chain, wallet.chain, feeRate, gas.usd, 'direct');
+    const tokenMinimumUsd = SwapService.minimumBalanceUsd(wallet.chain, wallet.chain, feeRate, gas.usd * 3, 'direct');
+
+    const onChain = Number(wallet.balance) || 0;
+    const available = Math.max(0, onChain - (Number(wallet.serviceSubtractions) || 0));
+    if (available * rate >= coinMinimumUsd) {
+      throw new ApiError(409, `This wallet still holds ${available.toFixed(6)} ${chain.symbol} ($${(available * rate).toFixed(2)}) you can withdraw. Withdraw it first, then close the wallet.`);
+    }
+    const heldTokens = wallet.serviceSubtractionsTokens || {};
+    for (const [symbol, amount] of Object.entries(wallet.tokenBalances || {})) {
+      const availableToken = Math.max(0, (Number(amount) || 0) - (Number(heldTokens[symbol]) || 0));
+      if (availableToken >= tokenMinimumUsd) {
+        throw new ApiError(409, `This wallet still holds ${availableToken.toFixed(2)} ${symbol} you can withdraw. Withdraw it first, then close the wallet.`);
+      }
+    }
+
+    const closed = WalletService.closeWallet(walletId, { by: 'merchant' });
+    const forfeited = {
+      coin: { asset: chain.symbol, amount: closed.forfeited.coin, usd: closed.forfeited.coin * rate },
+      tokens: Object.entries(closed.forfeited.tokens).map(([symbol, amount]) => ({ asset: symbol, amount, usd: amount })),
+    };
+    forfeited.usd = forfeited.coin.usd + forfeited.tokens.reduce((sum, t) => sum + t.usd, 0);
+
+    res.json({
+      message: forfeited.usd > 0
+        ? `Wallet closed. ${[forfeited.coin.amount > 0 ? `${forfeited.coin.amount.toFixed(8).replace(/0+$/, '').replace(/\.$/, '')} ${chain.symbol}` : null, ...forfeited.tokens.map((t) => `${t.amount} ${t.asset}`)].filter(Boolean).join(' and ')} left at the address is retained by the platform.`
+        : 'Wallet closed.',
+      forfeited,
+    });
   } catch (error) {
     next(error);
   }

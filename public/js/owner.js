@@ -296,7 +296,7 @@ async function loadMerchant(id) {
     document.getElementById('mWalletsSub').textContent = `${count(d.wallets.length)} wallet${d.wallets.length === 1 ? '' : 's'}`;
     document.getElementById('mWalletRows').innerHTML = d.wallets.length
         ? d.wallets.map((w) => `<tr>
-            <td class="chain">${escapeHtml(chainName(w.chain))}${w.label ? `<span class="own-sub">${escapeHtml(w.label)}</span>` : ''}${w.isActive === false ? ' <small class="asset-tag">inactive</small>' : ''}</td>
+            <td class="chain">${escapeHtml(chainName(w.chain))}${w.label ? `<span class="own-sub">${escapeHtml(w.label)}</span>` : ''}${w.closedAt ? ` <small class="asset-tag" title="Closed ${escapeHtml(new Date(w.closedAt).toLocaleString())}">closed</small>` : (w.isActive === false ? ' <small class="asset-tag">inactive</small>' : '')}</td>
             <td>${addressCell(w.chain, w.address)}</td>
             <td class="num">${escapeHtml(amount(w.balance))} ${escapeHtml((STATE.chains[w.chain] || {}).symbol || '')}<span class="own-sub">${money(w.balanceUSD)}</span></td>
             <td class="num">${w.tokensUSD ? money(w.tokensUSD) : '—'}</td>
@@ -410,7 +410,7 @@ async function loadFees() {
     document.getElementById('feeConfigured').textContent = `${set} / ${families.length}`;
     document.getElementById('feeHeldRows').innerHTML = d.held.rows.length
         ? d.held.rows.sort((a, b) => b.usd - a.usd).map((r) => `<tr>
-            <td class="chain">${escapeHtml(chainName(r.chain))}${r.asset !== (STATE.chains[r.chain] || {}).symbol ? ` <small class="asset-tag">${escapeHtml(r.asset)}</small>` : ''}</td>
+            <td class="chain">${escapeHtml(chainName(r.chain))}${r.asset !== (STATE.chains[r.chain] || {}).symbol ? ` <small class="asset-tag">${escapeHtml(r.asset)}</small>` : ''}${r.closed ? ' <small class="asset-tag">closed</small>' : ''}</td>
             <td>${merchantLink(r.clientId, r.username)}</td>
             <td>${addressCell(r.chain, r.address)}</td>
             <td class="num">${escapeHtml(amount(r.held))}</td>
@@ -429,7 +429,7 @@ async function loadFees() {
             <td>${merchantLink(r.clientId, r.username)}</td>
             <td class="num">${escapeHtml(amount(r.amount))} ${escapeHtml(r.asset)}</td>
             <td class="num">${money(r.usd)}</td>
-            <td>${r.via === 'payout' ? 'In the withdrawal' : 'Swept'}</td>
+            <td>${r.via === 'payout' ? 'In the withdrawal' : (r.via === 'closure' ? 'Closed wallet' : 'Swept')}</td>
             <td>${hashCell(r.chain, r.txHash)}</td>
             <td>${pill(FEE_PILL, null, r.status)}</td>
         </tr>`).join('')

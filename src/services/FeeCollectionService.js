@@ -42,6 +42,12 @@ const INTERVAL_MS = Number(process.env.FEE_COLLECT_INTERVAL_MS ?? 24 * 60 * 60 *
 const GAS_SAFETY = 1.5;
 // A token transfer costs about this many plain transfers' worth of gas.
 const TOKEN_GAS_TXS = 3;
+// A closed wallet is emptied, not swept for a fee: anything worth this many
+// times its gas goes, with no dollar floor.
+const CLOSED_GAS_MULTIPLE = Number(process.env.FEE_COLLECT_CLOSED_GAS_MULTIPLE || 2);
+// The families an address can be set for. Anything else under the prefix
+// is a typo, and said so at start.
+const FAMILIES = ['EVM', 'BTC', 'LTC', 'BCH', 'DOGE', 'SOL', 'XRP'];
 
 class FeeCollectionService {
   constructor(env = process.env) {
@@ -132,21 +138,28 @@ class FeeCollectionService {
     });
   }
 
+  /** The env keys under the prefix that name no family: a typo, said once. */
+  unknownAddressKeys() {
+    return Object.keys(this.env).filter((key) => key.startsWith('PLATFORM_FEE_ADDRESS_') && !FAMILIES.includes(key.slice('PLATFORM_FEE_ADDRESS_'.length)));
+  }
+
   /**
    * What every wallet holds for the platform, per asset, at today's rates
-   * (a dollar token at par). The book the owner reads.
+   * (a dollar token at par): the fees held in open wallets, and everything
+   * left in closed ones. The book the owner reads.
    */
   held() {
     const rows = [];
-    for (const wallet of db.findBy('wallets', { isActive: true })) {
+    for (const wallet of db.getAll('wallets')) {
       if (!chains.has(wallet.chain)) continue;
       const coin = chains.get(wallet.chain).symbol;
       const rate = PriceService.rateFor(wallet.chain) || 0;
+      const closed = Boolean(wallet.closedAt);
       const coinHeld = Number(wallet.serviceSubtractions) || 0;
-      if (coinHeld > 0) rows.push({ walletId: wallet.id, clientId: wallet.clientId, chain: wallet.chain, address: wallet.address, asset: coin, held: coinHeld, onChain: Number(wallet.balance) || 0, usd: coinHeld * rate });
+      if (coinHeld > 0) rows.push({ walletId: wallet.id, clientId: wallet.clientId, chain: wallet.chain, address: wallet.address, asset: coin, held: coinHeld, onChain: Number(wallet.balance) || 0, usd: coinHeld * rate, closed });
       for (const [symbol, amount] of Object.entries(wallet.serviceSubtractionsTokens || {})) {
         const tokenHeld = Number(amount) || 0;
-        if (tokenHeld > 0) rows.push({ walletId: wallet.id, clientId: wallet.clientId, chain: wallet.chain, address: wallet.address, asset: symbol, held: tokenHeld, onChain: Number((wallet.tokenBalances || {})[symbol]) || 0, usd: tokenHeld });
+        if (tokenHeld > 0) rows.push({ walletId: wallet.id, clientId: wallet.clientId, chain: wallet.chain, address: wallet.address, asset: symbol, held: tokenHeld, onChain: Number((wallet.tokenBalances || {})[symbol]) || 0, usd: tokenHeld, closed });
       }
     }
     return rows;
@@ -190,7 +203,11 @@ class FeeCollectionService {
       const skip = (reason) => skipped.push({ ...row, reason });
       const address = this.addressFor(row.chain);
       if (!address) { skip(`no ${FeeCollectionService.envKeyFor(row.chain)} set`); continue; }
-      if (!(row.usd >= MIN_USD)) { skip(`$${row.usd.toFixed(2)} held is under the $${MIN_USD} minimum`); continue; }
+      // A closed wallet is emptied of whatever beats its gas; an open one
+      // waits until the fee is worth a transaction.
+      const minUsd = row.closed ? 0 : MIN_USD;
+      const gasMultiple = row.closed ? CLOSED_GAS_MULTIPLE : GAS_MULTIPLE;
+      if (!(row.usd >= minUsd)) { skip(`$${row.usd.toFixed(2)} held is under the $${MIN_USD} minimum`); continue; }
 
       let wallet = walletsById.get(row.walletId) || db.getById('wallets', row.walletId);
       if (!wallet) { skip('wallet gone'); continue; }
@@ -212,6 +229,13 @@ class FeeCollectionService {
 
       const busy = db.findBy('transactions', { fromAddress: wallet.address }).some((t) => t.status === 'PENDING' || t.status === 'PROCESSING');
       if (busy) { skip('a transfer from this wallet is in flight'); continue; }
+      // A closed wallet's held figure is whatever it had when it closed; a
+      // deposit that landed since is the platform's too.
+      if (row.closed) {
+        const coin = chains.get(row.chain).symbol;
+        const now = row.asset === coin ? (Number(wallet.balance) || 0) : (Number((wallet.tokenBalances || {})[row.asset]) || 0);
+        if (now > row.held) row.held = now;
+      }
 
       const gas = await GasEstimator.estimate(row.chain);
       const coin = chains.get(row.chain).symbol;
@@ -235,8 +259,8 @@ class FeeCollectionService {
       const rate = isToken ? 1 : (PriceService.rateFor(row.chain) || 0);
       const usd = collectable * rate;
       const gasUsd = gas.usd * (isToken ? TOKEN_GAS_TXS : 1);
-      if (!(usd >= MIN_USD)) { skip(`$${usd.toFixed(2)} collectable is under the $${MIN_USD} minimum`); continue; }
-      if (!(usd >= gasUsd * GAS_MULTIPLE)) { skip(`$${usd.toFixed(2)} is under ${GAS_MULTIPLE}x the $${gasUsd.toFixed(2)} gas`); continue; }
+      if (!(usd >= minUsd)) { skip(`$${usd.toFixed(2)} collectable is under the $${MIN_USD} minimum`); continue; }
+      if (!(usd >= gasUsd * gasMultiple)) { skip(`$${usd.toFixed(2)} is under ${gasMultiple}x the $${gasUsd.toFixed(2)} gas${row.closed ? ' (closed wallet)' : ''}`); continue; }
 
       candidates.push({ ...row, wallet, to: address, amount: collectable, usd, gasUsd });
     }
@@ -284,7 +308,7 @@ class FeeCollectionService {
             txHash,
             transactionId: transaction.id,
             payoutId: null,
-            via: 'sweep',
+            via: c.closed ? 'closure' : 'sweep',
             status: 'PROCESSING',
             createdAt: new Date().toISOString(),
             confirmedAt: null,
@@ -388,6 +412,9 @@ class FeeCollectionService {
   /** The daily sweep, some minutes after boot so the balances have been read. */
   start() {
     if (this.timer || !(INTERVAL_MS > 0)) return;
+    for (const key of this.unknownAddressKeys()) {
+      logger.warn(`[FeeCollection] ${key} names no family and is ignored; the addresses are ${FAMILIES.map((f) => `PLATFORM_FEE_ADDRESS_${f}`).join(', ')}`);
+    }
     if (!this.configured()) {
       logger.info('[FeeCollection] No PLATFORM_FEE_ADDRESS_* set; fees are held in the merchants\' wallets until one is');
       return;

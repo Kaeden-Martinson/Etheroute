@@ -210,6 +210,17 @@ node scripts/collect-fees.js --reconcile  # cap held figures at what the wallets
 can exceed what the wallet has; the sweep never sends more than the wallet can
 spare after its gas reserve in any case.
 
+A wallet a merchant closes is emptied the same way. Closing is refused while
+the wallet holds anything the merchant could still withdraw (over the chain's
+withdrawal minimum, checked against the chain at that moment) or has a
+transfer in flight; what is left - the held fee and the remainder too small
+to withdraw, and anything that lands at the address afterwards - is the
+platform's, booked as held and swept with no dollar floor once it is worth
+`FEE_COLLECT_CLOSED_GAS_MULTIPLE` (2) times its gas. The merchant is told
+what stays behind before they confirm and again in the response; the terms
+say so (5.4). A key under the `PLATFORM_FEE_ADDRESS_` prefix that names no
+family (`_ETH`, say, or a blank suffix) is flagged at start.
+
 ### The owner panel
 
 `/owner` is the platform as its operator sees it: every merchant with what

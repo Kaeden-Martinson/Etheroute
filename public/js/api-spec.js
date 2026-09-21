@@ -264,10 +264,10 @@ window.API_SPEC = {
         },
         {
           id: 'wallets-delete', method: 'DELETE', path: '/wallets/delete', auth: 'key',
-          summary: 'Remove a wallet',
-          description: 'A soft delete: the record keeps the only copy of the key. Refused with <code>409</code> while the wallet holds a balance or has a transaction in flight.',
+          summary: 'Close a wallet',
+          description: 'A soft delete: the record keeps the only copy of the key. The wallet is read from its chain first, and closing is refused with <code>409</code> while it holds anything you could still withdraw (over the chain\'s withdrawal minimum) or has a transaction in flight. What remains at the address when it closes - the platform fee held from earlier withdrawals, and any remainder too small to withdraw - is retained by the platform; <code>forfeited</code> says what that was. A closed wallet cannot be reopened.',
           body: { walletId: 'd3be47a8-…' },
-          response: { message: 'Wallet removed successfully' },
+          response: { message: 'Wallet closed. 0.00034 ETH and 0.28 USDC left at the address is retained by the platform.', forfeited: { coin: { asset: 'ETH', amount: 0.00034, usd: 0.91 }, tokens: [{ asset: 'USDC', amount: 0.28, usd: 0.28 }], usd: 1.19 } },
         },
       ],
     },

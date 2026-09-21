@@ -2178,11 +2178,33 @@ function loadWalletsList() {
     filterWallets();
 }
 
+/**
+ * What closing a wallet leaves behind, in words: the platform's held fee
+ * and any remainder too small to withdraw, coin and tokens. Empty when
+ * the address holds nothing.
+ */
+function closingRemainder(w) {
+    if (!w) return '';
+    const parts = [];
+    const coin = Number(w.onChainBalance) || 0;
+    if (coin > 0) parts.push(`${formatBalance(coin)} ${chainSymbol(w.chain)}${Number(w.onChainBalanceUSD) > 0 ? ` ($${Number(w.onChainBalanceUSD).toFixed(2)})` : ''}`);
+    for (const t of w.tokens || []) {
+        const held = Number(t.onChainBalance) || 0;
+        if (held > 0) parts.push(`${held.toFixed(2)} ${t.symbol}`);
+    }
+    return parts.join(' and ');
+}
+
 async function deleteWallet(walletId, chain) {
+    const w = (Array.isArray(wallets) ? wallets : []).find((x) => x.id === walletId);
+    const left = closingRemainder(w);
+    const withdrawable = w && (Number(w.balance) > 0 || (w.tokens || []).some((t) => Number(t.balance) > 0));
     const ok = await confirmDialog({
-        title: `Delete this ${chain} wallet?`,
-        message: 'Its address stops receiving and cannot be restored. Anything already in it is swept out first.',
-        confirmText: 'Delete wallet',
+        title: `Close this ${chain} wallet?`,
+        message: left
+            ? `Its address stops receiving and cannot be reopened. What is left in it \u2014 ${left} \u2014 is kept by Etheroute.${withdrawable ? ' If any of that is yours to withdraw, the close will be refused until you do.' : ''}`
+            : 'Its address stops receiving and cannot be reopened. Nothing is left in it.',
+        confirmText: 'Close wallet',
         cancelText: 'Keep it',
         danger: true,
     });
@@ -2200,12 +2222,12 @@ async function deleteWallet(walletId, chain) {
                 walletId
             })
         });
+        const data = await response.json().catch(() => ({}));
         if (!response.ok) {
-            const data = await response.json();
-            showToast(data.message || 'Failed to delete wallet', 'error');
+            showToast(data.message || 'Failed to close wallet', 'error', 7000);
             return;
         }
-        showToast(`${chain} wallet deleted`, 'success');
+        showToast(data.message || `${chain} wallet closed`, 'success', data.forfeited && data.forfeited.usd > 0 ? 7000 : 4000);
         await loadWallets();
         loadWalletsList();
     } catch (error) {
