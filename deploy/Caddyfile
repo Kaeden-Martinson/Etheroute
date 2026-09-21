@@ -1,0 +1,25 @@
+# TLS in front of Etheroute with Caddy - the simplest option on Windows, and
+# the one that gets and renews its own certificate.
+#
+#   winget install CaddyServer.Caddy
+#   caddy run --config deploy\Caddyfile          (from the project folder)
+#   caddy start --config deploy\Caddyfile        (in the background)
+#
+# Needs: a domain whose A record points at this machine's public IP, and
+# ports 80 and 443 forwarded to it. If you cannot open ports (a shared or
+# school network), use the Cloudflare Tunnel route in DEPLOYMENT.md instead.
+#
+# Then in .env:  PORT=3000  NODE_ENV=production  TRUST_PROXY=true
+# and restart the app: it listens on 3000 for Caddy alone, sees the real
+# client address through X-Forwarded-For, and turns on its production
+# headers and rate limits.
+
+your-domain.com {
+    encode zstd gzip
+    request_body {
+        max_size 200KB
+    }
+    reverse_proxy 127.0.0.1:3000 {
+        header_up X-Real-IP {remote_host}
+    }
+}

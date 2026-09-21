@@ -135,11 +135,48 @@ alerts are de-duped for `ALERT_COOLDOWN_MS`. Unset, it is a no-op.
 ### TLS, process manager, CI
 
 `deploy/` has ready-to-adapt configs: `nginx.conf` (TLS termination + reverse
-proxy — pair with `certbot`), `etheroute.service` (hardened systemd unit), and
-`ecosystem.config.js` (PM2). Run **one instance only** — the JSON datastore is
+proxy — pair with `certbot`), `Caddyfile` (the same, with the certificate
+fetched and renewed for you), `etheroute.service` (hardened systemd unit), and
+`ecosystem.config.js` (PM2). Run **one instance only** — the datastore is
 not safe for concurrent writers. `.github/workflows/ci.yml` runs the test suite
 on every push and PR; keep `package-lock.json` committed so `npm ci` is
 reproducible.
+
+**Never expose the app on plain HTTP.** Sign-in passwords and session tokens
+travel in the request; over port 80 they are readable by anyone on the path.
+Put TLS in front, then set `PORT=3000`, `NODE_ENV=production` and
+`TRUST_PROXY=true`: the app listens for the proxy alone, reads the client's
+real address from `X-Forwarded-For` (so the rate limits key on the client, not
+the proxy), and turns on HSTS, the HTTPS upgrade and the production limits.
+Production mode without TLS breaks the site (every asset is upgraded to an
+https:// URL nothing answers), so the order is TLS first.
+
+#### On Windows
+
+Two routes, by whether you can open ports on the network:
+
+- **You can forward ports 80 and 443** (a home router, a VPS): install Caddy
+  (`winget install CaddyServer.Caddy`), put your domain in `deploy\Caddyfile`,
+  point the domain's A record at your public IP, and run
+  `caddy start --config deploy\Caddyfile`. Caddy gets a Let's Encrypt
+  certificate on first request and renews it. To survive a reboot, register it
+  as a service (`sc create caddy binPath= "C:\path	o\caddy.exe run --config
+  C:\path	o\Caddyfile" start= auto`) or use NSSM.
+- **You cannot** (a shared network, a school, carrier-grade NAT): a Cloudflare
+  Tunnel gives you HTTPS at Cloudflare's edge with no open ports. Add your
+  domain to a free Cloudflare account, install `cloudflared`
+  (`winget install Cloudflare.cloudflared`), then `cloudflared tunnel login`,
+  `cloudflared tunnel create etheroute`, `cloudflared tunnel route dns
+  etheroute your-domain.com`, and run it with an `ingress` of
+  `http://localhost:3000`. `cloudflared service install` keeps it running.
+  Cloudflare terminates TLS and forwards the client address, so the same three
+  `.env` settings apply.
+
+Run the app itself as a service too (NSSM: `nssm install etheroute
+"C:\Program Files
+odejs
+ode.exe" srcpp.js`, with the working directory
+set to the project), and keep the machine from sleeping.
 
 ### Password recovery
 
