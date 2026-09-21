@@ -450,7 +450,8 @@ const CHAINS = {
     coingeckoId: 'xdai',
     rpcEnv: 'GNOSIS_RPC_URLS',
     rpc: ['https://rpc.gnosischain.com', 'https://gnosis-rpc.publicnode.com', 'https://1rpc.io/gnosis'],
-    history: [{ kind: 'etherscan', chainId: 100 }],
+    // Etherscan's free plan does not serve Gnosis; its Blockscout does, keyless.
+    history: [{ kind: 'blockscout', url: 'https://gnosis.blockscout.com/api' }, { kind: 'etherscan', chainId: 100 }],
     explorer: { tx: 'https://gnosisscan.io/tx/', address: 'https://gnosisscan.io/address/' },
     confirmations: 3,
     blockTimeSec: 5,
