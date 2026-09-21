@@ -1,0 +1,63 @@
+'use strict';
+
+/**
+ * What the bot needs to know, read from the same .env the server reads.
+ *
+ * The secrets - the bot token - never pass through code or chat: they are
+ * typed into .env by the person who holds them. Everything else has a
+ * default that fits a server laid out the usual way: a #welcome, a
+ * #verify, an #anti-bot and a Member role. A channel or role can be named
+ * by its id or by its name; a name is matched loosely (emoji, dashes and
+ * case do not matter, and "verify" finds "✅︱verification"), and a
+ * comma-separated list tries each in turn.
+ */
+
+const path = require('path');
+
+const ROOT = path.join(__dirname, '..');
+if (process.env.NODE_ENV !== 'test') {
+  require('dotenv').config({ path: path.join(ROOT, '.env') });
+}
+
+const ANTIBOT_ACTIONS = ['kick', 'ban'];
+
+function read(env = process.env) {
+  const str = (key, fallback = '') => (env[key] === undefined || String(env[key]).trim() === '' ? fallback : String(env[key]).trim());
+  const dataDir = str('DATA_DIR', path.join(ROOT, 'data'));
+  return {
+    token: str('DISCORD_BOT_TOKEN'),
+    clientId: str('DISCORD_CLIENT_ID'),
+    guildId: str('DISCORD_GUILD_ID'),
+    channels: {
+      welcome: str('DISCORD_WELCOME_CHANNEL', 'welcome,welcomes,hello'),
+      verify: str('DISCORD_VERIFY_CHANNEL', 'verify,verification,verify-here'),
+      antibot: str('DISCORD_ANTIBOT_CHANNEL', 'anti-bot,antibot,anti-spam,bot-trap'),
+      log: str('DISCORD_LOG_CHANNEL', 'mod-log,mod-logs,modlog,logs,audit-log'),
+      rules: str('DISCORD_RULES_CHANNEL', 'rules,info'),
+    },
+    roles: {
+      member: str('DISCORD_MEMBER_ROLE', 'Member'),
+    },
+    antibot: {
+      action: str('DISCORD_ANTIBOT_ACTION', 'kick').toLowerCase(),
+    },
+    brand: {
+      name: str('DISCORD_BRAND_NAME', 'Etheroute'),
+      site: str('SITE_URL', 'https://etheroute.com'),
+    },
+    dataFile: str('DISCORD_DATA_FILE', path.join(dataDir, 'discord.json')),
+    syncCommands: str('DISCORD_SYNC_COMMANDS', 'true') !== 'false',
+  };
+}
+
+/** What stops the bot from starting, in words for the person at the terminal. */
+function problems(config) {
+  const list = [];
+  if (!config.token) list.push('DISCORD_BOT_TOKEN is not set (Developer Portal → your app → Bot → Reset Token).');
+  if (!config.guildId) list.push('DISCORD_GUILD_ID is not set (right-click the server → Copy Server ID).');
+  else if (!/^\d{15,22}$/.test(config.guildId)) list.push(`DISCORD_GUILD_ID does not look like a server id: ${config.guildId}`);
+  if (!ANTIBOT_ACTIONS.includes(config.antibot.action)) list.push(`DISCORD_ANTIBOT_ACTION must be one of ${ANTIBOT_ACTIONS.join(', ')}, not "${config.antibot.action}".`);
+  return list;
+}
+
+module.exports = { read, problems, ANTIBOT_ACTIONS, ROOT };
