@@ -1229,8 +1229,6 @@ body {
 
     .settle__figure { order: -1; }
     .settle__figure .token-stage { --token-scale: 0.62; }
-    /* the stage moves into the rows (settle-preview.js) */
-    .settle__figure .settle-preview { display: none; }
     .settle__head h2 { max-width: none; }
     .live-line__go { margin-left: 0; }
 }
@@ -1242,22 +1240,37 @@ body {
 }
 
 /* ── The preview ──────────────────────────────────────────────────────────
-   A small screen under the coin, showing the product as each row of the
-   rail describes it. The frame is the receipt's: the same edge, ground and
-   shadow, so the two artefacts read as one family. The panels stack in one
-   box and trade places with a short slide. */
-.settle__figure { display: grid; gap: 6px; }
-.settle__figure .token-stage { --token-scale: 0.66; }
-
-.settle-preview { position: relative; }
+   Each row of the rail carries a small screen showing the product as the
+   row describes it - the wallet grid, a payment confirming, the review.
+   It is folded shut until the scroll says the row is the one being read,
+   then slides open from under the row's text. The frame is the receipt's:
+   the same edge, ground and shadow, so the two read as one family. Only
+   one row is open at a time; settle-preview.js picks it from the scroll
+   and keeps the page still under the eye when another folds. */
+.settle-preview {
+    display: grid;
+    grid-template-rows: 0fr;
+    margin-top: 0;
+    transition: grid-template-rows var(--dur-slow) var(--ease-out), margin-top var(--dur-slow) var(--ease-out);
+}
+.settle-preview__inner { min-height: 0; overflow: hidden; }
+.settle-rail__row.is-active .settle-preview { grid-template-rows: 1fr; margin-top: 14px; }
+/* no transition on the way shut: the fold is instant, and the scroll is
+   moved by the same amount so nothing under the eye shifts */
+.settle-rail__row.is-folding .settle-preview { transition: none; }
 
 .settle-preview__frame {
+    max-width: 480px;
     border: 1px solid var(--line-strong);
     border-radius: var(--radius-lg);
     background: var(--surface);
     box-shadow: var(--shadow-lg);
     overflow: hidden;
+    opacity: 0;
+    transform: translateY(-8px);
+    transition: opacity var(--dur) var(--ease-out), transform var(--dur-slow) var(--ease-out);
 }
+.settle-rail__row.is-active .settle-preview__frame { opacity: 1; transform: none; transition-delay: 80ms; }
 
 .settle-preview__bar {
     display: flex;
@@ -1277,19 +1290,7 @@ body {
     color: var(--ink-3);
 }
 
-.settle-preview__body { position: relative; height: 246px; }
-
-.settle-preview__panel {
-    position: absolute;
-    inset: 0;
-    padding: 14px 16px;
-    opacity: 0;
-    visibility: hidden;
-    transform: translateY(14px);
-    transition: opacity var(--dur) var(--ease-out), transform var(--dur-slow) var(--ease-out), visibility 0s linear var(--dur);
-}
-.settle-preview__panel.is-active { opacity: 1; visibility: visible; transform: none; transition-delay: 0s; }
-.settle-preview__panel.is-leaving { opacity: 0; transform: translateY(-10px); }
+.settle-preview__panel { padding: 14px 16px; }
 
 .sp-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; font-size: 13px; color: var(--ink-3); }
 .sp-head b { color: var(--ink); font-size: 14px; }
@@ -1342,32 +1343,33 @@ body {
 .sp-rows > div { display: flex; justify-content: space-between; gap: 12px; padding: 5px 0; }
 .sp-rows > div.is-total { margin-top: 4px; padding-top: 8px; border-top: 1px solid var(--line-strong); color: var(--ink); font-weight: 700; font-size: 13.5px; }
 
-/* The row the preview is showing: its rule and its label take the ink,
-   as they do under the pointer. */
+/* The row being read: its rule and its label take the ink, as they do under the pointer. */
 .settle-rail__row.is-active::before { background: var(--ink); }
 .settle-rail__row.is-active dt { color: var(--ink); }
 
 @media (prefers-reduced-motion: no-preference) {
-    .settle-preview__panel.is-active .sp-tile {
+    .settle-rail__row.is-active .sp-tile {
         animation: sp-tile-in var(--dur-slow) var(--ease-out) both;
-        animation-delay: calc(60ms + var(--i, 0) * 55ms);
+        animation-delay: calc(140ms + var(--i, 0) * 55ms);
     }
-    .settle-preview__panel.is-active .sp-route__dot { animation: sp-travel 2.2s ease-in-out infinite; }
-    .settle-preview__panel.is-active .sp-amount { animation: sp-tile-in var(--dur-slow) var(--ease-out) both; }
+    .settle-rail__row.is-active .sp-route__dot { animation: sp-travel 2.2s ease-in-out infinite; }
+    .settle-rail__row.is-active .sp-amount { animation: sp-tile-in var(--dur-slow) var(--ease-out) both; animation-delay: 120ms; }
 }
 @keyframes sp-tile-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 @keyframes sp-travel { 0% { left: 0; } 50% { left: 100%; } 100% { left: 0; } }
 
 @media (prefers-reduced-motion: reduce) {
-    .settle-preview__panel { transition: none; transform: none; }
+    .settle-preview, .settle-preview__frame { transition: none; }
+    .settle-preview__frame { transform: none; }
     .sp-hook, .sp-pill, .sp-confs i { transition: none; }
 }
 
-/* On a phone each row carries its own copy of its preview, under its text:
-   the stage under the coin is gone, and nothing needs to scroll to be seen. */
-.settle-rail__row .settle-preview { margin-top: 12px; }
-.settle-rail__row .settle-preview__body { height: auto; }
-.settle-rail__row .settle-preview__panel { position: static; }
+@media (max-width: 720px) {
+    .settle-preview__frame { max-width: none; }
+    .settle-preview__panel { padding: 12px 12px; }
+    .sp-tiles { gap: 6px; }
+    .sp-amount { font-size: 20px; }
+}
 
 /* ── The token ──────────────────────────────────────────────────────────── */
 .token-stage { position:relative; perspective:900px; display:flex; align-items:center; justify-content:center;

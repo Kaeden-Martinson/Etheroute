@@ -2806,31 +2806,42 @@ describe('Dollar tokens on the pages', () => {
   });
 });
 
-describe('The preview under the coin', () => {
-  test('three rows, three panels, one screen; the script that swaps them; a copy per row on a phone', () => {
+describe('The previews on the rail', () => {
+  test('each row carries its own screen, folded shut; the scroll opens the row being read', () => {
     const html = fs.readFileSync(path.join(__dirname, '../public/index.html'), 'utf-8').replace(/\r\n/g, '\n');
     const js = fs.readFileSync(path.join(__dirname, '../public/js/settle-preview.js'), 'utf-8').replace(/\r\n/g, '\n');
     const css = fs.readFileSync(path.join(__dirname, '../public/css/index.css'), 'utf-8').replace(/\r\n/g, '\n');
     const delays = { networks: 210, confirmation: 300, routing: 390 };
     for (const name of ['networks', 'confirmation', 'routing']) {
-      assert.ok(html.includes(`class="settle-rail__row" data-reveal data-reveal-delay="${delays[name]}" data-preview="${name}"`), `${name} row names its preview`);
-      assert.ok(html.includes(`data-preview="${name}" data-title=`), `${name} panel`);
+      const row = html.indexOf(`class="settle-rail__row" data-reveal data-reveal-delay="${delays[name]}" data-preview="${name}"`);
+      assert.ok(row > 0, `${name} row names its preview`);
+      // the preview sits inside the row, after its text, before the next row
+      const preview = html.indexOf('<div class="settle-preview" aria-hidden="true">', row);
+      const panel = html.indexOf(`<div class="settle-preview__panel" data-preview="${name}">`, row);
+      const next = html.indexOf('class="settle-rail__row"', row + 1);
+      assert.ok(preview > row && panel > preview && (next === -1 || panel < next), `${name} preview is in its row`);
     }
-    assert.ok(html.includes('id="settlePreview"') && html.includes('id="settlePreviewTitle"'));
-    assert.strictEqual((html.match(/class="settle-preview__panel/g) || []).length, 3);
+    assert.strictEqual((html.match(/class="settle-preview" aria-hidden="true"/g) || []).length, 3);
+    assert.strictEqual((html.match(/class="settle-preview__panel"/g) || []).length, 3);
+    assert.ok(!html.includes('id="settlePreview"'), 'no stage under the coin');
     assert.ok(html.includes('<script src="/js/settle-preview.js"></script>'));
     assert.ok(!/on(click|mouseenter|scroll)=/.test(html), 'no inline handlers');
-    // the scene: the row nearest the eye, or the one under the pointer; the confirmations count up to Paid
-    assert.ok(js.includes('window.innerHeight * 0.42'));
+    // the scroll is the control: the last row past a line above the middle, nothing on hover or tap
+    assert.ok(js.includes('window.innerHeight * 0.45'));
+    assert.ok(js.includes("window.addEventListener('scroll', onScroll, { passive: true })"));
+    assert.ok(!/pointerenter|mouseenter|'click'/.test(js), 'no hover, no tap');
+    assert.ok(js.includes("previous.classList.add('is-folding')") && js.includes('scrollNow(after - before)'), 'the fold is instant and the scroll follows it');
+    assert.ok(js.includes("root.style.scrollBehavior = 'auto'"), 'that one move is not smoothed');
     assert.ok(js.includes("pill.textContent = 'Paid'"));
-    assert.ok(js.includes("row.addEventListener('pointerenter'"));
-    assert.ok(js.includes('function stillHovered()'), 'a resting pointer does not hold a row that scrolled away');
-    assert.ok(js.includes("matchMedia('(max-width: 1000px)')") && js.includes('panel.cloneNode(true)'), 'a copy per row when stacked');
     assert.ok(js.includes("matchMedia('(prefers-reduced-motion: reduce)')"));
-    // the styles: the stage is the receipt's family; the active row takes the ink; motion is opt-in
+    // the styles: an accordion on grid rows; the frame is the receipt's family; the open row takes the ink; motion is opt-in
+    assert.ok(css.includes('.settle-preview {') && css.includes('grid-template-rows: 0fr;'));
+    assert.ok(css.includes('.settle-rail__row.is-active .settle-preview { grid-template-rows: 1fr;'));
+    assert.ok(css.includes('.settle-rail__row.is-folding .settle-preview { transition: none; }'));
     assert.ok(css.includes('.settle-preview__frame {') && css.includes('.settle-rail__row.is-active::before { background: var(--ink); }'));
-    assert.ok(/@media \(prefers-reduced-motion: no-preference\) \{[\s\S]*?\.settle-preview__panel\.is-active \.sp-tile \{/.test(css));
+    assert.ok(!css.includes('.settle-rail__row { cursor: pointer; }'), 'rows are not buttons');
+    assert.ok(/@media \(prefers-reduced-motion: no-preference\) \{[\s\S]*?\.settle-rail__row\.is-active \.sp-tile \{/.test(css));
     assert.ok(css.includes('@keyframes sp-travel'));
-    assert.ok(/@media \(max-width: 1000px\) \{[\s\S]*?\.settle__figure \.settle-preview \{ display: none; \}/.test(css), 'the stage leaves the stacked layout');
+    assert.ok(/@media \(max-width: 720px\) \{[\s\S]*?\.settle-preview__frame \{ max-width: none; \}/.test(css), 'the frame fills a phone');
   });
 });
