@@ -1229,6 +1229,8 @@ body {
 
     .settle__figure { order: -1; }
     .settle__figure .token-stage { --token-scale: 0.62; }
+    /* the stage moves into the rows (settle-preview.js) */
+    .settle__figure .settle-preview { display: none; }
     .settle__head h2 { max-width: none; }
     .live-line__go { margin-left: 0; }
 }
@@ -1238,6 +1240,134 @@ body {
     .settle__head h2 { font-size: 27px; }
     .settle-rail__row { grid-template-columns: 1fr; gap: 8px; padding-left: 18px; }
 }
+
+/* ── The preview ──────────────────────────────────────────────────────────
+   A small screen under the coin, showing the product as each row of the
+   rail describes it. The frame is the receipt's: the same edge, ground and
+   shadow, so the two artefacts read as one family. The panels stack in one
+   box and trade places with a short slide. */
+.settle__figure { display: grid; gap: 6px; }
+.settle__figure .token-stage { --token-scale: 0.66; }
+
+.settle-preview { position: relative; }
+
+.settle-preview__frame {
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
+}
+
+.settle-preview__bar {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 9px 12px;
+    border-bottom: 1px solid var(--line);
+    background: var(--surface-sunken);
+}
+.settle-preview__bar i { width: 7px; height: 7px; border-radius: 50%; background: var(--line-strong); }
+.settle-preview__bar span {
+    margin-left: auto;
+    font-size: var(--text-xs);
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+}
+
+.settle-preview__body { position: relative; height: 246px; }
+
+.settle-preview__panel {
+    position: absolute;
+    inset: 0;
+    padding: 14px 16px;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(14px);
+    transition: opacity var(--dur) var(--ease-out), transform var(--dur-slow) var(--ease-out), visibility 0s linear var(--dur);
+}
+.settle-preview__panel.is-active { opacity: 1; visibility: visible; transform: none; transition-delay: 0s; }
+.settle-preview__panel.is-leaving { opacity: 0; transform: translateY(-10px); }
+
+.sp-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; font-size: 13px; color: var(--ink-3); }
+.sp-head b { color: var(--ink); font-size: 14px; }
+.sp-line { display: flex; justify-content: space-between; gap: 12px; margin-top: 10px; padding-top: 9px; border-top: 1px solid var(--line); font-size: 12px; color: var(--ink-3); }
+.sp-line b { color: var(--ink); font-weight: 600; }
+
+/* wallets */
+.sp-tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; margin-top: 12px; }
+.sp-tile {
+    padding: 8px 9px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--surface-sunken);
+    display: grid;
+    gap: 1px;
+    min-width: 0;
+}
+.sp-tile i { font-style: normal; font-size: 10px; font-weight: 700; letter-spacing: 0.06em; color: var(--ink-3); }
+.sp-tile b { font-size: 13px; color: var(--ink); font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sp-tile span { font-size: 10.5px; color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sp-tile--more { border-style: dashed; background: transparent; align-content: center; }
+
+/* the payment confirming */
+.sp-amount { margin-top: 10px; font-size: 22px; font-weight: 700; letter-spacing: -0.02em; color: var(--ink); font-variant-numeric: tabular-nums; }
+.sp-amount small { font-size: 12px; font-weight: 500; color: var(--ink-3); margin-left: 6px; }
+.sp-pill {
+    display: inline-block;
+    padding: 2px 9px;
+    border-radius: var(--radius-pill);
+    border: 1px solid var(--line-strong);
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--ink-2);
+    transition: background-color var(--dur) var(--ease-out), color var(--dur) var(--ease-out), border-color var(--dur) var(--ease-out);
+}
+.sp-pill.is-paid { background: var(--ok-bg); color: var(--ok); border-color: var(--ok); }
+.sp-confs { display: flex; align-items: center; gap: 6px; margin-top: 12px; }
+.sp-confs i { flex: 1; height: 8px; border-radius: 2px; border: 1px dashed var(--line-strong); background: transparent; transition: background-color var(--dur) var(--ease-out), border-color var(--dur) var(--ease-out); }
+.sp-confs i.is-done { background: var(--ok); border: 1px solid var(--ok); }
+.sp-confs em { font-style: normal; font-size: 11.5px; color: var(--ink-3); font-variant-numeric: tabular-nums; min-width: 42px; text-align: right; }
+.sp-hook { opacity: 0; transform: translateY(4px); transition: opacity var(--dur) var(--ease-out), transform var(--dur) var(--ease-out); }
+.sp-hook.is-on { opacity: 1; transform: none; }
+
+/* the route */
+.sp-route { display: flex; align-items: center; gap: 10px; margin-top: 16px; font-size: 14px; font-weight: 700; color: var(--ink); }
+.sp-route__line { position: relative; flex: 1; height: 2px; border-radius: 2px; background: var(--line-strong); }
+.sp-route__dot { position: absolute; top: 50%; left: 0; width: 9px; height: 9px; margin: -4.5px 0 0 -4.5px; border-radius: 50%; background: var(--ink); box-shadow: 0 0 0 3px var(--surface); }
+.sp-route__via { margin-top: 8px; font-size: 11.5px; color: var(--ink-3); }
+.sp-rows { margin-top: 10px; font-size: 12.5px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.sp-rows > div { display: flex; justify-content: space-between; gap: 12px; padding: 5px 0; }
+.sp-rows > div.is-total { margin-top: 4px; padding-top: 8px; border-top: 1px solid var(--line-strong); color: var(--ink); font-weight: 700; font-size: 13.5px; }
+
+/* The row the preview is showing: its rule and its label take the ink,
+   as they do under the pointer. */
+.settle-rail__row.is-active::before { background: var(--ink); }
+.settle-rail__row.is-active dt { color: var(--ink); }
+
+@media (prefers-reduced-motion: no-preference) {
+    .settle-preview__panel.is-active .sp-tile {
+        animation: sp-tile-in var(--dur-slow) var(--ease-out) both;
+        animation-delay: calc(60ms + var(--i, 0) * 55ms);
+    }
+    .settle-preview__panel.is-active .sp-route__dot { animation: sp-travel 2.2s ease-in-out infinite; }
+    .settle-preview__panel.is-active .sp-amount { animation: sp-tile-in var(--dur-slow) var(--ease-out) both; }
+}
+@keyframes sp-tile-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes sp-travel { 0% { left: 0; } 50% { left: 100%; } 100% { left: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+    .settle-preview__panel { transition: none; transform: none; }
+    .sp-hook, .sp-pill, .sp-confs i { transition: none; }
+}
+
+/* On a phone each row carries its own copy of its preview, under its text:
+   the stage under the coin is gone, and nothing needs to scroll to be seen. */
+.settle-rail__row .settle-preview { margin-top: 12px; }
+.settle-rail__row .settle-preview__body { height: auto; }
+.settle-rail__row .settle-preview__panel { position: static; }
 
 /* ── The token ──────────────────────────────────────────────────────────── */
 .token-stage { position:relative; perspective:900px; display:flex; align-items:center; justify-content:center;

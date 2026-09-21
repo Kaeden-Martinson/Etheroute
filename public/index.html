@@ -90,7 +90,7 @@
                  structurally a different object from a card grid, which is what
                  stops it reading as one. -->
             <dl class="settle-rail">
-                <div class="settle-rail__row" data-reveal data-reveal-delay="210">
+                <div class="settle-rail__row" data-reveal data-reveal-delay="210" data-preview="networks">
                     <dt>Networks</dt>
                     <dd>
                         <div class="settle-rail__chains" aria-label="Supported networks">
@@ -99,7 +99,7 @@
                         <p>One integration, one set of webhooks. Add a chain without touching your checkout.</p>
                     </dd>
                 </div>
-                <div class="settle-rail__row" data-reveal data-reveal-delay="300">
+                <div class="settle-rail__row" data-reveal data-reveal-delay="300" data-preview="confirmation">
                     <dt>Confirmation</dt>
                     <dd>
                         <div class="settle-rail__ticks" role="img" aria-label="Three of three confirmations received on Ethereum">
@@ -110,7 +110,7 @@
                             20 on Polygon &mdash; then a signed webhook.</p>
                     </dd>
                 </div>
-                <div class="settle-rail__row" data-reveal data-reveal-delay="390">
+                <div class="settle-rail__row" data-reveal data-reveal-delay="390" data-preview="routing">
                     <dt>Routing</dt>
                     <dd>
                         <p class="settle-rail__route"><b>USDC</b><span aria-hidden="true">&rarr;</span><b>BTC</b></p>
@@ -140,6 +140,48 @@
                         </div>
                     </div>
                     <div class="drops" id="tokenDrops"></div>
+                </div>
+
+                <!-- What each row of the rail looks like in the product: a
+                     wallet grid, a payment confirming, a review screen. The
+                     one for the row nearest the reader (or under the pointer)
+                     is shown; settle-preview.js swaps them as the page
+                     scrolls. On a phone each row carries its own copy. -->
+                <div class="settle-preview" id="settlePreview">
+                    <div class="settle-preview__frame">
+                        <div class="settle-preview__bar" aria-hidden="true"><i></i><i></i><i></i><span id="settlePreviewTitle">Wallets</span></div>
+                        <div class="settle-preview__body">
+                            <div class="settle-preview__panel is-active" data-preview="networks" data-title="Wallets">
+                                <div class="sp-head"><b>Wallets</b><span>65 chains &middot; one integration</span></div>
+                                <div class="sp-tiles">
+                                    <div class="sp-tile" style="--i: 0"><i>ETH</i><b>0.4821</b><span>Ethereum</span></div>
+                                    <div class="sp-tile" style="--i: 1"><i>BTC</i><b>0.0312</b><span>Bitcoin</span></div>
+                                    <div class="sp-tile" style="--i: 2"><i>USDC</i><b>640.00</b><span>Base</span></div>
+                                    <div class="sp-tile" style="--i: 3"><i>SOL</i><b>12.40</b><span>Solana</span></div>
+                                    <div class="sp-tile" style="--i: 4"><i>LTC</i><b>1.84</b><span>Litecoin</span></div>
+                                    <div class="sp-tile sp-tile--more" style="--i: 5"><b>+60</b><span>more chains</span></div>
+                                </div>
+                                <div class="sp-line"><span>Webhooks</span><span>one set, every chain</span></div>
+                            </div>
+                            <div class="settle-preview__panel" data-preview="confirmation" data-title="Checkout">
+                                <div class="sp-head"><b>Payment</b><span class="sp-pill" data-pill>Confirming</span></div>
+                                <div class="sp-amount">0.50000 ETH <small>$1,246.22</small></div>
+                                <div class="sp-confs" role="img" aria-label="Confirmations on Ethereum"><i></i><i></i><i></i><em data-confs>0 of 3</em></div>
+                                <div class="sp-line"><span>Threshold</span><span>3 blocks on Ethereum</span></div>
+                                <div class="sp-line sp-hook" data-hook><span>Webhook</span><span><b>payment.paid</b> &middot; signed</span></div>
+                            </div>
+                            <div class="settle-preview__panel" data-preview="routing" data-title="Review">
+                                <div class="sp-head"><b>Review</b><span>USDC on Base &rarr; BTC</span></div>
+                                <div class="sp-route"><b>USDC</b><i class="sp-route__line"><em class="sp-route__dot"></em></i><b>BTC</b></div>
+                                <div class="sp-route__via">Kyber &middot; THORChain &middot; quoted before you confirm</div>
+                                <div class="sp-rows">
+                                    <div><span>Quote</span><span>0.00412 BTC</span></div>
+                                    <div><span>Network + swap fees</span><span>&minus;$1.34</span></div>
+                                    <div class="is-total"><span>You receive</span><span>0.00396 BTC</span></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -226,6 +268,7 @@
     <script src="/js/common/icons.js"></script>
     <script src="/js/index.js"></script>
     <script src="/js/token.js"></script>
+    <script src="/js/settle-preview.js"></script>
     <script src="/js/common/reveal.js"></script>
 </body>
 </html>

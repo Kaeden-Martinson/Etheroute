@@ -2805,3 +2805,32 @@ describe('Dollar tokens on the pages', () => {
     assert.ok(walletJs.includes('if (amount) amount.textContent = paying().label;'), 'the button names the asset and figure');
   });
 });
+
+describe('The preview under the coin', () => {
+  test('three rows, three panels, one screen; the script that swaps them; a copy per row on a phone', () => {
+    const html = fs.readFileSync(path.join(__dirname, '../public/index.html'), 'utf-8').replace(/\r\n/g, '\n');
+    const js = fs.readFileSync(path.join(__dirname, '../public/js/settle-preview.js'), 'utf-8').replace(/\r\n/g, '\n');
+    const css = fs.readFileSync(path.join(__dirname, '../public/css/index.css'), 'utf-8').replace(/\r\n/g, '\n');
+    const delays = { networks: 210, confirmation: 300, routing: 390 };
+    for (const name of ['networks', 'confirmation', 'routing']) {
+      assert.ok(html.includes(`class="settle-rail__row" data-reveal data-reveal-delay="${delays[name]}" data-preview="${name}"`), `${name} row names its preview`);
+      assert.ok(html.includes(`data-preview="${name}" data-title=`), `${name} panel`);
+    }
+    assert.ok(html.includes('id="settlePreview"') && html.includes('id="settlePreviewTitle"'));
+    assert.strictEqual((html.match(/class="settle-preview__panel/g) || []).length, 3);
+    assert.ok(html.includes('<script src="/js/settle-preview.js"></script>'));
+    assert.ok(!/on(click|mouseenter|scroll)=/.test(html), 'no inline handlers');
+    // the scene: the row nearest the eye, or the one under the pointer; the confirmations count up to Paid
+    assert.ok(js.includes('window.innerHeight * 0.42'));
+    assert.ok(js.includes("pill.textContent = 'Paid'"));
+    assert.ok(js.includes("row.addEventListener('pointerenter'"));
+    assert.ok(js.includes('function stillHovered()'), 'a resting pointer does not hold a row that scrolled away');
+    assert.ok(js.includes("matchMedia('(max-width: 1000px)')") && js.includes('panel.cloneNode(true)'), 'a copy per row when stacked');
+    assert.ok(js.includes("matchMedia('(prefers-reduced-motion: reduce)')"));
+    // the styles: the stage is the receipt's family; the active row takes the ink; motion is opt-in
+    assert.ok(css.includes('.settle-preview__frame {') && css.includes('.settle-rail__row.is-active::before { background: var(--ink); }'));
+    assert.ok(/@media \(prefers-reduced-motion: no-preference\) \{[\s\S]*?\.settle-preview__panel\.is-active \.sp-tile \{/.test(css));
+    assert.ok(css.includes('@keyframes sp-travel'));
+    assert.ok(/@media \(max-width: 1000px\) \{[\s\S]*?\.settle__figure \.settle-preview \{ display: none; \}/.test(css), 'the stage leaves the stacked layout');
+  });
+});
