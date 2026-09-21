@@ -95,17 +95,8 @@ function idempotency({ required = true } = {}) {
 
 /** Drop keys past the retention window. */
 function pruneIdempotencyKeys() {
-  const cutoff = Date.now() - RETENTION_MS;
-  let removed = 0;
-
-  for (const record of db.getAll('idempotencyKeys')) {
-    if (new Date(record.createdAt).getTime() < cutoff) {
-      db.delete('idempotencyKeys', record.id);
-      removed += 1;
-    }
-  }
-
-  return removed;
+  const cutoff = new Date(Date.now() - RETENTION_MS).toISOString();
+  return db.deleteOlderThan('idempotencyKeys', 'createdAt', cutoff);
 }
 
 module.exports = { idempotency, pruneIdempotencyKeys };

@@ -45,13 +45,29 @@ const ERC20 = new ethers.Interface([
 // caller gives up on it: an approval must land before the swap it enables.
 const RECEIPT_TIMEOUT_MS = 3 * 60 * 1000;
 
+// Etherscan v2 answers only with a key, and the key is the deployment's own
+// (ETHERSCAN_API_KEY). Without one the Etherscan sources are skipped, said
+// once, and a chain with no other index reports history as unavailable.
+let saidNoEtherscanKey = false;
+function etherscanKey() {
+  const key = String(config.etherscanApiKey || '').trim();
+  if (!key && !saidNoEtherscanKey) {
+    saidNoEtherscanKey = true;
+    console.warn('[EvmWalletService] ETHERSCAN_API_KEY is not set: Etherscan transaction history is off. Chains with a Blockscout or Routescan index still answer.');
+  }
+  return key || null;
+}
+
 class EvmWalletService {
   constructor(chain) {
     this.chain = chain;
     this.code = chain.code;
     this.tag = `[EvmWalletService:${chain.code}]`;
     this.pool = EthereumProvider.forChain(chain.code);
-    this.apiKey = config.etherscanApiKey || 'BDHQ71HUZYHVNSQDYYKNZTUF6EBTB1E87J';
+  }
+
+  get apiKey() {
+    return etherscanKey();
   }
 
   async getProvider() {
@@ -232,16 +248,20 @@ class EvmWalletService {
       return { address, network: 'mainnet', status: 'error', error: 'Invalid address format' };
     }
 
-    const sources = this.chain.history || [];
+    const key = this.apiKey;
+    const sources = (this.chain.history || []).filter((source) => source.kind !== 'etherscan' || key);
     if (sources.length === 0) {
-      return { address, network: 'mainnet', status: 'unavailable', transactions: [], error: `No transaction index for ${this.chain.name}` };
+      const why = (this.chain.history || []).length > 0
+        ? `Etherscan is the only transaction index for ${this.chain.name} and ETHERSCAN_API_KEY is not set`
+        : `No transaction index for ${this.chain.name}`;
+      return { address, network: 'mainnet', status: 'unavailable', transactions: [], error: why };
     }
 
     const failures = [];
     for (const source of sources) {
       try {
         const url = source.kind === 'etherscan'
-          ? `${ETHERSCAN_V2}?chainid=${source.chainId}&module=account&action=txlist&address=${address}&sort=desc&page=1&offset=50&apikey=${this.apiKey}`
+          ? `${ETHERSCAN_V2}?chainid=${source.chainId}&module=account&action=txlist&address=${address}&sort=desc&page=1&offset=50&apikey=${key}`
           : `${source.url}?module=account&action=txlist&address=${address}&sort=desc&page=1&offset=50`;
 
         const response = await ProxyService.fetch(url);

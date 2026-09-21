@@ -16,6 +16,11 @@ const { pruneIdempotencyKeys } = require('../middleware/idempotency');
 
 const IN_FLIGHT = ['PENDING', 'PROCESSING'];
 
+// How long the usage log is kept. The dashboard shows a week; billing wants
+// the month. Older rows are removed each sweep so the table stays the size
+// of a month's traffic rather than growing for the life of the deployment.
+const USAGE_RETENTION_DAYS = Number(process.env.USAGE_RETENTION_DAYS || 30);
+
 /**
  * Fail out transactions that have been in flight past the configured deadline.
  */
@@ -180,6 +185,13 @@ async function expireCheckoutSessions() {
   return expired;
 }
 
+/** The usage rows older than the retention window, removed in one statement. */
+function pruneUsageLog() {
+  if (!(USAGE_RETENTION_DAYS > 0)) return 0;
+  const cutoff = new Date(Date.now() - USAGE_RETENTION_DAYS * 24 * 60 * 60 * 1000).toISOString();
+  return db.deleteOlderThan('apiCalls', 'timestamp', cutoff);
+}
+
 async function runOnce() {
   const results = {
     // Order matters: check the chain first, so a transfer that has just
@@ -191,6 +203,7 @@ async function runOnce() {
     sessionsChecked: await settleCheckoutSessions(),
     sessionsExpired: await expireCheckoutSessions(),
     idempotencyKeysPruned: pruneIdempotencyKeys(),
+    usageRowsPruned: pruneUsageLog(),
     webhooksRetried: await WebhookService.sweep(),
   };
 
@@ -233,4 +246,5 @@ module.exports = {
   reconcilePayouts,
   settleCheckoutSessions,
   expireCheckoutSessions,
+  pruneUsageLog,
 };

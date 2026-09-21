@@ -12,39 +12,33 @@
  *   3. Checkout sessions `amount`      -> nativeAmount / usdAmount
  *   4. Missing fields backfilled on wallets, sessions and users
  *
- * A timestamped backup of the database is written before anything changes.
+ * A timestamped snapshot of the database is written before anything changes.
+ * Stop the server before running it.
  */
-const fs = require('fs');
 const path = require('path');
 
-const { config, validate } = require('../src/config/env');
+const { validate } = require('../src/config/env');
 validate();
 
+const { db, DB_FILE, DB_DIR, TABLES } = require('../src/config/database');
 const KeyVault = require('../src/services/crypto/KeyVault');
 const AuthService = require('../src/services/AuthService');
 
 const DRY_RUN = process.argv.includes('--dry-run');
-
-const DATA_DIR = config.dataDir ? path.resolve(config.dataDir) : path.join(__dirname, '../data');
-const DB_FILE = path.join(DATA_DIR, 'database.json');
 
 function log(message) {
   console.log(`  ${message}`);
 }
 
 function main() {
-  if (!fs.existsSync(DB_FILE)) {
-    console.error(`No database found at ${DB_FILE}`);
-    process.exit(1);
-  }
-
-  const raw = fs.readFileSync(DB_FILE, 'utf-8');
-  const data = JSON.parse(raw);
+  // Every table as an array of records; the steps below mutate these and
+  // the whole set is written back in one commit at the end.
+  const data = db.exportAll();
 
   if (!DRY_RUN) {
-    const backup = path.join(DATA_DIR, `database.pre-migration.${Date.now()}.json`);
-    fs.writeFileSync(backup, raw, 'utf-8');
-    console.log(`\nBackup written to ${path.basename(backup)}\n`);
+    const backup = path.join(DB_DIR, `database.pre-migration.${Date.now()}.sqlite`);
+    db.snapshotTo(backup);
+    console.log(`\nSnapshot written to ${path.basename(backup)} (of ${path.basename(DB_FILE)})\n`);
   } else {
     console.log('\nDRY RUN - no changes will be written\n');
   }
@@ -143,8 +137,7 @@ function main() {
   log(`${stats.sessionsNormalised} sessions normalised`);
 
   // ── Ensure every expected table exists ────────────────────────────────────
-  for (const table of ['users', 'wallets', 'invoices', 'transactions', 'payouts',
-    'statusIncidents', 'checkoutSessions', 'apiCalls', 'idempotencyKeys', 'webhookDeliveries']) {
+  for (const table of TABLES) {
     if (!Array.isArray(data[table])) {
       data[table] = [];
       console.log(`\nCreated missing table: ${table}`);
@@ -152,8 +145,9 @@ function main() {
   }
 
   if (!DRY_RUN) {
-    fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), 'utf-8');
+    db.replaceAll(data);
   }
+  db.close();
 
   console.log('\n' + '-'.repeat(58));
   console.log('Summary');

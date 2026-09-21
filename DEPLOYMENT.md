@@ -92,11 +92,15 @@ cap. Give your orchestrator at least 20 seconds of termination grace.
 
 ### Single instance only
 
-State lives in one JSON file. Writes are atomic (temp file, fsync, rename) and
-a backup is kept, so a crash cannot corrupt it — but **two processes writing the
-same file will lose data.** Run exactly one instance until the Postgres
-migration lands. Do not scale horizontally, and do not run a second copy against
-the same `DATA_DIR`.
+State lives in one SQLite file (`database.sqlite`, write-ahead log, every
+commit flushed), so a crash cannot corrupt it. Payout monitors, rate limits and
+the balance sweep are in-process state, so run exactly one instance. Do not
+scale horizontally, and do not run a second copy against the same `DATA_DIR`.
+Requires Node 22.13 or newer for the built-in SQLite driver.
+
+The first start after upgrading from a build that kept `database.json` imports
+that file into `database.sqlite` and logs the count. The JSON file is not read
+again; keep it until you have a snapshot you trust, then delete it.
 
 ### Back up `data/`
 
@@ -105,18 +109,21 @@ Back it up on a schedule, and store the backups somewhere the
 `KEY_ENCRYPTION_KEY` is *not*, so one compromise does not yield both.
 
 The server writes its own timestamped snapshots to `<DATA_DIR>/backups` (daily
-by default, keeping the last `BACKUP_KEEP=14`) in addition to the rolling
-`database.backup.json` written before every save. These are for *point-in-time*
-recovery — a bad migration, an accidental delete — and are **not** a substitute
-for off-box backups, since they sit next to the live data. To roll back:
+by default, keeping the last `BACKUP_KEEP=14`), each a consistent compacted copy
+taken through SQLite while the server keeps running. These are for
+*point-in-time* recovery — a bad migration, an accidental delete — and are
+**not** a substitute for off-box backups, since they sit next to the live data.
+Copy the snapshots off the box, not the live file: a plain copy of
+`database.sqlite` misses what is still in its `-wal` log. To roll back:
 
 ```bash
 node scripts/restore.js            # list available snapshots
 node scripts/restore.js --latest   # restore the newest (stop the server first)
 ```
 
-A restore copies the current database to `database.pre-restore.<ts>.json` first,
-so it is itself reversible.
+A restore snapshots the current database to `database.pre-restore.<ts>.sqlite`
+first, so it is itself reversible. Snapshots from before the SQLite store
+(`database-<stamp>.json`) restore too.
 
 ### Alerting
 

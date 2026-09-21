@@ -1,5 +1,6 @@
 const { Router } = require('express');
 const { db } = require('../config/database');
+const UsageLog = require('../services/UsageLog');
 
 const router = Router();
 
@@ -34,13 +35,17 @@ router.get('/stats', (req, res, next) => {
     const period = PERIODS[req.query.period] ? req.query.period : 'day';
     const { buckets, stepMs } = PERIODS[period];
 
-    const calls = db.findBy('apiCalls', { clientId: req.auth.clientId });
-    const timestamps = calls
-      .map((call) => new Date(call.timestamp).getTime())
-      .filter((time) => !Number.isNaN(time));
+    // the rows still waiting in the buffer count too
+    UsageLog.flush();
 
     // Align the newest bucket to the current step boundary.
     const end = Math.floor(Date.now() / stepMs) * stepMs + stepMs;
+    const start = end - buckets * stepMs;
+
+    // Only the window the chart shows is read; the total is a count.
+    const timestamps = db.range('apiCalls', { clientId: req.auth.clientId }, 'timestamp', { from: new Date(start).toISOString() })
+      .map((call) => new Date(call.timestamp).getTime())
+      .filter((time) => !Number.isNaN(time));
 
     const labels = [];
     const values = [];
@@ -58,7 +63,7 @@ router.get('/stats', (req, res, next) => {
       labels,
       values,
       periodTotal: values.reduce((sum, value) => sum + value, 0),
-      totalCalls: calls.length,
+      totalCalls: db.countBy('apiCalls', { clientId: req.auth.clientId }),
     });
   } catch (error) {
     next(error);
@@ -80,16 +85,18 @@ router.get('/recent', (req, res, next) => {
     const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 20, 1), 100);
     const dayAgo = Date.now() - 24 * 60 * 60 * 1000;
 
-    const calls = db.findBy('apiCalls', { clientId: req.auth.clientId })
-      .filter((call) => !String(call.endpoint || '').includes('/api-calls/'))
-      .map((call) => ({ ...call, time: new Date(call.timestamp).getTime() }))
-      .filter((call) => !Number.isNaN(call.time))
-      .sort((a, b) => b.time - a.time);
-    const day = calls.filter((call) => call.time >= dayAgo);
+    UsageLog.flush();
+    const clientId = req.auth.clientId;
+    const own = (call) => !String(call.endpoint || '').includes('/api-calls/');
+    // The day's rows, newest first, for the figures; the newest few for the list.
+    const day = db.range('apiCalls', { clientId }, 'timestamp', { from: new Date(dayAgo).toISOString(), newestFirst: true }).filter(own);
+    const calls = day.length >= limit
+      ? day
+      : db.range('apiCalls', { clientId }, 'timestamp', { newestFirst: true, limit: limit * 2 }).filter(own);
 
     res.json({
       success: true,
-      totalCalls: calls.length,
+      totalCalls: db.countBy('apiCalls', { clientId }),
       last24h: day.length,
       errors24h: day.filter((call) => Number(call.statusCode) >= 400).length,
       calls: calls.slice(0, limit).map((call) => ({

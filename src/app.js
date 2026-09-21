@@ -12,7 +12,7 @@ const cors = require('cors');
 
 const logger = require('./services/logger');
 const { ApiError } = require('./utils/errors');
-const { db } = require('./config/database');
+const UsageLog = require('./services/UsageLog');
 const MaintenanceService = require('./services/MaintenanceService');
 const ChainHealthService = require('./services/ChainHealthService');
 const BalanceWatcher = require('./services/BalanceWatcher');
@@ -204,24 +204,21 @@ app.get('/api/chains', (req, res) => {
 /**
  * Record usage for billing and the dashboard chart. Runs after authentication so
  * the client is the verified one, and covers every authenticated endpoint rather
- * than only those that happened to carry a clientId in the body.
+ * than only those that happened to carry a clientId in the body. The row is
+ * buffered and written with its neighbours; the request does not wait on disk.
  */
 function trackApiCall(req, res, next) {
   res.on('finish', () => {
-    try {
-      db.create('apiCalls', {
-        id: crypto.randomUUID(),
-        clientId: req.auth.clientId,
-        // The full path. Inside a mounted router req.path is relative to the
-        // mount, which logged every list as "/list" whatever it listed.
-        endpoint: `${req.baseUrl || ''}${req.path}`,
-        method: req.method,
-        statusCode: res.statusCode,
-        timestamp: new Date().toISOString(),
-      });
-    } catch (error) {
-      logger.error(`[ApiCallTracker] Failed to log API call: ${error.message}`);
-    }
+    UsageLog.record({
+      id: crypto.randomUUID(),
+      clientId: req.auth.clientId,
+      // The full path. Inside a mounted router req.path is relative to the
+      // mount, which logged every list as "/list" whatever it listed.
+      endpoint: `${req.baseUrl || ''}${req.path}`,
+      method: req.method,
+      statusCode: res.statusCode,
+      timestamp: new Date().toISOString(),
+    });
   });
   next();
 }
@@ -310,11 +307,14 @@ function shutdown(signal) {
   BackupService.stop();
   ChainHealthService.stop();
   BalanceWatcher.stop();
+  UsageLog.flush();
 
   if (!server) process.exit(0);
 
   server.close(() => {
     logger.info('Closed out remaining connections');
+    // the rows the last requests wrote while we were draining
+    UsageLog.flush();
     process.exit(0);
   });
 

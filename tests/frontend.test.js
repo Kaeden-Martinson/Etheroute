@@ -580,7 +580,7 @@ describe('API: a page under Build, not a modal', () => {
     assert.ok(routeSource.includes("router.get('/recent'"));
     assert.ok(routeSource.includes("Math.min(Math.max(parseInt(req.query.limit, 10) || 20, 1), 100)"), 'limit is clamped');
     assert.ok(routeSource.includes('errors24h: day.filter((call) => Number(call.statusCode) >= 400).length'));
-    assert.ok(routeSource.includes('.sort((a, b) => b.time - a.time)'), 'newest first');
+    assert.ok(routeSource.includes('newestFirst: true'), 'newest first, from the index rather than a sort of the whole log');
   });
 
   test('the call log records the full path, not the router-relative one', () => {

@@ -23,6 +23,11 @@ const PROXY_TIMEOUT_MS = 15_000;
 // Set PROXY_MODE=off to bypass the proxy list entirely without deleting it.
 const PROXIES_ENABLED = (process.env.PROXY_MODE || 'on').toLowerCase() !== 'off';
 
+/** A message with any API key in a quoted URL's query string blanked. */
+function redactKeys(text) {
+  return String(text).replace(/([?&](?:apikey|api_key|key|token)=)[^&\s]+/gi, '$1[redacted]');
+}
+
 class ProxyService {
   constructor() {
     this.proxies = [];
@@ -89,7 +94,8 @@ class ProxyService {
 
   markBad(proxy, reason) {
     this.cooldowns.set(this.proxyKey(proxy), Date.now() + PROXY_COOLDOWN_MS);
-    console.warn(`[ProxyService] Proxy ${this.proxyKey(proxy)} sidelined for ${PROXY_COOLDOWN_MS / 60000} min: ${reason}`);
+    // The reason quotes the URL; a key in its query string stays out of the logs.
+    console.warn(`[ProxyService] Proxy ${this.proxyKey(proxy)} sidelined for ${PROXY_COOLDOWN_MS / 60000} min: ${redactKeys(reason)}`);
   }
 
   agentsFor(proxy) {
