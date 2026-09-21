@@ -65,7 +65,7 @@ describe('Confirmation counting', () => {
   });
 
   test('an unknown chain returns null rather than guessing', () => {
-    assert.strictEqual(confirmationsOf('DOGE', {}), null);
+    assert.strictEqual(confirmationsOf('XYZ', {}), null);
   });
 });
 

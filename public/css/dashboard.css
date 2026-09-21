@@ -3570,6 +3570,9 @@ textarea:user-invalid:focus {
 .dash-table .amt b { display: block; font-weight: 600; color: var(--ink); white-space: nowrap; }
 .dash-table .amt span { font-size: 11.5px; color: var(--ink-3); }
 .dash-table .chain { color: var(--ink-2); white-space: nowrap; }
+/* A dollar token by the chain name, so a scan down the column separates
+   dollars from coin; a bare chain name still means the coin. */
+.dash-table .chain .asset-tag { display: inline-block; margin-left: 6px; font-size: 10px; font-weight: 800; letter-spacing: 0.04em; padding: 1px 5px; border-radius: 4px; border: 1px solid var(--line-strong); color: var(--ink-2); vertical-align: 1px; }
 
 .dash-table .hash {
     font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -4173,6 +4176,8 @@ textarea:user-invalid:focus {
 .wd-src__bal { text-align: right; font-variant-numeric: tabular-nums; }
 .wd-src__bal b { display: block; font-weight: 600; font-size: 13.5px; color: var(--ink); }
 .wd-src__bal span { font-size: 11.5px; color: var(--ink-3); }
+/* the dollar tokens held, under the coin's dollars */
+.wd-src__toks { display: block; }
 
 .wd-tally { display: flex; justify-content: space-between; align-items: baseline; padding: 14px 0 0; font-size: 13px; color: var(--ink-3); }
 .wd-tally b { font-size: 20px; font-weight: 700; color: var(--ink); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
@@ -4223,7 +4228,11 @@ textarea:user-invalid:focus {
     .wd-rail { gap: 8px; }
     .dash-head__actions.wd-avail { text-align: left; padding-top: 0; }
     .wd-src { grid-template-columns: 22px 40px minmax(0, 1fr) auto; }
-    .wd-src__bal { grid-column: 3; text-align: left; }
+    /* The route pill sits by the name; the balance and its token line take
+       the whole second row, so "Direct + on-chain swap" cannot squeeze the
+       figures into a column three digits wide. */
+    .wd-src > .status-pill { grid-column: 4; grid-row: 1; align-self: start; }
+    .wd-src__bal { grid-column: 3 / 5; grid-row: 2; text-align: left; }
     .wd-foot { flex-wrap: wrap; }
 }
 
@@ -4465,6 +4474,11 @@ textarea:user-invalid:focus {
 .wtile__amt { grid-column: 3; grid-row: 1; text-align: right; font-weight: 600; font-size: 13.5px; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .wtile__usd { grid-column: 3; grid-row: 2; text-align: right; font-size: 11px; color: var(--ink-3); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .wtile__usd .held { color: var(--warn); }
+/* The tokens on a tile: a third row under the figures, spanning the name and
+   the amount columns so the name keeps its room. The total above already
+   counts them; this names them. */
+.wtile__toks { grid-column: 2 / 4; grid-row: 3; display: flex; gap: 10px; justify-content: flex-end; margin-top: 2px; flex-wrap: wrap; }
+.wtile__toks em { font-size: 11px; }
 
 /* The state as the site's dot: green active, blue confirming. */
 .wtile__dot {
@@ -4548,6 +4562,13 @@ textarea:user-invalid:focus {
 .wallet-row__bal b { display: block; font-weight: 600; font-size: 13.5px; color: var(--ink); }
 .wallet-row__bal span { font-size: 11.5px; color: var(--ink-3); }
 .wallet-row__bal .held { color: var(--warn); }
+/* The dollar tokens under the coin, only when there are any: a quiet second
+   line, each with a small dollar mark. */
+.wallet-row__bal .toks { display: flex; gap: 10px; justify-content: flex-end; margin-top: 4px; flex-wrap: wrap; }
+.wallet-row__bal .toks em, .wtile__toks em { font-style: normal; font-size: 11.5px; font-weight: 600; color: var(--ink-2); display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+.wallet-row__bal .toks em i { width: 12px; height: 12px; border-radius: 50%; border: 1.5px solid var(--ink-3); display: grid; place-items: center; font-style: normal; font-size: 7px; font-weight: 800; color: var(--ink-3); line-height: 1; }
+/* In the open row: a token is real money that cannot move yet, and says so. */
+.wallet-detail__facts .held-pill { display: inline-flex; align-items: center; gap: 6px; font-size: 10.5px; font-weight: 600; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--line-strong); color: var(--ink-3); margin-left: 8px; vertical-align: 1px; white-space: nowrap; }
 .wallet-row__acts { display: flex; gap: 6px; }
 
 /* Rename, in the name's place. */
@@ -4612,6 +4633,7 @@ textarea:user-invalid:focus {
 @media (max-width: 760px) {
     .wallet-row { grid-template-columns: 40px minmax(0, 1fr) auto; }
     .wallet-row__bal { grid-column: 2; text-align: left; }
+    .wallet-row__bal .toks { justify-content: flex-start; }
     .wallet-row__acts { grid-column: 2 / -1; }
     .wallet-detail__in { grid-template-columns: 1fr; }
 }

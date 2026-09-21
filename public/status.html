@@ -57,6 +57,26 @@
             <div class="service-rows" id="serviceRows"></div>
         </section>
 
+        <!-- Every chain, probed every few minutes: its endpoints, its tip,
+             and the routes off it. Drawn from /api/status/chains. Chains with
+             a problem come first; the healthy rest fold away. -->
+        <section class="status-section" id="chainsSection">
+            <div class="status-section__head">
+                <div>
+                    <h2>Chains</h2>
+                    <p id="chainsSummary">Checking every chain's endpoints and swap routes…</p>
+                </div>
+                <ul class="status-legend" aria-hidden="true">
+                    <li><i class="dot dot--up"></i>Up</li>
+                    <li><i class="dot dot--degraded"></i>Degraded</li>
+                    <li><i class="dot dot--down"></i>Down</li>
+                </ul>
+            </div>
+            <div class="chain-rows" id="chainRows"></div>
+            <button class="chain-more" id="chainMore" type="button" data-on-click="toggleAllChains" hidden></button>
+            <div class="chain-events" id="chainEvents"></div>
+        </section>
+
         <section class="status-section" data-dev-only="true">
             <div class="status-section__head">
                 <div>

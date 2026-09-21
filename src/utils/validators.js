@@ -70,6 +70,10 @@ function isValidBech32(address, expectedPrefixes) {
 const BASE58_BTC = /^[13][a-km-zA-HJ-NP-Z1-9]{25,34}$/;
 const BASE58_LTC = /^[LM3][a-km-zA-HJ-NP-Z1-9]{26,33}$/;
 const BASE58_SOL = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
+// Dogecoin: P2PKH starts with D, P2SH with 9 or A.
+const BASE58_DOGE = /^[DA9][a-km-zA-HJ-NP-Z1-9]{25,34}$/;
+// Bitcoin Cash: CashAddr (with or without its prefix), or a legacy 1…/3… address.
+const CASHADDR_BCH = /^(bitcoincash:)?[qp][a-z0-9]{41}$/i;
 
 const validateCryptoAddress = (address, chain) => {
   if (typeof address !== 'string' || address.length === 0) return false;
@@ -92,6 +96,18 @@ const validateCryptoAddress = (address, chain) => {
 
     case 'SOL':
       return BASE58_SOL.test(address);
+
+    case 'BCH':
+      // CashAddr's checksum is verified properly by the wallet service; this
+      // is the shape check every chain gets here.
+      return CASHADDR_BCH.test(address) || BASE58_BTC.test(address);
+
+    case 'DOGE':
+      return BASE58_DOGE.test(address);
+
+    case 'XRP':
+      // a classic r-address, checksum and all
+      return require('xrpl').isValidClassicAddress(address);
 
     default:
       return false;

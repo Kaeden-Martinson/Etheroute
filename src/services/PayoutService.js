@@ -1,4 +1,5 @@
 const { v4: uuidv4 } = require('uuid');
+const { ethers } = require('ethers');
 const { db } = require('../config/database');
 const SwapService = require('./SwapService');
 const { walletServiceFor, balanceKeyFor } = require('./wallets');
@@ -6,6 +7,8 @@ const chains = require('../config/chains');
 const PriceService = require('./PriceService');
 const TransactionService = require('./TransactionService');
 const SideshiftService = require('./SideshiftService');
+const ThorchainService = require('./ThorchainService');
+const GasFloatService = require('./GasFloatService');
 const KeyVault = require('./crypto/KeyVault');
 const { config } = require('../config/env');
 const { validateChain, validateCryptoAddress } = require('../utils/validators');
@@ -17,6 +20,8 @@ class PayoutService {
     this.swapService = SwapService;
 
     this.sideShift = new SideshiftService(this);
+    this.thorchain = ThorchainService;
+    this.gasFloat = GasFloatService;
 
     // Clients with a withdrawal currently being planned. Two requests that
     // arrive together would each read the same balances, each see no in-flight
@@ -74,15 +79,93 @@ class PayoutService {
   }
 
   /**
+   * The asset a payout settles in, checked against the chain: its coin (the
+   * default) or one of its dollar tokens.
+   */
+  resolvePayoutAsset(payoutChain, payoutAsset) {
+    const chain = chains.get(payoutChain);
+    if (payoutAsset === undefined || payoutAsset === null || payoutAsset === '') return chain.symbol;
+    const wanted = String(payoutAsset).toUpperCase();
+    if (!chains.assetsOf(payoutChain).includes(wanted)) {
+      throw new ValidationError(`payoutAsset must be one of ${chains.assetsOf(payoutChain).join(', ')} for ${chain.name}`);
+    }
+    return wanted;
+  }
+
+  /**
+   * Read every balance a wallet holds from its chain: the coin, and on an
+   * EVM chain the dollar tokens. A read that fails keeps the stored figure.
+   */
+  async refreshHoldings(wallet) {
+    const walletService = this.getWalletService(wallet.chain);
+    try {
+      const balanceResponse = await walletService.getBalance(wallet.address);
+      const balanceValue = this.getBalanceValue(wallet.chain, balanceResponse);
+      console.log(`[PayoutService] Fetched balance for ${wallet.chain} ${wallet.address}: ${balanceValue}`);
+      wallet.balance = balanceValue;
+    } catch (error) {
+      console.warn(`[PayoutService] Could not fetch balance for ${wallet.chain} wallet ${wallet.address}:`, error.message);
+    }
+    if (typeof walletService.getTokenBalances === 'function') {
+      try {
+        wallet.tokenBalances = { ...(wallet.tokenBalances || {}), ...(await walletService.getTokenBalances(wallet.address)) };
+      } catch (error) {
+        console.warn(`[PayoutService] Could not fetch token balances for ${wallet.chain} wallet ${wallet.address}:`, error.message);
+      }
+    }
+    const rate = PriceService.rateFor(wallet.chain);
+    wallet.balanceUSD = (parseFloat(wallet.balance) || 0) * rate;
+    wallet.tokensUSD = Object.values(wallet.tokenBalances || {}).reduce((sum, amount) => sum + (parseFloat(amount) || 0), 0);
+    wallet.holdingsUSD = wallet.balanceUSD + wallet.tokensUSD;
+    return wallet;
+  }
+
+  /**
+   * Whether a wallet can contribute to a payout, and why not when it cannot.
+   * A wallet is eligible when at least one thing it holds has a route to the
+   * payout asset and clears that route's minimum: the platform fee plus gas,
+   * and SideShift's $5 for a shift. It must also have no transaction in
+   * flight. The same rule runs for the preview and the withdrawal, so what
+   * was shown is what runs.
+   */
+  assessWallet(wallet, payoutChain, payoutAsset, gasByChain, busyAddresses = new Set()) {
+    const walletTxs = db.findBy('transactions', { fromAddress: wallet.address });
+    const hasActiveTx = busyAddresses.has(wallet.address) ||
+      walletTxs.some(t => t.status === 'PENDING' || t.status === 'PROCESSING');
+    if (hasActiveTx) return { eligible: false, reason: 'Transaction currently processing' };
+
+    const chain = wallet.chain.toUpperCase();
+    const gasUsd = (gasByChain[chain] || {}).usd;
+    const reasons = [];
+    for (const leg of this.swapService.legsOf(wallet)) {
+      const route = this.swapService.routeFor(chain, leg.asset, payoutChain, payoutAsset);
+      if (route.kind === 'none') {
+        reasons.push(route.reason);
+        continue;
+      }
+      const rate = this.swapService.rateFor(chain, leg.asset);
+      const minBalanceUSD = this.swapService.minimumBalanceUsd(chain, payoutChain, config.payouts.platformFeeRate, gasUsd, route.kind);
+      if (leg.balance * rate >= minBalanceUSD) return { eligible: true };
+      const isDirect = chain === payoutChain;
+      const viaThor = /thorchain/.test(route.kind);
+      reasons.push(isDirect
+        ? `${leg.asset} balance too small to cover the ${chain} network fee (needs about $${minBalanceUSD.toFixed(2)})`
+        : `${leg.asset} needs about $${minBalanceUSD.toFixed(2)} to clear the ${viaThor ? 'cross-chain minimum' : '$5 swap minimum'} plus fees. Cashing out in ${leg.asset} on ${chain} instead avoids the swap.`);
+    }
+    return { eligible: false, reason: reasons[0] || 'Nothing to withdraw' };
+  }
+
+  /**
    * Get withdrawal preview: Calculate withdrawal amounts without creating the payout
    * Used for showing user accurate data before they confirm
    * @param {string} clientId - Client ID
    * @param {string} recipientAddress - Address to receive funds, on payoutChain
    * @param {Array} selectedWalletAddresses - Wallet addresses to withdraw from (optional, defaults to all active)
-   * @param {string} payoutChain - Chain to cash out in: ETH, BTC, LTC or SOL
+   * @param {string} payoutChain - Chain to cash out in
+   * @param {string} [payoutAsset] - Asset on that chain: its coin, or a dollar token it carries
    * @returns {Promise<Object>} Preview data with eligible/ineligible wallets and gas fee calculations
    */
-  async getWithdrawalPreview(clientId, recipientAddress, selectedWalletAddresses, payoutChain = 'ETH') {
+  async getWithdrawalPreview(clientId, recipientAddress, selectedWalletAddresses, payoutChain = 'ETH', payoutAsset = null) {
     console.log(`\n[PayoutService] Getting withdrawal preview for client: ${clientId}`);
 
     const client = db.findOneBy('users', { id: clientId });
@@ -96,6 +179,8 @@ class PayoutService {
     if (!validateCryptoAddress(recipientAddress, payoutChain)) {
       throw new ValidationError(`Invalid ${payoutChain} address format`);
     }
+    const wantedAsset = this.resolvePayoutAsset(payoutChain, payoutAsset);
+    await this.swapService.ready();
 
     // Get all wallets
     let allWallets = db.findBy('wallets', { clientId, isActive: true });
@@ -103,30 +188,16 @@ class PayoutService {
       throw new ValidationError('You have no active wallets to withdraw from. Create one first.');
     }
 
-    const priceService = PriceService;
-
     // Fetch current balances from blockchain
     for (const wallet of allWallets) {
-      try {
-        const walletService = this.getWalletService(wallet.chain);
-        const balanceResponse = await walletService.getBalance(wallet.address);
-        const balanceValue = this.getBalanceValue(wallet.chain, balanceResponse);
-        console.log(`[PayoutService] Fetched balance for ${wallet.chain} ${wallet.address}: ${balanceValue}`);
-        wallet.balance = balanceValue;
-      } catch (error) {
-        console.warn(`[PayoutService] Could not fetch balance for ${wallet.chain} wallet ${wallet.address}:`, error.message);
-      }
+      await this.refreshHoldings(wallet);
     }
 
-    // Calculate USD values for each wallet
-    allWallets.forEach(w => {
-      w.balanceUSD = (parseFloat(w.balance) || 0) * priceService.rateFor(w.chain);
-    });
-
     // Separate eligible and ineligible wallets
-    // A wallet is eligible if its net payout clears the platform fee plus gas,
-    // and - when a swap is involved - SideShift's $5 minimum. A same-chain
-    // payout skips the swap, so it only has to cover the network fee.
+    // A wallet is eligible if something it holds has a route to the payout
+    // asset and clears that route's minimum: the platform fee plus gas, and
+    // - when a shift is involved - SideShift's $5. A same-chain payout skips
+    // the shift, so it only has to cover the network fee.
     // It must also have no currently-processing transactions.
     // Live network costs, fetched once and shared by eligibility and planning
     // so the two cannot disagree.
@@ -136,29 +207,9 @@ class PayoutService {
     const ineligibleWallets = [];
 
     allWallets.forEach(w => {
-      // Reject wallets with an active (PENDING or PROCESSING) transaction
-      const walletTxs = db.findBy('transactions', { fromAddress: w.address });
-      const hasActiveTx = walletTxs.some(t => t.status === 'PENDING' || t.status === 'PROCESSING');
-      if (hasActiveTx) {
-        ineligibleWallets.push({ ...w, ineligibilityReason: 'Transaction currently processing' });
-        return;
-      }
-
-      const minBalanceUSD = this.swapService.minimumBalanceUsd(
-        w.chain.toUpperCase(), payoutChain, config.payouts.platformFeeRate,
-        (gasByChain[w.chain.toUpperCase()] || {}).usd
-      );
-      if (w.balanceUSD >= minBalanceUSD) {
-        eligibleWallets.push(w);
-      } else {
-        const isDirect = w.chain.toUpperCase() === payoutChain;
-        ineligibleWallets.push({
-          ...w,
-          ineligibilityReason: isDirect
-            ? `Balance too small to cover the ${w.chain} network fee (needs about $${minBalanceUSD.toFixed(2)})`
-            : `Needs about $${minBalanceUSD.toFixed(2)} to clear the $5 swap minimum plus fees. Cashing out in ${w.chain} instead avoids the swap.`,
-        });
-      }
+      const verdict = this.assessWallet(w, payoutChain, wantedAsset, gasByChain);
+      if (verdict.eligible) eligibleWallets.push(w);
+      else ineligibleWallets.push({ ...w, ineligibilityReason: verdict.reason });
     });
 
     // Filter by selected wallet addresses if provided
@@ -172,18 +223,23 @@ class PayoutService {
       // Say "selected" only when the caller actually chose wallets - otherwise
       // it reads as though they picked something they did not.
       const subject = hasExplicitSelection ? 'None of the selected wallets have' : 'No wallet has';
-      const alternative = payoutChain === 'ETH'
-        ? 'Cashing out in a chain you already hold avoids the swap and its $5 minimum.'
-        : `A wallet already on ${payoutChain} would be sent directly, with no swap and no $5 minimum.`;
+      const target = chains.get(payoutChain);
+      const served = this.swapService.crossChainRoutes ? ['thorchain', 'sideshift'].filter((p) => this.swapService.served(p, payoutChain, wantedAsset)) : [];
+      const floor = served.includes('thorchain') ? 'its minimum' : 'its $5 minimum';
+      const alternative = served.length === 0
+        ? `${wantedAsset} on ${target.name} has no swap route, so only a wallet already on ${target.name} can be cashed out there.`
+        : payoutChain === 'ETH'
+          ? `Cashing out in a chain you already hold avoids the swap and ${floor}.`
+          : `A wallet already on ${payoutChain} would be sent directly, with no swap and no minimum beyond the network fee.`;
 
-      throw new ValidationError(`${subject} enough balance to cash out in ${payoutChain} after fees. ${alternative}`);
+      throw new ValidationError(`${subject} enough balance to cash out in ${wantedAsset} on ${payoutChain} after fees. ${alternative}`);
     }
 
-    // Calculate totals
-    const totalAmountUsd = selectedWallets.reduce((sum, w) => sum + (w.balanceUSD || 0), 0);
+    // Calculate totals: everything the selected wallets hold
+    const totalAmountUsd = selectedWallets.reduce((sum, w) => sum + (w.holdingsUSD || w.balanceUSD || 0), 0);
 
     // Get withdrawal plan to calculate gas fees
-    const plan = await this.swapService.planBatchWithdrawal(selectedWallets, totalAmountUsd, payoutChain);
+    const plan = await this.swapService.planBatchWithdrawal(selectedWallets, totalAmountUsd, payoutChain, wantedAsset, recipientAddress);
 
     // Calculate gas fees per chain and total
     const gasPerChain = {};
@@ -204,18 +260,22 @@ class PayoutService {
     // net came to differ from the amount really sent.
     const platformFee = plan.transfers.reduce((sum, t) => sum + (t.platformFeeUSD || 0), 0);
     const grossSweptUsd = plan.transfers.reduce((sum, t) => sum + (t.walletValueUSD || 0), 0);
-    const netAmountUsd = grossSweptUsd - platformFee - totalGasUsd;
+    // Gas the float advanced to token-only wallets, charged back in the token.
+    const gasAdvanceUsd = plan.transfers.reduce((sum, t) => sum + (t.gasAdvanceUsd || 0), 0);
+    const netAmountUsd = grossSweptUsd - platformFee - totalGasUsd - gasAdvanceUsd;
 
     return {
       clientId,
       recipientAddress,
       payoutChain,
+      payoutAsset: wantedAsset,
       totalAmountUsd,
       // What is actually swept, after the network fee is reserved. Slightly
       // below the raw balance, and the figure the fee is charged on.
       grossSweptUsd,
       platformFee,
       totalGasUsd,
+      gasAdvanceUsd,
       netAmountUsd,
       gasPerChain,
       platformFeeRate: config.payouts.platformFeeRate,
@@ -225,21 +285,36 @@ class PayoutService {
       // the per-chain lines and the totals disagreed on the same screen.
       transfers: plan.transfers.map(t => ({
         chain: t.chain,
+        asset: t.asset,
         payoutChain: t.payoutChain,
+        payoutAsset: t.payoutAsset,
         type: t.type,
+        route: t.route,
         fromAddress: t.fromAddress,
         grossUsd: t.walletValueUSD || 0,
         platformFeeUsd: t.platformFeeUSD || 0,
+        // The cost line: network fees plus what a swap loses to spread, and
+        // the two apart.
         gasUsd: t.estimatedGas || 0,
-        netUsd: (t.walletValueUSD || 0) - (t.platformFeeUSD || 0) - (t.estimatedGas || 0),
+        networkFeeUsd: t.gasUsd || 0,
+        swapFeeUsd: t.swapFeeUsd || 0,
+        // The gas the float advanced for this wallet's tokens, charged here.
+        gasAdvanceUsd: t.gasAdvanceUsd || 0,
+        netUsd: (t.walletValueUSD || 0) - (t.platformFeeUSD || 0) - (t.estimatedGas || 0) - (t.gasAdvanceUsd || 0),
         nativeAmount: t.nativeAmount,
         expectedOutputAmount: t.expectedOutputAmount,
         gasIsLive: t.gasIsLive !== false,
+        ...(t.dexQuote && { dexQuote: t.dexQuote }),
+        ...(t.crossQuote && { crossQuote: t.crossQuote }),
       })),
+      // Holdings in the selected wallets that stay behind, and why: a token
+      // with no route, a coin kept back for gas, a balance under the minimum.
+      skipped: plan.skipped || [],
       selectedWallets: selectedWallets.map(w => ({
         chain: w.chain,
         address: w.address,
-        balance: w.balance
+        balance: w.balance,
+        tokenBalances: w.tokenBalances || {},
       })),
       eligibleCount: eligibleWallets.length,
       ineligibleCount: ineligibleWallets.length,
@@ -249,7 +324,7 @@ class PayoutService {
         balance: w.balance,
         reason: w.ineligibilityReason || 'Balance too small to cover fees for this payout chain',
       })),
-      message: `You are withdrawing from ${selectedWallets.length} wallet(s) and receiving ${payoutChain}. Total: $${totalAmountUsd.toFixed(2)} USD`
+      message: `You are withdrawing from ${selectedWallets.length} wallet(s) and receiving ${wantedAsset} on ${payoutChain}. Total: $${totalAmountUsd.toFixed(2)} USD`
     };
   }
 
@@ -262,20 +337,20 @@ class PayoutService {
    * @param {Array} selectedWalletAddresses - Wallet addresses to withdraw from (optional, defaults to all eligible)
    * @returns {Promise<Object>} Withdrawal payout with swap details
    */
-  async processWithdrawal(clientId, recipientAddress, selectedWalletAddresses, payoutChain = 'ETH') {
+  async processWithdrawal(clientId, recipientAddress, selectedWalletAddresses, payoutChain = 'ETH', payoutAsset = null) {
     if (this.inFlightClients.has(clientId)) {
       throw new ApiError(409, 'A withdrawal is already being processed for this account. Wait for it to finish before starting another.');
     }
 
     this.inFlightClients.add(clientId);
     try {
-      return await this._processWithdrawal(clientId, recipientAddress, selectedWalletAddresses, payoutChain);
+      return await this._processWithdrawal(clientId, recipientAddress, selectedWalletAddresses, payoutChain, payoutAsset);
     } finally {
       this.inFlightClients.delete(clientId);
     }
   }
 
-  async _processWithdrawal(clientId, recipientAddress, selectedWalletAddresses, payoutChain = 'ETH') {
+  async _processWithdrawal(clientId, recipientAddress, selectedWalletAddresses, payoutChain = 'ETH', payoutAsset = null) {
     console.log(`\n[PayoutService] Starting withdrawal process for client: ${clientId}`);
 
     const client = db.findOneBy('users', { id: clientId });
@@ -291,7 +366,8 @@ class PayoutService {
       console.error(`[PayoutService] Invalid ${payoutChain} address: ${recipientAddress}`);
       throw new ValidationError(`Invalid ${payoutChain} address format`);
     }
-
+    const wantedAsset = this.resolvePayoutAsset(payoutChain, payoutAsset);
+    await this.swapService.ready();
 
     // Get all wallets
     let wallets = db.findBy('wallets', { clientId, isActive: true });
@@ -312,23 +388,8 @@ class PayoutService {
 
     // Fetch current balances from blockchain
     for (const wallet of wallets) {
-      try {
-        const walletService = this.getWalletService(wallet.chain);
-        const balanceResponse = await walletService.getBalance(wallet.address);
-        const balanceValue = this.getBalanceValue(wallet.chain, balanceResponse);
-        console.log(`[PayoutService] Fetched balance for ${wallet.chain} ${wallet.address}: ${balanceValue}`);
-        wallet.balance = balanceValue;
-      } catch (error) {
-        console.warn(`[PayoutService] Could not fetch balance for ${wallet.chain} wallet ${wallet.address}:`, error.message);
-      }
+      await this.refreshHoldings(wallet);
     }
-
-    // Calculate USD values for each wallet using current prices
-    const priceService = PriceService;
-
-    wallets.forEach(w => {
-      w.balanceUSD = (parseFloat(w.balance) || 0) * priceService.rateFor(w.chain);
-    });
 
     // Same eligibility rule as the preview, so what was shown is what runs.
     // Also skip wallets that have an active (PENDING or PROCESSING) transaction
@@ -337,37 +398,23 @@ class PayoutService {
     const busyAddresses = this.addressesInFlight(clientId);
 
     const eligibleWallets = wallets.filter(w => {
-      // Check for active transactions first
-      const walletTxs = db.findBy('transactions', { fromAddress: w.address });
-      const hasActiveTx = busyAddresses.has(w.address) ||
-        walletTxs.some(t => t.status === 'PENDING' || t.status === 'PROCESSING');
-      if (hasActiveTx) {
-        console.log(`  - ${w.chain}: ${w.address} SKIP (transaction currently processing)`);
-        return false;
-      }
-
-      const balanceUSD = w.balanceUSD || 0;
-      const minBalanceUSD = this.swapService.minimumBalanceUsd(
-        w.chain.toUpperCase(), payoutChain, config.payouts.platformFeeRate,
-        (gasByChain[w.chain.toUpperCase()] || {}).usd
-      );
-      const isEligible = balanceUSD >= minBalanceUSD;
-      console.log(`  - ${w.chain}: ${w.balance} (${w.address}) = $${balanceUSD.toFixed(2)} USD ${isEligible ? '✓' : `SKIP (need $${minBalanceUSD.toFixed(2)} for net $5 after fee+gas)`}`);
-      return isEligible;
+      const verdict = this.assessWallet(w, payoutChain, wantedAsset, gasByChain, busyAddresses);
+      console.log(`  - ${w.chain}: ${w.balance} (${w.address}) = $${(w.holdingsUSD || 0).toFixed(2)} USD ${verdict.eligible ? '✓' : `SKIP (${verdict.reason})`}`);
+      return verdict.eligible;
     });
 
     if (eligibleWallets.length === 0) {
       console.error(`[PayoutService] No wallets with sufficient balance for net $5 after fee and gas`);
-      throw new ValidationError(`No wallet has enough balance to cash out in ${payoutChain} after fees. Cashing out in a chain you already hold avoids the swap and its $5 minimum.`);
+      throw new ValidationError(`No wallet has enough balance to cash out in ${wantedAsset} on ${payoutChain} after fees. Cashing out in a chain you already hold avoids the swap and its minimum.`);
     }
 
-    eligibleWallets.forEach(w => console.log(`  - ${w.chain}: $${(w.balanceUSD || 0).toFixed(2)}`))
+    eligibleWallets.forEach(w => console.log(`  - ${w.chain}: $${(w.holdingsUSD || 0).toFixed(2)}`))
 
     // Calculate total USD amount from eligible wallets
-    let totalAmountUsd = eligibleWallets.reduce((sum, w) => sum + (w.balanceUSD || 0), 0);
+    let totalAmountUsd = eligibleWallets.reduce((sum, w) => sum + (w.holdingsUSD || w.balanceUSD || 0), 0);
 
     // Create withdrawal plan
-    const plan = await this.swapService.planBatchWithdrawal(eligibleWallets, totalAmountUsd, payoutChain);
+    const plan = await this.swapService.planBatchWithdrawal(eligibleWallets, totalAmountUsd, payoutChain, wantedAsset, recipientAddress);
 
     // Calculate estimated total gas for the plan
     const estimatedTotalGas = plan.transfers.reduce((sum, t) => sum + (t.estimatedGas || 0), 0);
@@ -376,8 +423,9 @@ class PayoutService {
     const platformFee = plan.transfers.reduce((sum, t) => sum + (t.platformFeeUSD || 0), 0);
     const grossSweptUsd = plan.transfers.reduce((sum, t) => sum + (t.walletValueUSD || 0), 0);
 
-    const netAmountUsd = grossSweptUsd - platformFee - estimatedTotalGas;
-    console.log(`[PayoutService] Fee calculation: Total=$${totalAmountUsd.toFixed(2)}, Fee=$${platformFee.toFixed(2)}, Gas=${estimatedTotalGas.toFixed(2)}, Net=$${netAmountUsd.toFixed(2)}`);
+    const gasAdvanceUsd = plan.transfers.reduce((sum, t) => sum + (t.gasAdvanceUsd || 0), 0);
+    const netAmountUsd = grossSweptUsd - platformFee - estimatedTotalGas - gasAdvanceUsd;
+    console.log(`[PayoutService] Fee calculation: Total=$${totalAmountUsd.toFixed(2)}, Fee=$${platformFee.toFixed(2)}, Gas=${estimatedTotalGas.toFixed(2)}, Advance=${gasAdvanceUsd.toFixed(2)}, Net=$${netAmountUsd.toFixed(2)}`);
 
     const payout = {
       id: uuidv4(),
@@ -389,6 +437,7 @@ class PayoutService {
       grossSweptUsd,
       chain: payoutChain,
       payoutChain,
+      payoutAsset: wantedAsset,
       status: 'PENDING',
       type: 'WITHDRAWAL',
       withdrawalPlan: plan,
@@ -396,15 +445,19 @@ class PayoutService {
       createdAt: new Date().toISOString(),
       completedAt: null,
       estimatedTotalGas,
+      gasAdvanceUsd,
     };
 
     const self = this;
     payout.withdrawalPlan.transfers = await Promise.all(payout.withdrawalPlan.transfers.map(async (t) => {
       const swapDetails = await self.swapService.executeSwap({
         chain: t.chain,
+        asset: t.asset,
         wallet: { address: t.fromAddress },
         recipientAddress,
         payoutChain,
+        payoutAsset: wantedAsset,
+        route: t.route,
         nativeAmount: t.nativeAmount,
       });
 
@@ -412,7 +465,7 @@ class PayoutService {
       if (order.type === 'fixed' && order.depositAmount) {
         // The shift settles exactly this deposit at exactly this rate. Make
         // the plan say so, so what is recorded, sent and shown all agree.
-        const payoutRate = PriceService[`${payoutChain.toLowerCase()}ToUsdRate`] || 0;
+        const payoutRate = self.swapService.rateFor(payoutChain, wantedAsset);
         return {
           ...t,
           nativeAmount: Number(order.depositAmount),
@@ -489,15 +542,24 @@ class PayoutService {
           continue;
         }
 
+        const asset = transfer.asset || chains.get(transfer.chain).symbol;
+        const isToken = asset !== chains.get(transfer.chain).symbol;
+
         // Fetch current balance from blockchain before attempting transfer
         try {
           const walletService = this.getWalletService(transfer.chain);
-          const balanceResponse = await walletService.getBalance(transfer.fromAddress);
-          const currentBalance = this.getBalanceValue(transfer.chain, balanceResponse);
-          console.log(`[PayoutService] Current balance on-chain: ${currentBalance} ${transfer.chain}`);
-          
+          let currentBalance;
+          if (isToken) {
+            const held = await walletService.getTokenBalances(transfer.fromAddress);
+            currentBalance = parseFloat(held[asset]) || 0;
+          } else {
+            const balanceResponse = await walletService.getBalance(transfer.fromAddress);
+            currentBalance = this.getBalanceValue(transfer.chain, balanceResponse);
+          }
+          console.log(`[PayoutService] Current balance on-chain: ${currentBalance} ${asset} (${transfer.chain})`);
+
           if (parseFloat(currentBalance) < parseFloat(transfer.nativeAmount)) {
-            skip(transfer, 'INSUFFICIENT_FUNDS', `Have ${currentBalance} ${transfer.chain}, need ${transfer.nativeAmount} ${transfer.chain}`);
+            skip(transfer, 'INSUFFICIENT_FUNDS', `Have ${currentBalance} ${asset}, need ${transfer.nativeAmount} ${asset} on ${transfer.chain}`);
             continue;
           }
         } catch (balanceError) {
@@ -505,7 +567,7 @@ class PayoutService {
           // Continue anyway, let the transfer attempt fail with proper error
         }
 
-        console.log(`\n[PayoutService] Broadcasting ${transfer.chain} transfer: ${transfer.nativeAmount} ${transfer.chain}`);
+        console.log(`\n[PayoutService] Broadcasting ${transfer.chain} ${transfer.route || 'transfer'}: ${transfer.nativeAmount} ${asset}`);
 
         // Extract and validate deposit address
         const depositAddress = transfer.swapDetails?.sideshiftOrder?.depositAddress;
@@ -530,19 +592,64 @@ class PayoutService {
           continue;
         }
 
+        // The coin this wallet's tokens need, advanced by the float right
+        // before they move. Charged to this leg already; if the advance
+        // itself fails, the leg cannot run.
+        let gasAdvanceTxHash = null;
+        if (transfer.gasTopUp && transfer.gasTopUp.amountNative > 0) {
+          try {
+            gasAdvanceTxHash = await this.gasFloat.topUp(transfer.chain, transfer.fromAddress, transfer.gasTopUp.amountNative);
+            this._updatePayoutTransfer(payoutId, transfer.fromAddress, { gasAdvanceTxHash });
+          } catch (advanceError) {
+            skip(transfer, 'GAS_ADVANCE_FAILED', `The gas float could not fund ${transfer.fromAddress} on ${transfer.chain}: ${advanceError.message}`);
+            continue;
+          }
+        }
+
         let txHash;
+        let preSwap = null;
+        let thorSwap = null;
         try {
-          txHash = await this.sendTransfer(transfer.chain, sourceWallet, depositAddress, sendAmount);
+          if (transfer.route === 'dex') {
+            // The router pays the recipient; the swap is the transfer.
+            txHash = await this.sendDexSwap(transfer, sourceWallet, asset, transfer.payoutAsset, depositAddress, transfer.nativeAmount);
+          } else if (transfer.route === 'thorchain') {
+            // A deposit to THORChain's vault with the memo; the network pays
+            // the recipient.
+            thorSwap = await this.sendThorchainDeposit(transfer, sourceWallet, asset, transfer.nativeAmount, recipientAddress);
+            txHash = thorSwap.hash;
+          } else if (transfer.route === 'dex+thorchain') {
+            // Swap the token for the chain's coin into the wallet itself,
+            // then deposit what came out.
+            preSwap = await this.swapToCoin(transfer, sourceWallet, asset, transfer.nativeAmount);
+            thorSwap = await this.sendThorchainDeposit(transfer, sourceWallet, chains.get(transfer.chain).symbol, preSwap.received, recipientAddress);
+            txHash = thorSwap.hash;
+          } else if (transfer.route === 'dex+sideshift') {
+            // Swap the token for the chain's coin into the wallet itself,
+            // then shift what came out.
+            preSwap = await this.swapToCoin(transfer, sourceWallet, asset, transfer.nativeAmount);
+            const coinAmount = this.clampToShift(preSwap.received, order);
+            if (!coinAmount) {
+              skip(transfer, 'BELOW_SHIFT_MINIMUM', `The swap yielded ${preSwap.received} ${chains.get(transfer.chain).symbol}, under the shift's minimum ${order.depositMin}`);
+              continue;
+            }
+            txHash = await this.sendTransfer(transfer.chain, sourceWallet, depositAddress, coinAmount);
+          } else {
+            // A shift's deposit may carry a tag (the XRP Ledger tells
+            // deposits apart by one); a direct send never does.
+            const tag = transfer.route === 'sideshift' ? order.extraId : null;
+            txHash = await this.sendTransfer(transfer.chain, sourceWallet, depositAddress, sendAmount, asset, tag ? { destinationTag: tag } : {});
+          }
         } catch (broadcastError) {
           const errorMsg = broadcastError.message;
-          
+
           // Check for insufficient funds error
           if (errorMsg.includes('insufficient lamports') || 
               errorMsg.includes('insufficient funds') ||
               errorMsg.includes('insufficient balance')) {
-            
+
             console.error(`[PayoutService] ✗ INSUFFICIENT FUNDS: ${transfer.chain} transfer failed`);
-            
+
             // Create the transaction record
             const transaction = TransactionService.createTransaction(
               sourceWallet.clientId,
@@ -554,14 +661,15 @@ class PayoutService {
               transfer.transactionValueUSD,
               transfer.fromAddress,
               depositAddress,
-              recipientAddress
+              recipientAddress,
+              { asset, route: transfer.route, preSwapTxHash: preSwap && preSwap.hash }
             );
-            
+
             // Mark as FAILED immediately with reason
             TransactionService.markTransactionFailed(
               transaction.id,
               'INSUFFICIENT_FUNDS',
-              `Not enough ${transfer.chain} to cover transfer amount + network fees`
+              `Not enough ${asset} on ${transfer.chain} to cover the amount plus network fees`
             );
 
             this._updatePayoutTransfer(payoutId, transfer.fromAddress, {
@@ -589,7 +697,8 @@ class PayoutService {
                 transfer.transactionValueUSD,
                 transfer.fromAddress,
                 depositAddress,
-                recipientAddress
+                recipientAddress,
+                { asset, route: transfer.route, preSwapTxHash: preSwap && preSwap.hash }
               );
               TransactionService.markTransactionFailed(transaction.id, 'BROADCAST_FAILED', errorMsg);
               this._updatePayoutTransfer(payoutId, transfer.fromAddress, {
@@ -623,7 +732,8 @@ class PayoutService {
           transfer.transactionValueUSD,
           transfer.fromAddress,
           depositAddress,
-          recipientAddress
+          recipientAddress,
+          { asset, route: transfer.route, preSwapTxHash: preSwap && preSwap.hash }
         );
 
         // Immediately mark as PROCESSING (broadcast confirmed)
@@ -633,6 +743,9 @@ class PayoutService {
           transactionId: transaction.id,
           status: 'PROCESSING',
           txHash,
+          ...(preSwap && { preSwapTxHash: preSwap.hash, preSwapReceived: preSwap.received }),
+          ...(thorSwap && { thorSwap: { vault: thorSwap.vault, memo: thorSwap.memo, expectedOut: thorSwap.expectedOut, minOut: thorSwap.minOut } }),
+          ...(gasAdvanceTxHash && { gasAdvanceTxHash }),
         });
 
         transactionIds.push(transaction.id);
@@ -690,14 +803,131 @@ class PayoutService {
   /**
    * Broadcast a transfer from a wallet on `chain`. Every family's service
    * takes (privateKey, to, amount) and returns a hash - directly, or in
-   * `{ hash }` for the EVM family.
+   * `{ hash }` for the EVM family. A dollar token goes through the EVM
+   * service's token send.
    */
-  async sendTransfer(chain, wallet, toAddress, amount) {
+  async sendTransfer(chain, wallet, toAddress, amount, asset = null, options = {}) {
     const service = walletServiceFor(chain);
-    const result = await service.sendTransaction(wallet.privateKey, toAddress, amount);
+    const isToken = asset && asset !== chains.get(chain).symbol;
+    const result = isToken
+      ? await service.sendToken(wallet.privateKey, asset, toAddress, amount)
+      : await service.sendTransaction(wallet.privateKey, toAddress, amount, { ...PayoutService.signingKeys(wallet), ...options });
     const hash = result && typeof result === 'object' ? result.hash : result;
     if (!hash) throw new Error(`${chain} transfer returned no transaction hash`);
     return hash;
+  }
+
+  /**
+   * Swap `amount` of `from` for `to` on the transfer's chain, paid to
+   * `recipient`, from the wallet. Quoted fresh here: the preview's route is
+   * minutes old and its calldata carries a deadline. A token is approved to
+   * the router first, for exactly this amount. Returns the swap's hash.
+   */
+  async sendDexSwap(transfer, wallet, from, to, recipient, amount) {
+    const service = walletServiceFor(transfer.chain);
+    const quote = await this.swapService.dex.quote({ chain: transfer.chain, from, to, amount, sender: wallet.address, recipient });
+    console.log(`[PayoutService] ${transfer.chain} swap via ${quote.provider}: ${quote.amountIn} ${from} -> ${quote.amountOut} ${to} (min ${quote.minAmountOut}) to ${recipient}`);
+    if (quote.approval) {
+      const approvalHash = await service.ensureAllowance(wallet.privateKey, quote.approval.token, quote.approval.spender, quote.approval.amountUnits);
+      if (approvalHash) console.log(`[PayoutService] ${from} approved to ${quote.approval.spender}: ${approvalHash}`);
+    }
+    const gasLimit = quote.gasUnits ? Math.ceil(quote.gasUnits * 1.3) : null;
+    const sent = await service.sendCall(wallet.privateKey, { to: quote.tx.to, data: quote.tx.data, value: quote.tx.value, gasLimit }, `${from} to ${to} swap`);
+    return sent.hash;
+  }
+
+  /**
+   * What a family that signs with more than the private key needs beside
+   * it: the XRP Ledger wants the public key (or the seed phrase) too.
+   */
+  static signingKeys(wallet) {
+    return { publicKey: wallet.publicKey || null, mnemonic: wallet.seedPhrase || null };
+  }
+
+  /**
+   * Pay `amount` of `asset` into THORChain for `recipient`, quoted fresh so
+   * the vault and the memo's floor are current. A UTXO or Solana wallet
+   * sends to the vault with the memo attached; an EVM wallet calls the
+   * router's deposit, approving a token to it first. Returns the hash and
+   * the quote it ran on.
+   */
+  async sendThorchainDeposit(transfer, wallet, asset, amount, recipient) {
+    const chain = transfer.chain;
+    const spec = chains.get(chain);
+    const quote = await this.thorchain.quote({ fromChain: chain, fromAsset: asset, toChain: transfer.payoutChain, toAsset: transfer.payoutAsset, amount, destination: recipient });
+    if (quote.recommendedMin && Number(amount) < quote.recommendedMin) {
+      throw new Error(`THORChain needs at least ${quote.recommendedMin} ${asset} on ${chain}; ${amount} is too little`);
+    }
+    if (quote.expiry * 1000 <= Date.now()) throw new Error('THORChain quote expired before broadcast');
+    console.log(`[PayoutService] THORChain deposit ${amount} ${asset}@${chain} -> ${quote.expectedOut} ${transfer.payoutAsset}@${transfer.payoutChain} · vault ${quote.inboundAddress} · memo ${quote.memo}`);
+
+    const service = walletServiceFor(chain);
+    let hash;
+    if (spec.family === 'evm') {
+      const isToken = asset !== spec.symbol;
+      const token = isToken ? chains.tokenOf(chain, asset) : null;
+      const units = isToken
+        ? ethers.parseUnits(Number(amount).toFixed(token.decimals), token.decimals)
+        : ethers.parseEther(Number(amount).toFixed(18));
+      if (!quote.router) throw new Error(`THORChain has no router on ${spec.name}`);
+      if (isToken) await service.ensureAllowance(wallet.privateKey, token.contract, quote.router, units.toString());
+      const data = ThorchainService.ThorchainService.depositCalldata({ vault: quote.inboundAddress, token: token ? token.contract : null, amountUnits: units.toString(), memo: quote.memo, expiry: quote.expiry });
+      const sent = await service.sendCall(wallet.privateKey, { to: quote.router, data, value: isToken ? 0n : units, gasLimit: isToken ? 120_000 : 90_000 }, 'THORChain deposit');
+      hash = sent.hash;
+    } else {
+      const result = await service.sendTransaction(wallet.privateKey, quote.inboundAddress, amount, { ...PayoutService.signingKeys(wallet), memo: quote.memo });
+      hash = result && typeof result === 'object' ? result.hash : result;
+    }
+    if (!hash) throw new Error(`${chain} THORChain deposit returned no transaction hash`);
+    return { hash, vault: quote.inboundAddress, memo: quote.memo, expectedOut: quote.expectedOut, minOut: quote.minOut };
+  }
+
+  /**
+   * Where an order stands, whoever holds it: THORChain by the deposit's
+   * hash, a Sideshift shift by its id, a direct transfer or on-chain swap by
+   * its receipt. One-element array, the shape Sideshift's list gives.
+   */
+  async orderStatus(orderId, txHash, chain) {
+    if (/^thor_/.test(String(orderId || ''))) {
+      if (!txHash) throw new Error('A THORChain order requires its deposit hash');
+      const seen = await this.thorchain.status(txHash);
+      // waiting / swapping keep the monitor going; settled and refunded end it
+      const status = seen.status === 'swapping' ? 'processing' : seen.status;
+      return [{ id: orderId, status, type: 'thorchain', chain, transactionHash: txHash, outTxs: seen.outTxs }];
+    }
+    return this.sideShift.getOrderStatus(orderId, txHash, chain);
+  }
+
+  /**
+   * Swap a token for the chain's coin into the wallet itself and wait for
+   * it to land. What arrived is the coin balance's rise plus the gas the
+   * swap burned, so the figure is exact rather than the quote's floor.
+   */
+  async swapToCoin(transfer, wallet, from, amount) {
+    const service = walletServiceFor(transfer.chain);
+    const coin = chains.get(transfer.chain).symbol;
+    const before = this.getBalanceValue(transfer.chain, await service.getBalance(wallet.address));
+    const hash = await this.sendDexSwap(transfer, wallet, from, coin, wallet.address, amount);
+    const receipt = await service.waitForReceipt(hash);
+    if (!receipt) throw new Error(`Swap ${hash} was not mined in time`);
+    if (receipt.status !== 1) throw new Error(`Swap ${hash} reverted`);
+    const after = this.getBalanceValue(transfer.chain, await service.getBalance(wallet.address));
+    const gasSpent = Number(receipt.gasUsed * (receipt.gasPrice || 0n)) / 1e18;
+    const received = Math.max(0, after - before + gasSpent);
+    console.log(`[PayoutService] Swap ${hash} landed: ${received} ${coin} received`);
+    return { hash, received, receipt };
+  }
+
+  /**
+   * The coin amount to deposit into a variable shift from what a swap
+   * yielded: within the shift's range, or null when under its minimum. The
+   * send's own fee comes off the reserve, not this figure.
+   */
+  clampToShift(received, order) {
+    const amount = Number(received) || 0;
+    if (order.depositMin != null && amount < Number(order.depositMin)) return null;
+    if (order.depositMax != null && amount > Number(order.depositMax)) return Number(order.depositMax);
+    return amount > 0 ? amount : null;
   }
 
   async monitorTransactionConfirmation(payoutId, transactionIds, transfers) {
@@ -728,8 +958,8 @@ class PayoutService {
             failureReason = 'MISSING_ORDER_ID';
           } else {
             try {
-              const orderResponse = await this.sideShift.getOrderStatus(orderId, txHash, transfer.chain);
-              const orderStatus = orderResponse[0]; // Sideshift API returns an array of orders
+              const orderResponse = await this.orderStatus(orderId, txHash, transfer.chain);
+              const orderStatus = orderResponse[0]; // one order, whoever holds it
 
               console.log(`[PayoutService] Order ${orderId} status: ${orderStatus.status}`);
 
@@ -851,9 +1081,9 @@ class PayoutService {
     if (!transaction.orderId) return 'pending';
 
     const txHash = transaction.transactionHash;
-    if (transaction.orderId.startsWith('direct_transfer_') && !txHash) return 'pending';
+    if ((SideshiftService.isOnChainOrder(transaction.orderId) || /^thor_/.test(transaction.orderId)) && !txHash) return 'pending';
 
-    const response = await this.sideShift.getOrderStatus(transaction.orderId, txHash, transaction.chain);
+    const response = await this.orderStatus(transaction.orderId, txHash, transaction.chain);
     const status = response && response[0] && response[0].status;
     const outcome = PayoutService.classifyOrderStatus(status);
 
@@ -906,7 +1136,7 @@ class PayoutService {
       status,
       updatedAt: new Date().toISOString(),
     };
-    
+
     if (status === 'COMPLETED' || status === 'PARTIAL' || status === 'FAILED') {
       updates.completedAt = new Date().toISOString();
     }
@@ -915,9 +1145,9 @@ class PayoutService {
     if (!payout) {
       throw new Error(`Payout with ID ${payoutId} not found`);
     }
-    
+
     console.log(`[PayoutService] Updated payout ${payoutId}: status=${status}, completedAt=${updates.completedAt || 'null'}`);
-    
+
     return payout;
   }
 
@@ -937,16 +1167,28 @@ class PayoutService {
    * wallet, not a USD share worked back through the price feed.
    */
   _recordServiceFee(wallet, transfer) {
-    const feeNative = Number(transfer.platformFeeNative) || 0;
+    // The fee, plus the gas the float advanced and this leg paid back in
+    // its asset: both stay in the wallet and both are the platform's.
+    const advance = transfer.gasTopUp && Number(transfer.gasTopUp.chargedInAsset) > 0 ? Number(transfer.gasTopUp.chargedInAsset) : 0;
+    const feeNative = (Number(transfer.platformFeeNative) || 0) + advance;
     if (!wallet || feeNative <= 0) return;
 
     const current = db.getById('wallets', wallet.id);
     if (!current) return;
 
-    db.update('wallets', wallet.id, {
-      serviceSubtractions: (current.serviceSubtractions || 0) + feeNative,
-    });
-    console.log(`[PayoutService] Service fee recorded for wallet ${wallet.id} (${transfer.chain}): ${feeNative.toFixed(8)} ${transfer.chain}`);
+    // The fee is in the asset the leg sent: the coin's fee is tracked in the
+    // coin, a token's fee in that token.
+    const asset = transfer.asset || chains.get(transfer.chain).symbol;
+    if (asset !== chains.get(transfer.chain).symbol) {
+      const held = { ...(current.serviceSubtractionsTokens || {}) };
+      held[asset] = (Number(held[asset]) || 0) + feeNative;
+      db.update('wallets', wallet.id, { serviceSubtractionsTokens: held });
+    } else {
+      db.update('wallets', wallet.id, {
+        serviceSubtractions: (current.serviceSubtractions || 0) + feeNative,
+      });
+    }
+    console.log(`[PayoutService] Service fee recorded for wallet ${wallet.id} (${transfer.chain}): ${feeNative.toFixed(8)} ${asset}`);
   }
 
   /**

@@ -901,6 +901,10 @@ body {
     max-width: 1188px;
     margin: 0 auto;
     padding: 80px 24px;
+    /* The figure's orbit is drawn 70px past its box; at the widths where
+       the box meets the viewport edge that gave the page a sideways
+       scroll. Clip sideways only, so nothing above or below is touched. */
+    overflow-x: clip;
 }
 
 /* Left-aligned. Breaking the centre axis at the top sets up the asymmetry

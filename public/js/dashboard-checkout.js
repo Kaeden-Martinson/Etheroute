@@ -150,12 +150,19 @@ function drawCheckoutQuote() {
     }
 
     const rate = `${usd(quote.usdRate)} / ${esc(symbol)}`;
+    const tokens = chainTokens(chain);
     if (amount > 0) {
         // The server's own rounding, so the figure here is the one the ready panel will show.
         const figure = inUsd
             ? `${esc(String(parseFloat((amount / quote.usdRate).toFixed(8))))} ${esc(symbol)}`
             : usd(parseFloat((amount * quote.usdRate).toFixed(6)));
-        text.innerHTML = `\u2248 <b>${figure}</b> at ${rate}`;
+        // ...and the same money in the chain's dollar tokens, which is the
+        // dollar figure itself: a dollar is a dollar.
+        const dollars = inUsd ? amount : parseFloat((amount * quote.usdRate).toFixed(6));
+        const orTokens = tokens.length > 0
+            ? ` \u00b7 or <b>${esc(Number(dollars).toFixed(2))}</b> in ${tokens.map(esc).join(' or ')}`
+            : '';
+        text.innerHTML = `\u2248 <b>${figure}</b> at ${rate}${orTokens}`;
     } else {
         text.innerHTML = `1 ${esc(symbol)} = <b>${usd(quote.usdRate)}</b> right now. The ${inUsd ? esc(symbol) : 'USD'} figure is fixed when the link is made.`;
     }
@@ -203,15 +210,28 @@ function syncCheckoutCurrencyLabel() {
     drawCheckoutQuote();
     if (chain && !checkoutQuote) loadCheckoutQuote();
 
-    // Every chain in the registry takes a manual payment today (an EVM chain
-    // with no index is read over RPC); the wording stays for one that cannot.
+    // What the wallet takes. On a chain with dollar tokens the customer
+    // picks between the coin and the tokens on the payment page; the merchant
+    // has nothing to choose here, only to know. (Every chain in the registry
+    // takes a manual payment today; the wording for one that could not stays.)
     const hint = document.getElementById('checkoutWalletHint');
     const info = CHAIN_INFO[chain];
     if (hint) {
-        hint.textContent = info && !info.manualCheckout
-            ? `${info.name} has no free transaction index: payments are verified only when the customer pays from a connected wallet on the checkout page.`
-            : "The customer pays in this wallet's coin and it settles here.";
+        const tokens = chainTokens(chain);
+        if (info && !info.manualCheckout) {
+            hint.textContent = `${info.name} has no free transaction index: payments are verified only when the customer pays from a connected wallet on the checkout page.`;
+        } else if (tokens.length > 0) {
+            hint.innerHTML = `The customer pays into this wallet, in <b>${esc(symbol)}, ${tokens.map(esc).join(' or ')}</b> \u2014 their choice on the payment page. It settles here.`;
+        } else {
+            hint.textContent = "The customer pays in this wallet's coin and it settles here.";
+        }
     }
+}
+
+/** The dollar tokens a chain's wallets take, by symbol; none outside the EVM chains. */
+function chainTokens(chain) {
+    const info = CHAIN_INFO[chain];
+    return info && Array.isArray(info.tokens) ? info.tokens.map((t) => t.symbol) : [];
 }
 
 /**
@@ -297,7 +317,7 @@ function renderCheckoutSessions() {
     const needle = checkoutSearch.trim().toLowerCase();
     const shown = checkoutSessionsCache
         .filter((sn) => checkoutFilter !== 'open' || OPEN_STATUSES.includes(sn.status))
-        .filter((sn) => !needle || [sn.reference, sn.chain, sn.chainName, sn.chainSymbol, sn.nativeAmount, sn.usdAmount, sn.status, sn.sessionId]
+        .filter((sn) => !needle || [sn.reference, sn.chain, sn.chainName, sn.chainSymbol, sn.paidAsset, sn.nativeAmount, sn.usdAmount, sn.status, sn.sessionId]
             .filter(Boolean).join(' ').toLowerCase().includes(needle))
         .slice()
         .sort((x, y) => new Date(y.createdAt) - new Date(x.createdAt));
@@ -359,7 +379,7 @@ function renderCheckoutRow(session) {
     return `
         <tr class="row${changed ? ' changed' : ''}" tabindex="0" aria-expanded="${expanded ? 'true' : 'false'}" aria-controls="${esc(detailId)}" data-session="${esc(session.sessionId)}">
             <td class="ref"><b>${esc(session.reference || '\u2014')}</b><span>${esc(session.chainName || session.chain)}</span></td>
-            <td class="amt num"><b>${session.usdAmount != null ? '$' + Number(session.usdAmount).toFixed(2) : '\u2014'}</b><span>${esc(session.nativeAmount)} ${esc(symbol)}</span></td>
+            <td class="amt num"><b>${session.usdAmount != null ? '$' + Number(session.usdAmount).toFixed(2) : '\u2014'}</b><span>${paidIn(session, symbol)}</span></td>
             <td class="st"><span class="status-pill status-pill--${esc(pillStatus)}">${esc(label)}</span>${sub ? `<span class="st__sub">${sub}</span>` : ''}</td>
             <td class="when"><b>${esc(when.day)}</b><span>${esc(when.time)}${isOpen ? ` \u00b7 expires ${esc(formatWhen(session.expiresAt))}` : ''}</span></td>
             <td><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg></td>
@@ -374,13 +394,37 @@ function renderCheckoutRow(session) {
  * Everything known about one link: what was asked for, what arrived, the
  * transaction it arrived in, who sent it, and when each step happened.
  */
+/** The list row's small print: the coin figure, or what was actually paid when it was a token. */
+function paidIn(session, symbol) {
+    const asset = session.paidAsset || session.pendingAsset;
+    if (asset && asset !== symbol && session.paidAmount != null) return `${esc(Number(session.paidAmount).toFixed(2))} ${esc(asset)}`;
+    if (asset && asset !== symbol) return `in ${esc(asset)}`;
+    const ways = session.amounts ? Object.keys(session.amounts).filter((a) => a !== symbol) : [];
+    return `${esc(session.nativeAmount)} ${esc(symbol)}${ways.length ? ` <span class="muted">or ${ways.map(esc).join('/')}</span>` : ''}`;
+}
+
+/** The Requested fact: every way the link can be paid, when there is more than one. */
+function requestedText(session, symbol, muted) {
+    const amounts = session.amounts && typeof session.amounts === 'object' ? session.amounts : null;
+    const tokens = amounts ? Object.keys(amounts).filter((a) => a !== symbol) : [];
+    const coin = `${esc(session.nativeAmount)} ${esc(symbol)}`;
+    if (tokens.length === 0 || session.usdAmount == null) {
+        return `${coin}${session.usdAmount != null ? ` ${muted('\u00b7 $' + Number(session.usdAmount).toFixed(2))}` : ''}`;
+    }
+    return `$${esc(Number(session.usdAmount).toFixed(2))} ${muted(`\u00b7 ${coin}, ${tokens.map((t) => `${esc(Number(amounts[t]).toFixed(2))} ${esc(t)}`).join(' or ')}`)}`;
+}
+
 function renderCheckoutDetails(session, url) {
     const chain = session.chain;
     const symbol = session.chainSymbol || symbolFor(chain);
     const txHash = session.paidTxHash || session.pendingTxHash;
     const explorer = txHash && EXPLORERS[chain] ? EXPLORERS[chain](txHash) : null;
+    // What arrived is measured against its own figure: the coin's, or a
+    // dollar token's, which is the dollars.
+    const paidAsset = session.paidAsset || session.pendingAsset || null;
+    const paidSymbol = paidAsset && paidAsset !== symbol ? paidAsset : symbol;
     const received = session.paidAmount != null ? Number(session.paidAmount) : null;
-    const requested = Number(session.nativeAmount);
+    const requested = paidAsset && session.amounts && session.amounts[paidAsset] != null ? Number(session.amounts[paidAsset]) : Number(session.nativeAmount);
     const shortfall = received != null && received < requested ? requested - received : 0;
     const required = Number(session.requiredConfirmations) || 1;
     const confirmations = Number(session.confirmations) || 0;
@@ -391,8 +435,8 @@ function renderCheckoutDetails(session, url) {
     const muted = (text) => `<span class="muted">${text}</span>`;
 
     const facts = [
-        fact('Requested', `${esc(session.nativeAmount)} ${esc(symbol)}${session.usdAmount != null ? ` ${muted('\u00b7 $' + Number(session.usdAmount).toFixed(2))}` : ''}`),
-        fact('Received', received == null ? muted('Nothing yet') : `${esc(received)} ${esc(symbol)}${shortfall > 0 ? ` <span class="shortfall">short by ${esc(Number(shortfall.toFixed(8)))} ${esc(symbol)}</span>` : ' \u00b7 exact'}`),
+        fact('Requested', requestedText(session, symbol, muted)),
+        fact('Received', received == null ? muted('Nothing yet') : `${esc(received)} ${esc(paidSymbol)}${shortfall > 0 ? ` <span class="shortfall">short by ${esc(Number(shortfall.toFixed(8)))} ${esc(paidSymbol)}</span>` : ' \u00b7 exact'}`),
         fact('Transaction', txHash ? (explorer ? `<a href="${esc(explorer)}" target="_blank" rel="noopener noreferrer">${esc(txHash.slice(0, 10))}\u2026${esc(txHash.slice(-6))}</a>` : `<span class="mono">${esc(txHash)}</span>`) + (session.pendingTxHash && !session.paidTxHash ? ` ${muted('unconfirmed')}` : '') : muted('None seen')),
         fact('Customer sends from', session.clientWalletAddress ? `<span class="mono">${esc(session.clientWalletAddress)}</span>` : muted('Not given yet')),
         fact('Receiving wallet', `<span class="mono">${esc(session.walletAddress)}</span>`),
@@ -559,6 +603,31 @@ async function createCheckoutSession(event) {
  * Show the new link. Rendered outside the form so resetting the form does not
  * wipe the link the merchant still has to copy.
  */
+/**
+ * The Amount and Rate rows of the ready panel. A link on a chain with dollar
+ * tokens can be paid three ways, all worth the same: it leads with the
+ * dollars and lists the ways; the rate row says the tokens are at par and
+ * a Tokens row shows the contracts the page will name. Elsewhere, the coin
+ * figure with its dollars, as before.
+ */
+function amountRows(data, symbol, rate, usd) {
+    const amounts = data.amounts && typeof data.amounts === 'object' ? data.amounts : null;
+    const tokens = amounts ? Object.keys(amounts).filter((asset) => asset !== symbol) : [];
+    const info = CHAIN_INFO[data.chain];
+    if (tokens.length === 0 || data.usdAmount == null) {
+        return `<div><span>Amount</span><b>${esc(data.nativeAmount)} ${esc(symbol)}${data.usdAmount != null ? ` <span class="muted">\u00b7 ${usd(data.usdAmount)}</span>` : ''}</b></div>
+                ${rate ? `<div><span>Rate</span><b>${usd(rate)} / ${esc(symbol)} <span class="muted">\u00b7 fixed at creation</span></b></div>` : ''}`;
+    }
+    const ways = [`${esc(data.nativeAmount)} ${esc(symbol)}`, ...tokens.map((t) => `${esc(Number(amounts[t]).toFixed(2))} ${esc(t)}`)];
+    const list = ways.length > 1 ? `${ways.slice(0, -1).join(', ')} or ${ways[ways.length - 1]}` : ways[0];
+    const contracts = info && Array.isArray(info.tokens)
+        ? info.tokens.filter((t) => tokens.includes(t.symbol)).map((t) => `${esc(t.symbol)} <span class="mono">${esc(t.contract.slice(0, 6))}\u2026${esc(t.contract.slice(-4))}</span>`).join(' <span class="muted">\u00b7</span> ')
+        : '';
+    return `<div><span>Amount</span><b>${usd(data.usdAmount)} <span class="muted">\u00b7 ${list} \u2014 the customer picks</span></b></div>
+                ${rate ? `<div><span>Rate</span><b>${usd(rate)} / ${esc(symbol)} <span class="muted">\u00b7 fixed at creation \u00b7 stablecoins at par</span></b></div>` : ''}
+                ${contracts ? `<div><span>Tokens</span><b>${contracts}</b></div>` : ''}`;
+}
+
 function showCheckoutResult(data) {
     const panel = document.getElementById('checkoutResult');
     const form = document.getElementById('checkoutCreateForm');
@@ -594,8 +663,7 @@ function showCheckoutResult(data) {
         <div class="link-ready__body">
             <div class="link-ready__qr" id="linkReadyQr" aria-label="QR code of the link"></div>
             <div class="link-ready__facts">
-                <div><span>Amount</span><b>${esc(data.nativeAmount)} ${esc(symbol)}${data.usdAmount != null ? ` <span class="muted">\u00b7 ${usd(data.usdAmount)}</span>` : ''}</b></div>
-                ${rate ? `<div><span>Rate</span><b>${usd(rate)} / ${esc(symbol)} <span class="muted">\u00b7 fixed at creation</span></b></div>` : ''}
+                ${amountRows(data, symbol, rate, usd)}
                 <div><span>Pays into</span><b>${esc(walletText)}</b></div>
                 <div><span>On payment</span><b>Redirect to ${esc(host(data.successRoute || ''))}</b></div>
                 <div><span>Webhook</span><b>${data.webhookUrl ? esc(host(data.webhookUrl)) : '<span class="muted">none</span>'}</b></div>

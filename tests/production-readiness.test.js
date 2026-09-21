@@ -77,7 +77,7 @@ describe('Direct payout status is checked on the transfer\'s own chain', () => {
   });
 
   test('an unsupported chain is rejected rather than silently checked elsewhere', async () => {
-    await assert.rejects(() => original('DOGE', 'hash'), /Unsupported chain/);
+    await assert.rejects(() => original('XYZ', 'hash'), /Unsupported chain/);
   });
 });
 

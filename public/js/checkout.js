@@ -5,6 +5,9 @@
   let sessionData = null;
   let pollTimer = null;
   let countdownTimer = null;
+  // What the customer has picked to pay with, before the address is on
+  // file; the session's own `asset` after. The coin until picked.
+  let pickedAsset = null;
 
   // ── Boot ──────────────────────────────────────────────────────────────────
 
@@ -37,18 +40,202 @@
 
   // ── Render ────────────────────────────────────────────────────────────────
 
-  function renderCheckout() {
-    // Populate the persistent payment summary
-    document.getElementById('amount-value').textContent = sessionData.nativeAmount;
-    document.getElementById('chain-badge').textContent  = sessionData.chainInfo && sessionData.chainInfo.symbol !== sessionData.chain
-      ? `${sessionData.chainInfo.symbol} · ${sessionData.chainInfo.name}`
-      : sessionData.chain;
-    if (sessionData.usdAmount) {
-      document.getElementById('amount-usd').textContent = `$${sessionData.usdAmount.toFixed(2)}`;
+  // ── Assets ────────────────────────────────────────────────────────────────
+
+  /** The figure for each asset the link can be paid in, the coin's first. */
+  function amounts() {
+    const given = sessionData && sessionData.amounts && typeof sessionData.amounts === 'object' ? sessionData.amounts : null;
+    return given || { [chainSymbol()]: sessionData?.nativeAmount };
+  }
+
+  /** The dollar tokens the link takes, by symbol. */
+  function tokenAssets() {
+    return Object.keys(amounts()).filter((asset) => asset !== chainSymbol());
+  }
+
+  /** What the page is set to be paid in: the pick, else the session's asset, else the coin. */
+  function currentAsset() {
+    const asset = pickedAsset || (sessionData && sessionData.asset) || chainSymbol();
+    return amounts()[asset] !== undefined ? asset : chainSymbol();
+  }
+
+  function isToken(asset) {
+    return asset !== chainSymbol() && tokenAssets().includes(asset);
+  }
+
+  /** A token's registry entry (contract, decimals), or null. */
+  function tokenInfo(asset) {
+    const tokens = sessionData && sessionData.chainInfo && Array.isArray(sessionData.chainInfo.tokens) ? sessionData.chainInfo.tokens : [];
+    return tokens.find((token) => token.symbol === asset) || null;
+  }
+
+  /** An asset's figure as the page shows it: two decimals for dollars, the coin's own string. */
+  function figureFor(asset) {
+    const value = amounts()[asset];
+    if (value === undefined || value === null) return '—';
+    return isToken(asset) ? Number(value).toFixed(2) : String(value);
+  }
+
+  /**
+   * The head: before the pick (a link on a chain with dollar tokens, no
+   * address yet) it shows the price in dollars and the chain; otherwise the
+   * figure for the asset in hand with its dollars beside it, and a badge on
+   * the chain's mark when that is a token.
+   */
+  function renderHead() {
+    const value = document.getElementById('amount-value');
+    const usd = document.getElementById('amount-usd');
+    const amountBox = value && value.closest('.amount');
+    const asset = currentAsset();
+    const beforePick = tokenAssets().length > 0 && sessionData.status === 'PENDING' && sessionData.usdAmount;
+    const chainLabel = sessionData.chainInfo ? sessionData.chainInfo.name : sessionData.chain;
+
+    if (beforePick) {
+      value.textContent = `$${Number(sessionData.usdAmount).toFixed(2)}`;
+      usd.textContent = `on ${chainLabel}`;
+      if (amountBox) amountBox.classList.add('amount--dollars');
+    } else {
+      value.textContent = figureFor(asset);
+      usd.textContent = `${asset}${sessionData.usdAmount ? ` · $${Number(sessionData.usdAmount).toFixed(2)}` : ''}`;
+      if (amountBox) amountBox.classList.remove('amount--dollars');
     }
-    // The chain's mark beside the amount, in one colour, from the shared set.
+
+    // The chain's mark beside the amount, in one colour, from the shared
+    // set - with the token's badge on it when a token is what is being paid.
     const mark = document.getElementById('chain-mark');
-    if (mark && typeof window.chainLogo === 'function') mark.innerHTML = window.chainLogo(sessionData.chain, '');
+    if (mark && typeof window.chainLogo === 'function') {
+      mark.innerHTML = window.chainLogo(sessionData.chain, '') + (isToken(asset) && !beforePick ? `<span class="tok">${escapeText(asset)}</span>` : '');
+    }
+
+    // The line under it.
+    const line = document.getElementById('head-line');
+    if (line) {
+      const chainText = sessionData.chainInfo && sessionData.chainInfo.symbol !== sessionData.chain
+        ? `${sessionData.chainInfo.symbol} · ${sessionData.chainInfo.name}`
+        : sessionData.chain;
+      line.replaceChildren();
+      if (beforePick) {
+        line.append('Pay in the coin or in dollars · the amount is fixed for this link');
+      } else if (isToken(asset)) {
+        const b = document.createElement('b');
+        b.textContent = asset;
+        line.append(b, ` on ${chainLabel}`);
+        appendSwitchLink(line, asset);
+      } else if (tokenAssets().length > 0 && sessionData.status === 'AWAITING_PAYMENT') {
+        line.append(`${chainText} · the amount is fixed for this link`);
+        appendSwitchLink(line, asset);
+      } else {
+        line.append(`${chainText} · the amount is fixed for this link`);
+      }
+    }
+
+    const railFirst = document.querySelector('#pay-rail li[data-rail="1"] b');
+    if (railFirst) railFirst.textContent = tokenAssets().length > 0 ? 'How you\u2019ll pay' : 'Your address';
+  }
+
+  /** "· pay in ETH or USDT instead", each a link - only while nothing has been seen on chain. */
+  function appendSwitchLink(line, asset) {
+    if (detected || sessionData.status !== 'AWAITING_PAYMENT') return;
+    const others = Object.keys(amounts()).filter((each) => each !== asset);
+    if (others.length === 0) return;
+    line.append(' · pay in ');
+    others.forEach((other, i) => {
+      const a = document.createElement('a');
+      a.href = '#';
+      a.textContent = other;
+      a.addEventListener('click', (event) => { event.preventDefault(); switchAsset(other); });
+      if (i > 0) line.append(i === others.length - 1 ? ' or ' : ', ');
+      line.append(a);
+    });
+    line.append(' instead');
+  }
+
+  /** Draw the pick's tiles from the session's figures; none on a coin-only chain. */
+  function renderAssetPick() {
+    const box = document.getElementById('asset-pick');
+    const tiles = document.getElementById('asset-pick-tiles');
+    if (!box || !tiles) return;
+    const assets = Object.keys(amounts());
+    if (tokenAssets().length === 0 || !sessionData.usdAmount) { box.classList.add('hidden'); return; }
+    const current = currentAsset();
+    const coin = chainSymbol();
+    tiles.replaceChildren(...assets.map((asset) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.setAttribute('role', 'radio');
+      button.setAttribute('aria-checked', asset === current ? 'true' : 'false');
+      button.dataset.asset = asset;
+      const tk = document.createElement('span');
+      tk.className = 'tk';
+      const glyph = document.createElement('i');
+      glyph.textContent = asset === coin ? coinGlyph(coin) : '$';
+      tk.append(glyph, asset);
+      const fig = document.createElement('span');
+      fig.className = 'fig';
+      fig.textContent = figureFor(asset);
+      const sub = document.createElement('span');
+      sub.className = 'sub2';
+      const rate = sessionData.usdAmount && Number(sessionData.nativeAmount) > 0 ? Number(sessionData.usdAmount) / Number(sessionData.nativeAmount) : null;
+      sub.textContent = asset === coin ? (rate ? `at $${rate.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}, fixed` : 'fixed when the link was made') : 'a dollar is a dollar';
+      button.append(tk, fig, sub);
+      button.addEventListener('click', () => pickAsset(asset));
+      return button;
+    }));
+    const note = document.getElementById('asset-pick-note');
+    if (note) note.textContent = assets.length === 2 ? 'both are worth the same' : 'all worth the same';
+    box.classList.remove('hidden');
+  }
+
+  function coinGlyph(coin) {
+    return { ETH: 'Ξ', BNB: 'B', POL: 'P', AVAX: 'A' }[coin] || coin.charAt(0);
+  }
+
+  /** The customer picks a tile: the pick is kept, the tiles and the head follow. */
+  function pickAsset(asset) {
+    if (amounts()[asset] === undefined) return;
+    pickedAsset = asset;
+    document.querySelectorAll('#asset-pick-tiles button').forEach((button) => {
+      button.setAttribute('aria-checked', button.dataset.asset === asset ? 'true' : 'false');
+    });
+    renderHead();
+  }
+  window.__checkoutPickedAsset = () => currentAsset();
+
+  /**
+   * Change the asset after the address is on file: the server re-issues the
+   * QR for it; the head, the facts and the wallet button follow.
+   */
+  async function switchAsset(asset) {
+    if (amounts()[asset] === undefined) return;
+    try {
+      const res = await fetch('/api/checkout/pick-asset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId, asset }),
+      });
+      const data = await res.json();
+      if (!res.ok) { showToast(data.message || 'Could not change the asset'); return; }
+      sessionData.asset = data.asset;
+      pickedAsset = data.asset;
+      if (data.paymentQr) renderQr(data.paymentQr);
+      renderHead();
+      populateWatchingStep();
+      if (typeof window.__checkoutAssetChanged === 'function') window.__checkoutAssetChanged(data.asset);
+      showToast(`Paying in ${data.asset}`);
+    } catch {
+      showToast('Could not change the asset');
+    }
+  }
+
+  function escapeText(text) {
+    return String(text).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  function renderCheckout() {
+    // Populate the persistent payment summary: the figure for the asset in
+    // hand (or the price, before the pick), the chain's mark, the line under.
+    renderHead();
+    renderAssetPick();
 
     // Send-to address: only show it if the client already submitted their address
     if (sessionData.hasClientAddress && sessionData.walletAddress) {
@@ -80,6 +267,8 @@
     switch (sessionData.status) {
       case 'PENDING': {
         showStep('step-address');
+        // A link that can be paid more than one way opens on the pick;
+        // Step 1 is the pick and the address together.
         const title = document.querySelector('#step-address .step-title');
         if (walletPayOnly) {
           // No transaction index for this chain: the manual path is a dead end.
@@ -147,7 +336,7 @@
       const res = await fetch('/api/checkout/submit-wallet', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId, clientWalletAddress: addr }),
+        body: JSON.stringify({ sessionId, clientWalletAddress: addr, asset: currentAsset() }),
       });
 
       const data = await res.json();
@@ -218,7 +407,11 @@
    * supplied by a connected wallet.
    */
   function enterWatching(addr, data) {
+    sessionData.status = 'AWAITING_PAYMENT';
+    sessionData.asset = currentAsset();
+    sessionData.hasClientAddress = true;
     showStep('step-watching');
+    renderHead();
     revealSendToAddress(data.walletAddress);
     renderQr(data.paymentQr);
     populateWatchingStep(addr);
@@ -265,10 +458,37 @@
       || sessionData?.clientWalletAddress
       || document.getElementById('client-address')?.value?.trim()
       || '—';
-    document.getElementById('watch-amount').textContent = sessionData?.nativeAmount ?? '—';
-    document.getElementById('watch-chain').textContent  = chainSymbol();
+    const asset = currentAsset();
+    document.getElementById('watch-amount').textContent = figureFor(asset);
+    document.getElementById('watch-chain').textContent  = asset;
     document.getElementById('from-address-display').textContent = addr;
+
+    // A token is named by its contract too, and the note under the facts
+    // says the one thing a token page has to: send the token, not the coin
+    // - and that the coin would still settle the link, in its own figure.
+    const token = isToken(asset) ? tokenInfo(asset) : null;
+    const row = document.getElementById('token-row');
+    if (row) {
+      row.classList.toggle('hidden', !token);
+      if (token) {
+        document.getElementById('token-symbol').textContent = asset;
+        document.getElementById('token-contract').textContent = `${token.contract.slice(0, 6)}…${token.contract.slice(-4)}`;
+        document.getElementById('token-contract').title = token.contract;
+      }
+    }
+    if (!detected) {
+      setWatchingNote(token
+        ? `Send ${asset}, not ${chainSymbol()}. If you send the coin instead, the link still settles once ${figureFor(chainSymbol())} ${chainSymbol()} has arrived. ${DEFAULT_WATCH_HINT}`
+        : DEFAULT_WATCH_HINT);
+    }
   }
+
+  window.copyTokenContract = function () {
+    const token = tokenInfo(currentAsset());
+    if (!token) return;
+    const write = navigator.clipboard ? navigator.clipboard.writeText(token.contract) : Promise.reject();
+    write.then(() => showToast('Contract copied')).catch(() => showToast(token.contract));
+  };
 
   // ── Polling ───────────────────────────────────────────────────────────────
 
@@ -339,7 +559,17 @@
 
   function setWatchingNote(message) {
     const hint = document.querySelector('#step-watching .watch-hint');
-    if (hint) hint.textContent = message;
+    if (!hint) return;
+    hint.replaceChildren();
+    // "Send USDC, not ETH." leads in bold; the rest is the rest.
+    const lead = /^(Send [A-Z0-9]+, not [A-Z0-9]+\.)\s*/.exec(message);
+    if (lead) {
+      const b = document.createElement('b');
+      b.textContent = lead[1];
+      hint.append(b, ' ', message.slice(lead[0].length));
+    } else {
+      hint.textContent = message;
+    }
   }
 
   /** Rough wall-clock for the required depth, per chain. */
@@ -413,17 +643,20 @@
 
     if (!detected) {
       detected = true;
+      if (data.pendingAsset) { sessionData.asset = data.pendingAsset; pickedAsset = data.pendingAsset; }
       stopCountdown();
       hide('countdown-row');
       showStep('step-verifying');
+      renderHead();
     }
   }
 
   // ── Terminal States ───────────────────────────────────────────────────────
 
   function handlePaid(data, { autoRedirect = true } = {}) {
-    document.getElementById('paid-amount').textContent = data.paidAmount ?? sessionData?.nativeAmount ?? '—';
-    document.getElementById('paid-chain').textContent  = chainSymbol();
+    const asset = data.paidAsset || currentAsset();
+    document.getElementById('paid-amount').textContent = data.paidAmount != null ? (isToken(asset) ? Number(data.paidAmount).toFixed(2) : data.paidAmount) : figureFor(asset);
+    document.getElementById('paid-chain').textContent  = asset;
 
     if (data.paidTxHash) {
       document.getElementById('tx-hash-display').textContent = data.paidTxHash;
@@ -448,9 +681,10 @@
   }
 
   function handleInsufficient(data) {
-    document.getElementById('received-amount').textContent = data.paidAmount ?? '?';
-    document.getElementById('received-chain').textContent  = chainSymbol();
-    document.getElementById('required-amount').textContent = sessionData?.nativeAmount ?? '—';
+    const asset = data.paidAsset || currentAsset();
+    document.getElementById('received-amount').textContent = data.paidAmount != null ? (isToken(asset) ? Number(data.paidAmount).toFixed(2) : data.paidAmount) : '?';
+    document.getElementById('received-chain').textContent  = asset;
+    document.getElementById('required-amount').textContent = `${figureFor(asset)} ${asset}`;
 
     const btn = document.getElementById('failure-redirect-btn-insuf');
     if (data.redirectUrl) {
@@ -565,7 +799,8 @@
   // ── Copy Amount ─────────────────────────────────────────────────────────────
 
   window.copyAmount = function () {
-    const value = document.getElementById('amount-value')?.textContent;
+    // The figure for the asset in hand - never the dollar price shown before the pick.
+    const value = figureFor(currentAsset());
     if (!value || value === '—') return;
     const write = navigator.clipboard
       ? navigator.clipboard.writeText(value)

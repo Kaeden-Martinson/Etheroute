@@ -301,7 +301,7 @@ describe('Quoting a rate for the form', () => {
 
   test('an unknown or missing chain is a 400, not a rate of 0', async () => {
     const shop = await merchant(`quotebad_${Date.now()}`);
-    for (const query of ['?chain=DOGE', '']) {
+    for (const query of ['?chain=XYZ', '']) {
       const response = await call('GET', `/api/checkout/quote${query}`, { token: shop.token });
       assert.strictEqual(response.status, 400, `quote${query}`);
     }

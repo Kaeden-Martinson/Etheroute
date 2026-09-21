@@ -94,6 +94,9 @@ beforeEach(() => {
     return { native, usd: native * RATES[chain.toLowerCase()], live: true };
   };
 
+  // These tests are about the SideShift floor; THORChain is out of the picture.
+  if (!originals.has('thorchain')) originals.set('thorchain', SwapService.thorchain);
+  SwapService.thorchain = { ready: async () => {}, serves: () => false, quote: async () => { throw new Error('off'); } };
   if (!originals.has('quote')) originals.set('quote', SwapService.sideshift.getGasQuote);
   SwapService.sideshift.getGasQuote = async (from, to, amount) => ({
     outputAmount: from === to ? amount * 0.999 : amount * 0.98,
@@ -107,6 +110,7 @@ afterEach(() => {
     PayoutService.getWalletService(chain).getBalance = originals.get(chain);
   }
   SwapService.sideshift.getGasQuote = originals.get('quote');
+  SwapService.thorchain = originals.get('thorchain');
   GasEstimator.estimate = originals.get('gas');
   GasEstimator.clear();
 });
@@ -210,7 +214,7 @@ describe('Previewing a payout in each supported chain', () => {
 
   test('an unsupported payout chain is rejected', async () => {
     await assert.rejects(
-      () => PayoutService.getWithdrawalPreview(clientId, RECIPIENTS.ETH, undefined, 'DOGE'),
+      () => PayoutService.getWithdrawalPreview(clientId, RECIPIENTS.ETH, undefined, 'XYZ'),
       /Unsupported payout chain/
     );
   });

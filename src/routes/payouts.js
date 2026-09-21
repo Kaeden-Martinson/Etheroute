@@ -24,6 +24,9 @@ function presentPayout(payout) {
     gasPerChain,
     netAmountUsd: payout.netAmountUsd,
     chain: payout.chain,
+    payoutChain: payout.payoutChain || payout.chain,
+    // The asset it settled in on that chain: the coin, or a dollar token.
+    payoutAsset: payout.payoutAsset || null,
     recipientAddress: payout.recipientAddress,
     type: payout.type,
     createdAt: payout.createdAt,

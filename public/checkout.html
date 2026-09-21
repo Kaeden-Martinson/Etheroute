@@ -61,7 +61,7 @@
                 </div>
                 <span class="pay-head__mark chain-mark" id="chain-mark" data-reveal data-reveal-delay="100" aria-hidden="true"></span>
                 <div class="pay-head__sub" data-reveal data-reveal-delay="120">
-                    <span><span id="chain-badge">&mdash;</span> &middot; the amount is fixed for this link</span>
+                    <span id="head-line"><span id="chain-badge">&mdash;</span> &middot; the amount is fixed for this link</span>
                     <span id="countdown-row">Expires in <b id="countdown" class="countdown">&mdash;</b></span>
                 </div>
                 <!-- The clock as a hairline that drains; dashboard.js-style
@@ -78,6 +78,14 @@
 
             <!-- Step 1: where it comes from -->
             <section id="step-address" class="step" data-reveal data-reveal-delay="220">
+                <!-- On a chain with dollar tokens the customer picks what to send:
+                     one tile per asset, each with its figure. checkout.js draws
+                     them from the session's amounts; a coin-only chain shows none. -->
+                <div id="asset-pick" class="hidden">
+                    <h2 class="fgroup__title">Pay with <em id="asset-pick-note">all worth the same</em></h2>
+                    <div class="pick" id="asset-pick-tiles" role="radiogroup" aria-label="What to pay with"></div>
+                </div>
+
                 <h2 class="step-title fgroup__title">Where it comes from <em>so we can match your payment on-chain</em></h2>
 
                 <!-- Shown only when an EVM wallet extension is present and the chain supports it -->
@@ -133,6 +141,12 @@
                             <span>Amount</span>
                             <b><span id="watch-amount">&mdash;</span> <span id="watch-chain">&mdash;</span></b>
                             <button type="button" class="btn-small btn-primary btn-icon" data-on-click="copyAmount" aria-label="Copy amount" title="Copy amount"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
+                        </div>
+                        <!-- A dollar token is verified by its contract, not its ticker. -->
+                        <div id="token-row" class="hidden">
+                            <span>Token</span>
+                            <b class="mono"><span id="token-symbol">&mdash;</span> <span class="muted">&middot;</span> <span id="token-contract">&mdash;</span></b>
+                            <button type="button" class="btn-small btn-primary btn-icon" data-on-click="copyTokenContract" aria-label="Copy token contract" title="Copy token contract"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
                         </div>
                         <!-- Revealed once the customer's address is on file. -->
                         <div id="send-to-row" class="hidden">

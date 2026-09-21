@@ -343,6 +343,19 @@ class BitcoinWalletService {
     return 11 + 68 * inputCount + 31 * outputCount;
   }
 
+  /**
+   * An OP_RETURN output carrying `data`: the way a swap network is told
+   * what to do with a deposit. 80 bytes at most; a push over 75 bytes needs
+   * OP_PUSHDATA1 before its length.
+   */
+  static opReturnScript(data) {
+    const bytes = Buffer.isBuffer(data) ? data : Buffer.from(String(data), 'utf8');
+    if (bytes.length > 80) throw new Error(`OP_RETURN data is ${bytes.length} bytes; 80 is the most a node relays`);
+    const push = bytes.length <= 75 ? Buffer.from([bytes.length]) : Buffer.from([0x4c, bytes.length]);
+    return Buffer.concat([Buffer.from([0x6a]), push, bytes]);
+  }
+
+
   /** Below this a change output is not worth creating; it becomes fee. */
   static get DUST_SATS() { return 546; }
   static get MIN_FEE_SATS() { return 500; }
@@ -420,8 +433,16 @@ class BitcoinWalletService {
    * @param {number} amount - Amount in BTC
    * @returns {Promise<string>} Transaction hash/ID
    */
-  async sendTransaction(privateKey, toAddress, amount) {
+  /**
+   * Send `amount` BTC to `toAddress`. `options.memo` adds an OP_RETURN
+   * output carrying it (a swap network's instruction), after the recipient
+   * and the change, as the networks ask.
+   */
+  async sendTransaction(privateKey, toAddress, amount, options = {}) {
     try {
+      const memo = options && options.memo ? BitcoinWalletService.opReturnScript(options.memo) : null;
+      // the OP_RETURN output: 8 bytes of value, a length byte, the script
+      const memoBytes = memo ? 9 + memo.length : 0;
       const privateKeyBuffer = Buffer.from(privateKey, 'hex');
       const { address } = bitcoin.payments.p2wpkh({
         pubkey: ecc.pointFromScalar(privateKeyBuffer, true),
@@ -463,7 +484,7 @@ class BitcoinWalletService {
         });
         totalValue += utxo.value;
         feeSatoshis = Math.max(
-          Math.ceil(feeRate * BitcoinWalletService.virtualSize(selectedUtxos.length, 2)),
+          Math.ceil(feeRate * (BitcoinWalletService.virtualSize(selectedUtxos.length, 2) + memoBytes)),
           BitcoinWalletService.MIN_FEE_SATS
         );
         totalNeeded = amountSatoshis + feeSatoshis;
@@ -555,6 +576,11 @@ class BitcoinWalletService {
           script: Uint8Array.from(scriptOutput),
           value: BigInt(changeSatoshis),
         });
+      }
+
+      // The memo, last: recipient, change, then OP_RETURN.
+      if (memo) {
+        psbt.addOutput({ script: Uint8Array.from(memo), value: 0n });
       }
 
       // Create a Signer object for signing

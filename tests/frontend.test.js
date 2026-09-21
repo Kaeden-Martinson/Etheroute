@@ -408,7 +408,7 @@ describe('Withdrawal wallet selection', () => {
     assert.ok(fn.includes('name="withdrawChain" value="${escapeHtml(wallet.address)}"'), 'the same checkbox getPreview() and processWithdrawal() read, escaped');
     assert.ok(fn.includes("'<span class=\"status-pill status-pill--verifying\">Confirming</span>'"));
     assert.ok(fn.includes("'<span class=\"status-pill status-pill--closed\">Below $5</span>'"));
-    assert.ok(fn.includes("wallet.chain === payoutChain ? 'Direct' : 'Swap'"), 'an eligible row says whether it goes direct or through a swap');
+    assert.ok(fn.includes('routeLabelFor(wallet, payoutChain, payoutAsset)'), 'an eligible row says whether it goes direct, through an on-chain swap, or through a swap');
     assert.ok(!fn.includes('wallet-card'), 'the old checkbox cards are gone');
   });
 });
@@ -424,7 +424,7 @@ describe('Withdrawal: three steps, one receipt, one button', () => {
     assert.ok(page.includes('<div class="dash-head__actions wd-avail" data-reveal data-reveal-delay="100">'));
     assert.ok(page.includes('id="wdAvailable"') && page.includes('id="wdAvailableNote"'));
     const fn = dashboardJs.slice(dashboardJs.indexOf('function updateWithdrawalAvailable'), dashboardJs.indexOf('async function loadWithdrawalPage'));
-    assert.ok(fn.includes('(w.balanceUSD || 0) >= 5 && !w.isProcessing'), 'the same eligibility rule the rows use');
+    assert.ok(fn.includes('holdings(w) >= 5 && !w.isProcessing'), 'the same eligibility rule the rows use: coin and tokens together');
     assert.ok(dashboardJs.includes('withdrawal: loadWithdrawalPage,'), 'the switcher loads it');
   });
 
@@ -731,8 +731,9 @@ describe('Wallets: rows that open, a form in place, an address you can show', ()
 
   test('the badge is the chain\'s mark in one colour, with the ticker as the fallback', () => {
     const logos = fs.readFileSync(path.join(PUBLIC_DIR, 'js/common/chain-logos.js'), 'utf-8');
-    const { CODES } = require('../src/config/chains');
-    for (const code of CODES) assert.match(logos, new RegExp(`\\n\\s+${code}: svg\\(`), `a mark for ${code}`);
+    // The founding ten have drawn marks; a chain added since falls back to
+    // its ticker in the badge until someone draws it.
+    for (const code of ['ETH', 'POL', 'BASE', 'ARB', 'OP', 'BNB', 'AVAX', 'BTC', 'LTC', 'SOL']) assert.match(logos, new RegExp(`\\n\\s+${code}: svg\\(`), `a mark for ${code}`);
     assert.ok(logos.includes('window.chainLogo = function chainLogo(code, fallback)'));
     assert.ok(!/#[0-9a-f]{3,6}\b/i.test(logos), 'no brand colours - everything is currentColor');
     assert.ok(logos.includes('fill="currentColor"') && logos.includes('stroke="currentColor"'));
@@ -867,7 +868,8 @@ describe('Checkout page: details and layout', () => {
   });
 
   test('the ready panel leads with the coin, shows the rate it was fixed at, and the link is the one filled button', () => {
-    const fn = checkoutJs.slice(checkoutJs.indexOf('function showCheckoutResult'), checkoutJs.indexOf('async function loadLinkQr'));
+    // amountRows draws the Amount and Rate rows for it (three ways to pay on a chain with dollar tokens)
+    const fn = checkoutJs.slice(checkoutJs.indexOf('function amountRows'), checkoutJs.indexOf('async function loadLinkQr'));
     assert.ok(fn.includes('data.usdRate > 0 ? Number(data.usdRate)'), 'the rate is the one the server fixed the link at');
     assert.ok(fn.includes('Number(data.usdAmount) / Number(data.nativeAmount)'), 'with the ratio of the two amounts as a fallback');
     assert.ok(fn.includes('<span>Rate</span>'));
@@ -1870,31 +1872,38 @@ describe('FAQ page: a usable accordion', () => {
     const notes = html.match(/<div class="qa__note"><p>([\s\S]*?)<\/p><\/div>/g) || [];
     assert.strictEqual(notes.length, 2, 'both callouts survived');
     for (const note of notes) assert.ok(note.length > 40, 'with their text intact');
-    assert.ok(!html.includes('class="highlight"'), 'none left half-converted');
-  });
+    assert.ok(!html.includes('class="highlight"'), 'none left half-converted');
+  });
 
-  test('the chain answers name all ten, not the four of the first draft', () => {
+  test('the chain answers name every chain in the registry, not the four of the first draft', () => {
+    const registry = require('../src/config/chains');
+    const N = registry.CODES.length;
     const support = html.slice(html.indexOf('Which chains and coins do you support?'), html.indexOf('Which cryptocurrencies can I withdraw?'));
     for (const name of ['Ethereum (ETH)', 'Base', 'Arbitrum One', 'Optimism', 'Polygon (POL)', 'BNB Chain (BNB)', 'Avalanche (AVAX)', 'Bitcoin (BTC)', 'Litecoin (LTC)', 'Solana (SOL)']) {
       assert.ok(support.includes(name), `support answer names ${name}`);
     }
+    for (const chain of registry.list().slice(10)) assert.ok(support.includes(chain.name), `support answer names ${chain.name}`);
+    assert.ok(support.includes(`${N} networks across four families`), 'the count is the registry\'s');
+    assert.ok(support.includes('USDC and USDT'), 'and the dollar tokens');
     assert.ok(support.includes('GET /api/chains'), 'and points at the live list');
     const withdraw = html.slice(html.indexOf('Which cryptocurrencies can I withdraw?'), html.indexOf('What are the withdrawal fees?'));
-    assert.ok(withdraw.includes('Any of the ten chains we support'));
+    assert.ok(withdraw.includes(`The coin of any of the ${N} chains we support`));
     assert.ok(withdraw.includes('quoted on the review screen before you confirm'), 'the swap is explained the way the product does it');
+    for (const chain of registry.list().filter((c) => !registry.swappable(c.code))) assert.ok(withdraw.includes(chain.name), `${chain.name} is named as direct-only`);
     assert.ok(!html.includes('four major blockchain networks'), 'the four-chain answer is gone');
+    assert.ok(!/ten (chains|networks)/i.test(html), 'no stale ten-chain copy');
     // the search text was rebuilt for both, lowercased with the tags stripped
-    assert.ok(html.includes('data-text="which chains and coins do you support? ten networks across three families'));
-    assert.ok(html.includes('data-text="which cryptocurrencies can i withdraw? any of the ten chains we support'));
-    // and the timings cover the same ten, direct first, swap on top
+    assert.ok(html.includes(`data-text="which chains and coins do you support? ${N} networks across four families`));
+    assert.ok(html.includes(`data-text="which cryptocurrencies can i withdraw? the coin of any of the ${N} chains we support`));
+    // and the timings, direct first, swap on top
     const times = html.slice(html.indexOf('How long does a withdrawal take?'), html.indexOf('Can I cancel a withdrawal?'));
-    for (const name of ['Solana', 'Arbitrum One', 'Base, Optimism, Avalanche', 'BNB Chain', 'Ethereum', 'Polygon', 'Litecoin', 'Bitcoin']) {
+    for (const name of ['Solana', 'Arbitrum One, Sei, Monad, opBNB, Cronos', 'Base, Optimism, Avalanche, BNB Chain, Sonic, Celo and most of the other EVM chains', 'Ethereum', 'Polygon', 'Litecoin', 'Bitcoin']) {
       assert.ok(times.includes(`<strong>${name}:</strong>`), `timings name ${name}`);
     }
     assert.ok(times.includes('swap provider&#x27;s own processing time comes on top'));
     assert.ok(!times.includes('30 seconds to 2 minutes'), 'the four-chain figures are gone');
     assert.ok(html.includes('data-text="how long does a withdrawal take? a direct transfer'), 'search text rebuilt');
-  });
+  });
 
   test('an answer opens to its own height, with no ceiling to clip it', () => {
     // max-height: 0 -> 500px made a short answer stop dead rather than ease
@@ -2301,7 +2310,7 @@ describe('Dashboard shell and transactions', () => {
 
   test('the transaction renderer escapes every API value and links hashes to the explorer', () => {
     const fn = js.slice(js.indexOf('function displayTransactionsList('), js.indexOf('function wireTransactionRows'));
-    for (const field of ['chainInfo.name || tx.chain', 'hashFull.slice(0, 6)', 'formatBalance(tx.nativeAmount)', 'tx.failureReason', 'String(tx.blockNumber)']) {
+    for (const field of ['chainInfo.name || tx.chain', 'hashFull.slice(0, 6)', 'token ? Number(tx.nativeAmount).toFixed(2) : formatBalance(tx.nativeAmount)', 'tx.failureReason', 'String(tx.blockNumber)', 'tx.asset']) {
       assert.ok(fn.includes(`escapeHtml(${field}`), `${field} is escaped`);
     }
     assert.match(fn, /chainInfo\.explorerTx/, 'hash links use the explorer the chains API provides');
@@ -2485,10 +2494,11 @@ describe('Dashboard wallets and payouts', () => {
     assert.ok(!js.includes('Service Fee (5%)'));
     const fn = js.slice(js.indexOf('function displayPayoutsList('), js.indexOf('\n}\n', js.indexOf('function displayPayoutsList(')));
     assert.match(fn, /\(fee \/ gross\) \* 100/);
-    for (const field of ['payout.payoutChain || payout.chain', 'String(payout.id || \'\')', 'formatBalance(t.nativeAmount)']) {
+    for (const field of ['payout.payoutAsset || chainSymbol(payout.payoutChain || payout.chain)', 'String(payout.id || \'\')', 'legAmount(t)']) {
       assert.ok(fn.includes(`escapeHtml(${field}`), `${field} is escaped`);
     }
     assert.match(fn, /DIRECT_TRANSFER' \? 'Direct' : 'Swapped'/, 'the route is named');
+    assert.ok(fn.includes("t.route === 'dex' ? 'On-chain swap'"), 'and an on-chain swap by its own name');
   });
 
   test('every rewrite kept every function: the page still has what its handlers call', () => {
@@ -2670,4 +2680,128 @@ describe('Docs, API reference and Help open on their first section', () => {
       assert.ok(spy.includes(`rootMargin: ${band}`), 'the band itself is unchanged');
     });
   }
+});
+
+describe('The chain count on every page is the registry\'s', () => {
+  const registry = require('../src/config/chains');
+  const N = registry.CODES.length;
+  test('landing, about, docs, help and the API reference all state the same number', () => {
+    const index = fs.readFileSync(path.join(PUBLIC_DIR, 'index.html'), 'utf-8');
+    const about = fs.readFileSync(path.join(PUBLIC_DIR, 'about.html'), 'utf-8');
+    const docs = fs.readFileSync(path.join(PUBLIC_DIR, 'js/docs-content.js'), 'utf-8');
+    const spec = fs.readFileSync(path.join(PUBLIC_DIR, 'js/api-spec.js'), 'utf-8');
+    assert.ok(index.includes(`<span class="live-line__item"><b>${N}</b> networks</span>`), 'landing live line');
+    assert.ok(index.includes(`across ${N} networks`), 'landing hero');
+    assert.ok(index.includes(`<i>USDC</i><i>USDT</i>`), 'the chips name the dollar tokens');
+    assert.ok(index.includes(`>+${N - 10} chains</i>`), 'and count the rest');
+    assert.ok(about.includes(`<b>${N}</b><span>Networks, one integration</span>`), 'about strip');
+    assert.ok(docs.includes(`across ${N} chains`), 'docs lead');
+    assert.ok(spec.includes(`accept payments in ${N} chains`), 'API overview');
+    // the two tables carry one row per chain, in registry order
+    const docsRows = [...docs.matchAll(/^\s+\['[^']+', '([A-Z]+)', '[A-Z]+', '[^']*', '[^']*', '[^']*'\],$/gm)].map((m) => m[1]);
+    assert.deepStrictEqual(docsRows, registry.CODES, 'docs chain table');
+    const specRows = [...spec.matchAll(/^\s+\['([A-Z]+)', '[A-Z]+', '(?:EVM|UTXO|Solana|XRP Ledger)', '\d+', '[^']*', '(?:yes|no)', '[^']*', '[^']*'\],$/gm)].map((m) => m[1]);
+    assert.deepStrictEqual(specRows, registry.CODES, 'API reference chain table');
+    for (const file of ['index.html', 'about.html', 'js/docs-content.js', 'js/help-content.js', 'js/api-spec.js']) {
+      const text = fs.readFileSync(path.join(PUBLIC_DIR, file), 'utf-8');
+      assert.ok(!/\bten (chains|networks|blockchain)/i.test(text), `${file} has no stale ten-chain copy`);
+    }
+  });
+});
+
+describe('Dollar tokens on the pages', () => {
+  /**
+   * A wallet on an EVM chain holds the chain's coin and its dollar tokens; a
+   * link on it can be paid in any of them, and the customer picks. These pin
+   * what each page does with that - drawn in mockup 14 before it was built.
+   */
+  const dashJs = fs.readFileSync(path.join(PUBLIC_DIR, 'js/dashboard.js'), 'utf-8');
+  const dashCss = fs.readFileSync(path.join(PUBLIC_DIR, 'css/dashboard.css'), 'utf-8');
+  const linkJs = fs.readFileSync(path.join(PUBLIC_DIR, 'js/dashboard-checkout.js'), 'utf-8');
+  const payHtml = fs.readFileSync(path.join(PUBLIC_DIR, 'checkout.html'), 'utf-8');
+  const payJs = fs.readFileSync(path.join(PUBLIC_DIR, 'js/checkout.js'), 'utf-8');
+  const payCss = fs.readFileSync(path.join(PUBLIC_DIR, 'css/checkout.css'), 'utf-8');
+  const walletJs = fs.readFileSync(path.join(PUBLIC_DIR, 'js/checkout-wallet.js'), 'utf-8');
+
+  test('the wallet row, the open row and the tile show the tokens beside the coin, only when there are any', () => {
+    const line = dashJs.slice(dashJs.indexOf('function renderTokenLine'), dashJs.indexOf('function renderWalletTile'));
+    assert.ok(line.includes("if (held.length === 0) return '';"), 'nothing for a wallet without tokens');
+    assert.ok(line.includes('Number(t.balance).toFixed(2)'), 'a dollar token shows two decimals');
+    const row = dashJs.slice(dashJs.indexOf('function renderWalletCard'), dashJs.indexOf('function renderWalletDetails'));
+    assert.ok(row.includes('${renderTokenLine(w)}'), 'under the coin figure on the row');
+    const detail = dashJs.slice(dashJs.indexOf('function renderWalletDetails'), dashJs.indexOf('async function loadWalletQr'));
+    assert.ok(detail.includes('held · token payouts are next'), 'the open row is honest that a token cannot move yet');
+    const tile = dashJs.slice(dashJs.indexOf('function renderWalletTile'), dashJs.indexOf('function syncWalletTiles'));
+    assert.ok(tile.includes('${tileToksHtml(w)}') && tile.includes("${tokensUSD > 0 ? ' total' : ''}"), 'the tile totals them and names them');
+    assert.match(dashCss, /\.wtile__toks \{ grid-column: 2 \/ 4; grid-row: 3;/, 'on a row of their own, so the name keeps its room');
+    // the sync paths carry the line too
+    assert.ok(dashJs.includes("const toks = balBox && balBox.querySelector('.toks');"));
+    assert.ok(dashJs.includes("const toks = tile.querySelector('.wtile__toks');"));
+  });
+
+  test('the overview counts the tokens, and so does what can be withdrawn', () => {
+    const total = dashJs.slice(dashJs.indexOf('function calculateTotalBalance'), dashJs.indexOf('function updateWithdrawalStatus'));
+    assert.ok(total.includes('const held = (Number(w.balanceUSD) || 0) + walletTokensUSD(w);'));
+    assert.ok(total.includes('if (!w.isProcessing) availableUSD += held;'), 'a token is withdrawable like the coin; only a busy wallet is not');
+    assert.ok(total.includes("document.getElementById('availableBalance').textContent = `$${availableUSD.toFixed(2)}`;"));
+    const head = dashJs.slice(dashJs.indexOf('function updateWithdrawalAvailable'), dashJs.indexOf('function loadWithdrawalPage'));
+    assert.ok(head.includes('const holdings = (w) => (w.balanceUSD || 0) + walletTokensUSD(w);'), 'the withdrawal head counts them too');
+    const dist = dashJs.slice(dashJs.indexOf('function displayDistribution'), dashJs.indexOf('function calculateTotalBalance'));
+    assert.ok(dist.includes('const usd = (Number(w.balanceUSD) || 0) + walletTokensUSD(w);'), 'the bar agrees with the big number');
+    assert.ok(dist.includes('in dollar tokens'), 'and its tip says so');
+  });
+
+  test('a token receipt in the list names the token', () => {
+    const list = dashJs.slice(dashJs.indexOf('function displayTransactionsList('), dashJs.indexOf('function wireTransactionRows'));
+    assert.ok(list.includes("const token = tx.asset && tx.asset !== chainSymbol(tx.chain) ? escapeHtml(tx.asset) : '';"));
+    assert.ok(list.includes('<small class="asset-tag">'), 'a tag by the chain name');
+    assert.match(dashCss, /\.dash-table \.chain \.asset-tag \{/);
+    const rail = dashJs.slice(dashJs.indexOf('function displayTransactions('), dashJs.indexOf('function relativeTime'));
+    assert.ok(rail.includes('const symbol = token || escapeHtml(chainSymbol(tx.chain));'), 'the activity rail too');
+  });
+
+  test('the create-link form has nothing to choose: the hint and the quote say what the wallet takes', () => {
+    assert.ok(linkJs.includes('their choice on the payment page. It settles here.'));
+    assert.ok(!linkJs.includes('name="checkoutAsset"'), 'no asset control for the merchant');
+    const quote = linkJs.slice(linkJs.indexOf('function drawCheckoutQuote'), linkJs.indexOf('function startCheckoutQuote'));
+    assert.ok(quote.includes("` \\u00b7 or <b>${esc(Number(dollars).toFixed(2))}</b> in ${tokens.map(esc).join(' or ')}`"), 'the dollar figure for the tokens');
+    const rows = linkJs.slice(linkJs.indexOf('function amountRows'), linkJs.indexOf('function showCheckoutResult'));
+    assert.ok(rows.includes('the customer picks'), 'the ready panel lists the ways');
+    assert.ok(rows.includes('stablecoins at par') && rows.includes('<span>Tokens</span>'), 'and the contracts');
+  });
+
+  test('the customer picks on the page: one tile per asset, the address in the same step', () => {
+    assert.ok(payHtml.includes('<div id="asset-pick" class="hidden">'), 'hidden until the session says the link can be paid more than one way');
+    assert.ok(payHtml.includes('<div class="pick" id="asset-pick-tiles" role="radiogroup"'));
+    assert.ok(payHtml.indexOf('id="asset-pick"') < payHtml.indexOf('id="manual-address-section"'), 'the pick comes first');
+    assert.ok(payHtml.includes('<div id="token-row" class="hidden">'), 'the token is named by its contract');
+    const pick = payJs.slice(payJs.indexOf('function renderAssetPick'), payJs.indexOf('function coinGlyph'));
+    assert.ok(pick.includes("if (tokenAssets().length === 0 || !sessionData.usdAmount) { box.classList.add('hidden'); return; }"), 'none on a coin-only chain');
+    assert.ok(pick.includes("button.setAttribute('role', 'radio');"));
+    assert.ok(payJs.includes("body: JSON.stringify({ sessionId, clientWalletAddress: addr, asset: currentAsset() }),"), 'the pick travels with the address');
+    assert.ok(walletJs.includes('body: JSON.stringify({ sessionId, clientWalletAddress: account, asset }),'), 'and with a connected wallet');
+    const head = payJs.slice(payJs.indexOf('function renderHead'), payJs.indexOf('function appendSwitchLink'));
+    assert.ok(head.includes('value.textContent = `$${Number(sessionData.usdAmount).toFixed(2)}`;'), 'before the pick the head is the price');
+    assert.ok(head.includes('<span class="tok">'), 'a token wears its badge on the mark');
+    assert.ok(payJs.includes("railFirst.textContent = tokenAssets().length > 0 ? 'How you\\u2019ll pay' : 'Your address';"));
+    assert.match(payCss, /\.pick button\[aria-checked="true"\] \{ border-color: var\(--ink\);/);
+  });
+
+  test('the send step names the token, warns about the coin, and can switch until something is seen', () => {
+    const facts = payJs.slice(payJs.indexOf('function populateWatchingStep'), payJs.indexOf('window.copyTokenContract'));
+    assert.ok(facts.includes("document.getElementById('watch-chain').textContent  = asset;"));
+    assert.ok(facts.includes('Send ${asset}, not ${chainSymbol()}. If you send the coin instead, the link still settles once'));
+    const link = payJs.slice(payJs.indexOf('function appendSwitchLink'), payJs.indexOf('function renderAssetPick'));
+    assert.ok(link.includes("if (detected || sessionData.status !== 'AWAITING_PAYMENT') return;"), 'not once a payment is on the chain');
+    assert.ok(payJs.includes("fetch('/api/checkout/pick-asset'"), 'the switch asks the server for the new QR');
+    assert.ok(payJs.includes("if (data.pendingAsset) { sessionData.asset = data.pendingAsset; pickedAsset = data.pendingAsset; }"), 'what arrived is what the page shows');
+    assert.ok(payJs.includes('const asset = data.paidAsset || currentAsset();'), 'the paid screen names the asset that arrived');
+  });
+
+  test('a connected wallet pays a token with a plain transfer on the token contract', () => {
+    assert.ok(walletJs.includes("return `0xa9059cbb${address}${units}`;"), 'transfer(address,uint256)');
+    assert.ok(walletJs.includes("? { from: state.account, to: pay.token.contract, value: '0x0', data: transferData(to, pay.amount, pay.token.decimals) }"));
+    assert.ok(walletJs.includes(': { from: state.account, to, value: toWeiHex(pay.amount, state.chainInfo.decimals) }'), 'the coin as before');
+    assert.ok(walletJs.includes('if (amount) amount.textContent = paying().label;'), 'the button names the asset and figure');
+  });
 });

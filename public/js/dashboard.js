@@ -278,10 +278,18 @@ function syncWalletRows(container, list) {
         const sub = row.querySelector('.wallet-row__bal span');
         const subHtml = `${usd(w.balanceUSD)}${held > 0 ? ` <span class="held">· ${escapeHtml(formatBalance(held))} held for fees</span>` : ''}`;
         if (sub && sub.innerHTML !== subHtml) sub.innerHTML = subHtml;
+        // the token line comes and goes with what the wallet holds
+        const balBox = row.querySelector('.wallet-row__bal');
+        const toks = balBox && balBox.querySelector('.toks');
+        const toksHtml = renderTokenLine(w);
+        if (balBox && (toks ? toks.outerHTML : '') !== toksHtml) {
+            if (toks) toks.remove();
+            if (toksHtml) balBox.insertAdjacentHTML('beforeend', toksHtml);
+        }
         const state = row.querySelector('.wallet-row__state');
         const stateHtml = w.isProcessing ? '<span class="status-pill status-pill--verifying">Confirming</span>' : '<span class="status-pill status-pill--confirmed">Active</span>';
         if (state && state.innerHTML !== stateHtml) state.innerHTML = stateHtml;
-        row.dataset.search = `${w.label || ''} ${w.address} ${w.chain} ${symbol} ${PAYOUT_CHAINS[w.chain]?.name || ''}`.toLowerCase();
+        row.dataset.search = `${w.label || ''} ${w.address} ${w.chain} ${symbol} ${PAYOUT_CHAINS[w.chain]?.name || ''} ${walletTokens(w).map((t) => t.symbol).join(' ')}`.toLowerCase();
         // An open row's figures follow too; its QR is kept rather than fetched again.
         const detail = row.nextElementSibling;
         if (detail && detail.classList.contains('wallet-detail') && !detail.classList.contains('hidden') && detail.innerHTML) {
@@ -302,6 +310,27 @@ function syncWalletRows(container, list) {
  * the corner. No buttons - the tile opens the Wallets tab with this wallet's
  * row open, where the actions live.
  */
+/** The dollar tokens a wallet holds, as `[{ symbol, balance, balanceUSD }]`; only the ones with anything in them. */
+function walletTokens(w) {
+    return (Array.isArray(w.tokens) ? w.tokens : []).filter((t) => Number(t.balance) > 0);
+}
+
+/** What the tokens come to, in dollars. */
+function walletTokensUSD(w) {
+    return Number(w.tokensUSD) || walletTokens(w).reduce((sum, t) => sum + (Number(t.balanceUSD) || 0), 0);
+}
+
+/**
+ * The quiet second line under a coin figure: "120.00 USDC · 35.00 USDT".
+ * Nothing when the wallet holds none, so a wallet without tokens looks as it
+ * always did. A dollar token shows two decimals; it is dollars.
+ */
+function renderTokenLine(w, cls = 'toks') {
+    const held = walletTokens(w);
+    if (held.length === 0) return '';
+    return `<span class="${cls}">${held.map((t) => `<em title="${escapeHtml(t.symbol)} held at this address"><i>$</i>${escapeHtml(Number(t.balance).toFixed(2))} ${escapeHtml(t.symbol)}</em>`).join('')}</span>`;
+}
+
 function renderWalletTile(w) {
     const symbol = chainSymbol(w.chain);
     const chainName = PAYOUT_CHAINS[w.chain]?.name || w.chain;
@@ -312,9 +341,26 @@ function renderWalletTile(w) {
         <span class="wtile__name${w.label ? '' : ' wtile__name--empty'}">${w.label ? escapeHtml(w.label) : 'Unnamed wallet'}</span>
         <span class="wtile__addr">${escapeHtml(short)}</span>
         <span class="wtile__amt">${escapeHtml(formatBalance(w.balance))} ${escapeHtml(symbol)}</span>
-        <span class="wtile__usd">${usd(w.balanceUSD)}${held > 0 ? ' <span class="held">· fees held</span>' : ''}</span>
+        <span class="wtile__usd">${tileUsdHtml(w)}</span>
+        ${tileToksHtml(w)}
         <span class="wtile__dot${w.isProcessing ? ' wtile__dot--busy' : ''}" title="${w.isProcessing ? 'Confirming' : 'Active'}"></span>
     </button>`;
+}
+
+/** The tile's dollar line: the coin's dollars, or the total with the tokens folded in. */
+function tileUsdHtml(w) {
+    const held = Number(w.platformFeeHeld) || 0;
+    const tokensUSD = walletTokensUSD(w);
+    const total = (Number(w.balanceUSD) || 0) + tokensUSD;
+    const fees = held > 0 ? ' <span class="held">· fees held</span>' : '';
+    return `${usd(total)}${tokensUSD > 0 ? ' total' : ''}${fees}`;
+}
+
+/** A third line on the tile naming the tokens the total counts; nothing when there are none. */
+function tileToksHtml(w) {
+    const held = walletTokens(w);
+    if (held.length === 0) return '';
+    return `<span class="wtile__toks">${held.map((t) => `<em>${escapeHtml(Number(t.balance).toFixed(2))} ${escapeHtml(t.symbol)}</em>`).join('')}</span>`;
 }
 
 /** Refresh the tiles in place; false when the list no longer matches them. */
@@ -328,10 +374,16 @@ function syncWalletTiles(container, list) {
         set('.wtile__name', w.label || 'Unnamed wallet');
         tile.querySelector('.wtile__name').classList.toggle('wtile__name--empty', !w.label);
         set('.wtile__amt', `${formatBalance(w.balance)} ${chainSymbol(w.chain)}`);
-        const held = Number(w.platformFeeHeld) || 0;
-        const usdHtml = `${usd(w.balanceUSD)}${held > 0 ? ' <span class="held">· fees held</span>' : ''}`;
+        const usdHtml = tileUsdHtml(w);
         const usdEl = tile.querySelector('.wtile__usd');
         if (usdEl && usdEl.innerHTML !== usdHtml) usdEl.innerHTML = usdHtml;
+        // the token line comes and goes with what the wallet holds
+        const toks = tile.querySelector('.wtile__toks');
+        const toksHtml = tileToksHtml(w);
+        if ((toks ? toks.outerHTML : '') !== toksHtml) {
+            if (toks) toks.remove();
+            if (toksHtml && usdEl) usdEl.insertAdjacentHTML('afterend', toksHtml);
+        }
         const dot = tile.querySelector('.wtile__dot');
         if (dot) { dot.classList.toggle('wtile__dot--busy', Boolean(w.isProcessing)); dot.title = w.isProcessing ? 'Confirming' : 'Active'; }
     });
@@ -407,13 +459,16 @@ function displayDistribution() {
     const host = document.getElementById('distribution');
     if (!host) return;
 
+    // A chain's segment is everything held on it: the coin's dollars and
+    // the dollar tokens', so the bar and the big number agree.
     const byChain = {};
     for (const w of wallets) {
-        const usd = Number(w.balanceUSD) || 0;
+        const usd = (Number(w.balanceUSD) || 0) + walletTokensUSD(w);
         const native = Number(w.balance) || 0;
-        if (!byChain[w.chain]) byChain[w.chain] = { usd: 0, native: 0 };
+        if (!byChain[w.chain]) byChain[w.chain] = { usd: 0, native: 0, tokens: 0 };
         byChain[w.chain].usd += usd;
         byChain[w.chain].native += native;
+        byChain[w.chain].tokens += walletTokensUSD(w);
     }
 
     const funded = Object.entries(byChain)
@@ -433,7 +488,7 @@ function displayDistribution() {
         return;
     }
 
-    const tipFor = (chain, v) => `${PAYOUT_CHAINS[chain]?.name || chain} \u00b7 ${formatBalance(v.native)} ${chainSymbol(chain)} \u00b7 ${usd(v.usd)}`;
+    const tipFor = (chain, v) => `${PAYOUT_CHAINS[chain]?.name || chain} \u00b7 ${formatBalance(v.native)} ${chainSymbol(chain)}${v.tokens > 0 ? ` + ${usd(v.tokens)} in dollar tokens` : ''} \u00b7 ${usd(v.usd)}`;
     // A sliver still gets its ticker; below ~6% there is no room for it.
     const labelFor = (chain, share) => (share >= 6 ? chainSymbol(chain) : '');
 
@@ -476,12 +531,21 @@ function displayDistribution() {
 }
 
 function calculateTotalBalance() {
+    // The big number is everything the merchant holds: the coins' dollars and
+    // the dollar tokens'. All of it can be withdrawn - a token is paid out
+    // as itself or swapped on its chain - so the available figure is the
+    // same sum, less what is busy.
     totalBalanceUSD = 0;
-    wallets.forEach(w => { totalBalanceUSD += w.balanceUSD; });
+    let availableUSD = 0;
+    wallets.forEach((w) => {
+        const held = (Number(w.balanceUSD) || 0) + walletTokensUSD(w);
+        totalBalanceUSD += held;
+        if (!w.isProcessing) availableUSD += held;
+    });
 
     document.getElementById('totalBalanceUSD').textContent = `$${totalBalanceUSD.toFixed(2)}`;
-    document.getElementById('availableBalance').textContent = `$${totalBalanceUSD.toFixed(2)}`;
-    
+    document.getElementById('availableBalance').textContent = `$${availableUSD.toFixed(2)}`;
+
     updateWithdrawalStatus();
 }
 
@@ -590,7 +654,7 @@ function displayPayoutsList(payouts) {
         const net = Number(payout.netAmountUsd);
         // The rate is configuration, not a constant: say what this payout paid.
         const rate = gross > 0 && Number.isFinite(fee) ? ` (${((fee / gross) * 100).toFixed(1).replace(/\.0$/, '')}%)` : '';
-        const paidIn = escapeHtml(payout.payoutChain || payout.chain || '');
+        const paidIn = escapeHtml(payout.payoutAsset || chainSymbol(payout.payoutChain || payout.chain) || payout.payoutChain || payout.chain || '');
         const paidInName = escapeHtml(PAYOUT_CHAINS[payout.payoutChain || payout.chain]?.name || payout.payoutChain || payout.chain || '');
         const transfers = payout.withdrawalPlan?.transfers || [];
         const detailId = `payout-detail-${i}`;
@@ -599,9 +663,9 @@ function displayPayoutsList(payouts) {
         const transferRows = transfers.length
             ? transfers.map((t) => `<div class="xfer">
                 <span class="xfer__chain">${escapeHtml(PAYOUT_CHAINS[t.chain]?.name || t.chain || '')}</span>
-                <span class="xfer__amt">${escapeHtml(formatBalance(t.nativeAmount))} ${escapeHtml(chainSymbol(t.chain))}</span>
+                <span class="xfer__amt">${escapeHtml(legAmount(t))}</span>
                 <span class="xfer__usd">${money(t.transactionValueUSD)}</span>
-                <span class="xfer__how">${t.type === 'DIRECT_TRANSFER' ? 'Direct' : 'Swapped'}</span>
+                <span class="xfer__how">${t.route === 'dex' ? 'On-chain swap' : (t.route === 'thorchain' ? 'THORChain' : (t.route === 'dex+sideshift' || t.route === 'dex+thorchain' ? 'Swapped twice' : (t.type === 'DIRECT_TRANSFER' ? 'Direct' : 'Swapped')))}</span>
                 <span class="status-pill status-pill--${PAYOUT_PILL[String(t.status || 'PENDING').toUpperCase()] || 'pending'}">${PAYOUT_LABEL[String(t.status || 'PENDING').toUpperCase()] || escapeHtml(String(t.status))}</span>
             </div>`).join('')
             : '<div class="xfer xfer--none">No transfer breakdown recorded.</div>';
@@ -643,8 +707,19 @@ function txSearchText(tx) {
         tx.usdAmount, tx.status, tx.failureReason].filter(Boolean).join(' ').toLowerCase();
 }
 
+/**
+ * Money in or money out. A deposit is a checkout that settled; everything
+ * else the table lists is a withdrawal's transfer, whatever route it took
+ * (a direct send, a shift, an on-chain swap). This used to test for a
+ * 'WITHDRAWAL' type no transfer record has ever carried, so every payout
+ * showed as received.
+ */
+function isIncoming(tx) {
+    return String(tx.type || '').toUpperCase() === 'DEPOSIT';
+}
+
 function txMatchesFilter(tx) {
-    const incoming = String(tx.type || '').toUpperCase() !== 'WITHDRAWAL';
+    const incoming = isIncoming(tx);
     const status = String(tx.status || '').toUpperCase();
     switch (txFilter) {
         case 'in': return incoming;
@@ -691,10 +766,13 @@ function displayTransactionsList(transactions, needle = '') {
 
     tbody.innerHTML = transactions.map((tx, i) => {
         const status = String(tx.status || '').toUpperCase();
-        const incoming = String(tx.type || '').toUpperCase() !== 'WITHDRAWAL';
+        const incoming = isIncoming(tx);
         const chainInfo = PAYOUT_CHAINS[tx.chain] || {};
         const chainName = escapeHtml(chainInfo.name || tx.chain || '');
-        const symbol = escapeHtml(chainSymbol(tx.chain));
+        // What moved: the chain's coin, or a dollar token named on the record.
+        const token = tx.asset && tx.asset !== chainSymbol(tx.chain) ? escapeHtml(tx.asset) : '';
+        const symbol = token || escapeHtml(chainSymbol(tx.chain));
+        const tag = token ? ` <small class="asset-tag">${token}</small>` : '';
         const when = txWhen(tx.createdAt);
         const usd = Number(tx.usdAmount);
         const hashFull = tx.transactionHash ? String(tx.transactionHash) : '';
@@ -714,8 +792,8 @@ function displayTransactionsList(transactions, needle = '') {
         return `<tr class="row" tabindex="0" aria-expanded="false" aria-controls="${detailId}">
             <td class="when"><b>${escapeHtml(when.day)}</b><span>${escapeHtml(when.time)}</span></td>
             <td><span class="type"><i class="${incoming ? 'in' : 'out'}"></i>${incoming ? 'Received' : 'Payout'}</span></td>
-            <td class="amt num"><b>${incoming ? '' : '\u2212'}${escapeHtml(formatBalance(tx.nativeAmount))} ${symbol}</b>${Number.isFinite(usd) ? `<span>$${usd.toFixed(2)}</span>` : ''}</td>
-            <td class="chain">${chainName}</td>
+            <td class="amt num"><b>${incoming ? '' : '\u2212'}${escapeHtml(token ? Number(tx.nativeAmount).toFixed(2) : formatBalance(tx.nativeAmount))} ${symbol}</b>${Number.isFinite(usd) ? `<span>$${usd.toFixed(2)}</span>` : ''}</td>
+            <td class="chain">${chainName}${tag}</td>
             <td>${hashCell}</td>
             <td><span class="status-pill status-pill--${TX_PILL[status] || 'pending'}">${TX_LABEL[status] || escapeHtml(status)}</span></td>
             <td>${CHEV}</td>
@@ -820,10 +898,11 @@ function displayTransactions(transactions) {
     const LABEL = { PENDING: 'Pending', PROCESSING: 'Confirming', CONFIRMED: 'Confirmed', COMPLETED: 'Completed', FAILED: 'Failed' };
 
     const rows = transactions.map((tx) => {
-        const incoming = String(tx.type || '').toUpperCase() !== 'WITHDRAWAL';
+        const incoming = isIncoming(tx);
         const what = incoming ? 'Payment received' : 'Payout sent';
         const chain = escapeHtml(PAYOUT_CHAINS[tx.chain]?.name || tx.chain || '');
-        const symbol = escapeHtml(chainSymbol(tx.chain));
+        const token = tx.asset && tx.asset !== chainSymbol(tx.chain) ? escapeHtml(tx.asset) : '';
+        const symbol = token || escapeHtml(chainSymbol(tx.chain));
         const hash = tx.transactionHash
             ? `${escapeHtml(String(tx.transactionHash).slice(0, 6))}\u2026${escapeHtml(String(tx.transactionHash).slice(-4))}`
             : 'not yet broadcast';
@@ -834,7 +913,7 @@ function displayTransactions(transactions) {
         return `<div class="act__row">
             <i class="act__dot ${incoming ? 'in' : 'out'}"></i>
             <div class="act__what"><b>${what}</b><span>${chain} \u00b7 ${hash}${detail}</span></div>
-            <div class="act__amt">${incoming ? '' : '\u2212'}${escapeHtml(formatBalance(tx.nativeAmount))} ${symbol}${Number.isFinite(usd) ? `<span>$${usd.toFixed(2)}</span>` : ''}</div>
+            <div class="act__amt">${incoming ? '' : '\u2212'}${escapeHtml(token ? Number(tx.nativeAmount).toFixed(2) : formatBalance(tx.nativeAmount))} ${symbol}${Number.isFinite(usd) ? `<span>$${usd.toFixed(2)}</span>` : ''}</div>
             <div class="act__when">${when}</div>
             <span class="status-pill status-pill--${PILL[status] || 'pending'}">${LABEL[status] || escapeHtml(status)}</span>
         </div>`;
@@ -1775,7 +1854,7 @@ function renderWalletCard(w, { deletable = false } = {}) {
     const heldNote = held > 0 ? ` <span class="held">· ${escapeHtml(formatBalance(held))} held for fees</span>` : '';
     // Bake the searchable text into the row so filtering never depends on a
     // separate lookup that could be out of sync with what is on screen.
-    const searchText = `${w.label || ''} ${w.address} ${chain} ${symbol} ${PAYOUT_CHAINS[chain]?.name || ''}`.toLowerCase();
+    const searchText = `${w.label || ''} ${w.address} ${chain} ${symbol} ${PAYOUT_CHAINS[chain]?.name || ''} ${walletTokens(w).map((t) => t.symbol).join(' ')}`.toLowerCase();
     return `<div class="wallet-row" data-wallet-id="${w.id}" data-chain="${escapeHtml(chain)}" data-search="${escapeHtml(searchText)}" role="button" tabindex="0" aria-expanded="false">
         <span class="wallet-row__badge chain-mark" title="${escapeHtml(PAYOUT_CHAINS[chain]?.name || chain)}">${chainLogo(chain, escapeHtml(symbol))}</span>
         <div class="wallet-row__who">
@@ -1785,6 +1864,7 @@ function renderWalletCard(w, { deletable = false } = {}) {
         <div class="wallet-row__bal">
             <b title="${escapeHtml(String(w.balance))} ${escapeHtml(symbol)}">${escapeHtml(formatBalance(w.balance))} ${escapeHtml(symbol)}</b>
             <span>${usd(w.balanceUSD)}${heldNote}</span>
+            ${renderTokenLine(w)}
         </div>
         <span class="wallet-row__state">${w.isProcessing ? '<span class="status-pill status-pill--verifying">Confirming</span>' : '<span class="status-pill status-pill--confirmed">Active</span>'}</span>
         <div class="wallet-row__acts">
@@ -1809,6 +1889,7 @@ function renderWalletDetails(w) {
         <div class="wallet-detail__facts">
             ${fact('Address', `<span class="mono">${escapeHtml(w.address)}</span>`)}
             ${fact('Available', `${escapeHtml(formatBalance(w.balance))} ${escapeHtml(symbol)} ${muted(`${usd(w.balanceUSD)} · yours to withdraw`)}`)}
+            ${walletTokens(w).map((t) => fact(escapeHtml(t.symbol), `${escapeHtml(Number(t.balance).toFixed(2))} ${muted(usd(t.balanceUSD))} <span class="held-pill" title="A token cannot leave a wallet yet: moving it needs gas the wallet may not hold. Token payouts are next.">held · token payouts are next</span>`)).join('')}
             ${fact('On chain', `${escapeHtml(formatBalance(w.onChainBalance))} ${escapeHtml(symbol)} ${muted('what the address holds')}`)}
             ${fact('Held for fees', `${escapeHtml(formatBalance(w.platformFeeHeld))} ${escapeHtml(symbol)} ${muted('from earlier withdrawals, awaiting collection')}`)}
             ${fact('Made', escapeHtml(made))}
@@ -2190,8 +2271,9 @@ function updateWithdrawalAvailable() {
     const note = document.getElementById('wdAvailableNote');
     if (!figure || !note) return;
     const list = Array.isArray(wallets) ? wallets : [];
-    const ready = list.filter((w) => (w.balanceUSD || 0) >= 5 && !w.isProcessing);
-    figure.textContent = usd(ready.reduce((sum, w) => sum + (w.balanceUSD || 0), 0));
+    const holdings = (w) => (w.balanceUSD || 0) + walletTokensUSD(w);
+    const ready = list.filter((w) => holdings(w) >= 5 && !w.isProcessing);
+    figure.textContent = usd(ready.reduce((sum, w) => sum + holdings(w), 0));
     note.textContent = list.length === 0
         ? 'no wallets yet'
         : `available across ${ready.length} of ${list.length} wallet${list.length === 1 ? '' : 's'}`;
@@ -2237,10 +2319,13 @@ function newWithdrawal() {
 const FAMILY_ADDRESS = {
     evm: { placeholder: '0x…', pattern: /^0x[a-fA-F0-9]{40}$/ },
     solana: { placeholder: 'Base58 address', pattern: /^[1-9A-HJ-NP-Za-km-z]{32,44}$/ },
+    xrp: { placeholder: 'r…', pattern: /^r[1-9A-HJ-NP-Za-km-z]{24,34}$/ },
 };
 const UTXO_ADDRESS = {
     BTC: { placeholder: 'bc1… or 1… or 3…', pattern: /^(bc1[a-z0-9]{25,62}|[13][a-km-zA-HJ-NP-Z1-9]{25,34})$/ },
     LTC: { placeholder: 'ltc1… or L… or M…', pattern: /^(ltc1[a-z0-9]{25,62}|[LM3][a-km-zA-HJ-NP-Z1-9]{26,33})$/ },
+    BCH: { placeholder: 'bitcoincash:q… or 1…', pattern: /^((bitcoincash:)?[qpQP][a-zA-Z0-9]{41}|[13][a-km-zA-HJ-NP-Z1-9]{25,34})$/ },
+    DOGE: { placeholder: 'D…', pattern: /^[DA9][a-km-zA-HJ-NP-Z1-9]{25,34}$/ },
 };
 
 // Filled from /api/chains: code -> { name, symbol, family, placeholder, pattern, ... }
@@ -2276,6 +2361,7 @@ async function loadChains() {
         const keep = payout.value || 'ETH';
         payout.innerHTML = CHAIN_LIST.map((c) => `<option value="${c.code}">${label(c)}</option>`).join('');
         payout.value = PAYOUT_CHAINS[keep] ? keep : 'ETH';
+        renderPayoutAssetPick();
     }
 
     const wallet = document.getElementById('walletChain');
@@ -2307,6 +2393,54 @@ function selectedPayoutChain() {
     return select ? select.value : 'ETH';
 }
 
+/** The asset the payout settles in: the checked radio, else the chain's coin. */
+function selectedPayoutAsset() {
+    const checked = document.querySelector('#payoutAssetPick input:checked');
+    return checked ? checked.value : chainSymbol(selectedPayoutChain());
+}
+
+/**
+ * The "paid as" choice: the chain's coin, or one of the dollar tokens it
+ * carries. Only drawn for a chain with tokens; a chain without keeps the
+ * field hidden and the coin is the only answer.
+ */
+function renderPayoutAssetPick() {
+    const field = document.getElementById('payoutAssetField');
+    const pick = document.getElementById('payoutAssetPick');
+    if (!field || !pick) return;
+    const chain = selectedPayoutChain();
+    const spec = PAYOUT_CHAINS[chain] || { symbol: chain, tokens: [] };
+    const tokens = Array.isArray(spec.tokens) ? spec.tokens : [];
+    if (tokens.length === 0) {
+        pick.innerHTML = '';
+        field.hidden = true;
+        return;
+    }
+    const assets = [spec.symbol, ...tokens.map((t) => t.symbol)];
+    pick.innerHTML = assets.map((asset, i) => `<input type="radio" name="payoutAsset" id="payoutAsset-${escapeHtml(asset)}" value="${escapeHtml(asset)}"${i === 0 ? ' checked' : ''} /><label for="payoutAsset-${escapeHtml(asset)}">${escapeHtml(asset)}</label>`).join('');
+    field.hidden = false;
+    onPayoutAssetChange();
+}
+
+/** The line under the pick: what choosing a token means for the wallets. */
+function onPayoutAssetChange() {
+    const chain = selectedPayoutChain();
+    const spec = PAYOUT_CHAINS[chain] || { name: chain, symbol: chain };
+    const asset = selectedPayoutAsset();
+    const hint = document.getElementById('payoutAssetHint');
+    if (hint) {
+        hint.textContent = asset === spec.symbol
+            ? (spec.onChainSwaps
+                ? `${spec.symbol} on ${spec.name} is sent as it is; dollar tokens held there are swapped for ${spec.symbol} on the chain itself.`
+                : `${spec.symbol} on ${spec.name} is sent as it is. Dollar tokens held there stay put: ${spec.name} has no on-chain swap route yet.`)
+            : (spec.onChainSwaps
+                ? `${asset} held on ${spec.name} is sent as it is; ${spec.symbol} there is swapped for ${asset} on the chain itself, at a rate quoted on the review.`
+                : `Only ${asset} already held on ${spec.name} can be paid out as ${asset}: the chain has no on-chain swap route yet.`);
+    }
+    const msg = document.getElementById('step1-message');
+    if (msg) msg.innerHTML = '';
+}
+
 /**
  * Retarget the address field when the payout chain changes. The previously
  * typed address is almost certainly for the old chain, so it is cleared rather
@@ -2323,8 +2457,14 @@ function onPayoutChainChange() {
         input.value = '';
     }
     if (hint) {
-        hint.textContent = `${spec.name} wallets are sent directly, with no swap and no $5 swap minimum. Everything else is swapped at a rate quoted on the review.`;
+        const cross = Array.isArray(spec.crossChain) ? spec.crossChain : (spec.swappable === false ? [] : ['sideshift']);
+        hint.textContent = cross.length === 0
+            ? `${spec.name} has no swap route yet: only wallets already on ${spec.name} can be cashed out here, and they are sent directly.`
+            : (cross.includes('thorchain')
+                ? `${spec.name} wallets are sent directly, with no swap. Everything else crosses through THORChain where it serves both ends (no custodian) or at a fixed rate otherwise; the review shows which, and the figure.`
+                : `${spec.name} wallets are sent directly, with no swap and no $5 swap minimum. Everything else is swapped at a rate quoted on the review.`);
     }
+    renderPayoutAssetPick();
 
     const msg = document.getElementById('step1-message');
     if (msg) msg.innerHTML = '';
@@ -2415,22 +2555,27 @@ async function loadWithdrawalWallets() {
 function displayWalletSelection(wallets) {
     const container = document.getElementById('wallets-container');
     const payoutChain = selectedPayoutChain();
+    const payoutAsset = selectedPayoutAsset();
     let eligible = 0;
     container.innerHTML = wallets.map((wallet) => {
-        const balanceUSD = wallet.balanceUSD || 0;
-        const isEligible = balanceUSD >= 5 && !wallet.isProcessing;
+        const tokens = walletTokens(wallet);
+        const tokensUSD = walletTokensUSD(wallet);
+        const holdingsUSD = (wallet.balanceUSD || 0) + tokensUSD;
+        const isEligible = holdingsUSD >= 5 && !wallet.isProcessing;
         if (isEligible) eligible++;
         const why = wallet.isProcessing
             ? '<span class="status-pill status-pill--verifying">Confirming</span>'
             : (isEligible
-                ? `<span class="status-pill status-pill--confirmed">${wallet.chain === payoutChain ? 'Direct' : 'Swap'}</span>`
+                ? `<span class="status-pill status-pill--confirmed">${escapeHtml(routeLabelFor(wallet, payoutChain, payoutAsset))}</span>`
                 : '<span class="status-pill status-pill--closed">Below $5</span>');
         const short = `${wallet.address.slice(0, 6)}…${wallet.address.slice(-4)}`;
+        // The coin, then the dollar tokens on a line of their own under it.
+        const tokenLine = tokens.length ? `<span class="wd-src__toks">${tokens.map((t) => `${Number(t.balance).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${escapeHtml(t.symbol)}`).join(' · ')}</span>` : '';
         return `<label class="wd-src${isEligible ? '' : ' is-off'}">
             <input type="checkbox" name="withdrawChain" value="${escapeHtml(wallet.address)}" ${isEligible ? '' : 'disabled'} />
             <span class="wd-src__badge chain-mark" title="${escapeHtml(PAYOUT_CHAINS[wallet.chain]?.name || wallet.chain)}">${chainLogo(wallet.chain, escapeHtml(wallet.chain))}</span>
             <span class="wd-src__who"><b>${wallet.label ? escapeHtml(wallet.label) : 'Unnamed wallet'}</b><span>${escapeHtml(short)}</span></span>
-            <span class="wd-src__bal"><b>${formatBalance(wallet.balance)} ${escapeHtml(chainSymbol(wallet.chain))}</b><span>${usd(balanceUSD)}</span></span>
+            <span class="wd-src__bal"><b>${formatBalance(wallet.balance)} ${escapeHtml(chainSymbol(wallet.chain))}</b><span>${usd(holdingsUSD)}${tokenLine}</span></span>
             ${why}
         </label>`;
     }).join('');
@@ -2441,6 +2586,20 @@ function displayWalletSelection(wallets) {
         : '<div class="alert alert-error"><span class="inline-icon" data-icon="close"></span>No wallets are ready to withdraw. Each needs at least $5 and no transaction in progress.</div>';
     updateWithdrawTally();
     loadSVGIcons();
+}
+
+/**
+ * How a wallet's holdings reach the payout asset, in a word: sent as they
+ * are, swapped on their own chain, or shifted across chains.
+ */
+function routeLabelFor(wallet, payoutChain, payoutAsset) {
+    if (wallet.chain !== payoutChain) return 'Swap';
+    const held = [chainSymbol(wallet.chain), ...walletTokens(wallet).map((t) => t.symbol)];
+    const asIs = held.includes(payoutAsset) && (payoutAsset !== chainSymbol(wallet.chain) || Number(wallet.balance) > 0);
+    const others = held.filter((a) => a !== payoutAsset);
+    if (asIs && others.length === 0) return 'Direct';
+    if (!asIs) return 'On-chain swap';
+    return 'Direct + on-chain swap';
 }
 
 /** The tally under the rows follows the checkboxes. */
@@ -2454,7 +2613,7 @@ function updateWithdrawTally() {
     const list = Array.isArray(wallets) ? wallets : [];
     const sum = picked.reduce((total, box) => {
         const wallet = list.find((w) => w.address === box.value);
-        return total + (wallet ? (wallet.balanceUSD || 0) : 0);
+        return total + (wallet ? (wallet.balanceUSD || 0) + walletTokensUSD(wallet) : 0);
     }, 0);
     tally.textContent = usd(sum);
     label.textContent = eligible.length === 0
@@ -2482,6 +2641,7 @@ async function getPreview() {
             body: JSON.stringify({
                 recipientAddress,
                 payoutChain: selectedPayoutChain(),
+                payoutAsset: selectedPayoutAsset(),
                 selectedWallets
             })
         });
@@ -2516,31 +2676,70 @@ function walletLabelFor(address) {
  * One block per transfer in the plan. Every figure is the server's - the
  * same plan that will be broadcast - so the lines and the totals agree.
  */
+/** A leg's amount: a dollar token to the cent, a coin to eight places. */
+function legAmount(t) {
+    const asset = t.asset || chainSymbol(t.chain);
+    const amount = asset === chainSymbol(t.chain) ? formatBalance(t.nativeAmount) : Number(t.nativeAmount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return `${amount} ${asset}`;
+}
+
+/**
+ * What a leg does, in a phrase: sent as it is, swapped on its own chain,
+ * shifted across chains, or both in turn.
+ */
+function routeText(t) {
+    const asset = t.asset || chainSymbol(t.chain);
+    const out = t.payoutAsset || chainSymbol(t.payoutChain);
+    const from = PAYOUT_CHAINS[t.chain] || { name: t.chain };
+    switch (t.route || (t.type === 'DIRECT_TRANSFER' ? 'direct' : 'sideshift')) {
+        case 'direct': return `${escapeHtml(asset)}, direct, no swap`;
+        case 'dex': return `${escapeHtml(asset)} → ${escapeHtml(out)}, swapped on ${escapeHtml(from.name)}${t.dexQuote && t.dexQuote.provider ? ` via ${escapeHtml(t.dexQuote.provider)}` : ''}`;
+        case 'thorchain': return `${escapeHtml(asset)} swapped to ${escapeHtml(out)} through THORChain, no custodian`;
+        case 'dex+thorchain': return `${escapeHtml(asset)} → ${escapeHtml(chainSymbol(t.chain))} on ${escapeHtml(from.name)}, then through THORChain to ${escapeHtml(out)}`;
+        case 'dex+sideshift': return `${escapeHtml(asset)} → ${escapeHtml(chainSymbol(t.chain))} on ${escapeHtml(from.name)}, then swapped to ${escapeHtml(out)}`;
+        default: return `${escapeHtml(asset)} swapped to ${escapeHtml(out)} at a fixed rate`;
+    }
+}
+
 function renderTransferBreakdown(data) {
     const transfers = Array.isArray(data.transfers) ? data.transfers : [];
     if (transfers.length === 0) return '';
     const rate = Math.round((data.platformFeeRate || 0.05) * 100);
 
-    return transfers.map((t) => {
+    const legs = transfers.map((t) => {
         const from = PAYOUT_CHAINS[t.chain] || { name: t.chain };
-        const route = t.type === 'DIRECT_TRANSFER'
-            ? 'direct, no swap'
-            : `swapped to ${escapeHtml(chainSymbol(t.payoutChain))} at a fixed rate`;
         const gasNote = t.gasIsLive ? '' : ' <span class="muted">· estimate</span>';
+        // The cost line splits when a swap is involved: the network's fee,
+        // and what the route loses to spread.
+        const networkFee = t.networkFeeUsd != null ? t.networkFeeUsd : t.gasUsd;
+        const spread = Number(t.swapFeeUsd) || 0;
         return `<div class="receipt__src">
-            <div class="h"><span>${escapeHtml(from.name)} · ${escapeHtml(walletLabelFor(t.fromAddress))}</span><span>${route}</span></div>
-            <div><span>Amount</span><span>${usd(t.grossUsd)}</span></div>
+            <div class="h"><span>${escapeHtml(from.name)} · ${escapeHtml(walletLabelFor(t.fromAddress))}</span><span>${routeText(t)}</span></div>
+            <div><span>Amount · ${escapeHtml(legAmount(t))}</span><span>${usd(t.grossUsd)}</span></div>
             <div><span>Platform fee (${rate}%)</span><span>−${usd(t.platformFeeUsd)}</span></div>
-            <div><span>Network fee${gasNote}</span><span>−${usd(t.gasUsd)}</span></div>
+            <div><span>Network fee${gasNote}</span><span>−${usd(networkFee)}</span></div>
+            ${spread > 0 ? `<div><span>Swap spread</span><span>−${usd(spread)}</span></div>` : ''}
+            ${Number(t.gasAdvanceUsd) > 0 ? `<div><span>Gas advanced for this wallet's tokens</span><span>−${usd(t.gasAdvanceUsd)}</span></div>` : ''}
         </div>`;
     }).join('');
+
+    // What stays behind in the chosen wallets, and why: a coin kept for gas,
+    // a token with no route, a balance under the minimum.
+    const skipped = Array.isArray(data.skipped) ? data.skipped : [];
+    const left = skipped.length
+        ? `<div class="receipt__src"><div class="h"><span>Left in wallet</span><span></span></div>${skipped.map((k) => `<div><span>${escapeHtml(PAYOUT_CHAINS[k.chain]?.name || k.chain)} · ${escapeHtml(k.asset)}</span><span class="muted">${escapeHtml(k.reason)}</span></div>`).join('')}</div>`
+        : '';
+    return legs + left;
 }
 
 function renderTotals(data) {
+    const transfers = Array.isArray(data.transfers) ? data.transfers : [];
+    const swaps = transfers.some((t) => Number(t.swapFeeUsd) > 0);
     return `<div class="receipt__tot">
         <div><span>Total</span><span>${usd(data.grossSweptUsd ?? data.totalAmountUsd)}</span></div>
         <div><span>Platform fee</span><span>−${usd(data.platformFee)}</span></div>
-        <div><span>Network fees</span><span>−${usd(data.totalGasUsd)}</span></div>
+        <div><span>${swaps ? 'Network fees and swap spread' : 'Network fees'}</span><span>−${usd(data.totalGasUsd)}</span></div>
+        ${Number(data.gasAdvanceUsd) > 0 ? `<div><span>Gas advanced</span><span>−${usd(data.gasAdvanceUsd)}</span></div>` : ''}
         <div class="net"><span>You receive</span><span>${usd(data.netAmountUsd)}</span></div>
     </div>`;
 }
@@ -2569,7 +2768,7 @@ function displayPreview() {
         ${renderTransferBreakdown(data)}
         ${renderTotals(data)}
         <div class="receipt__to">
-            <div><span>Paid in</span><b>${escapeHtml(chain.name)} · ${escapeHtml(chain.symbol)}</b></div>
+            <div><span>Paid in</span><b>${escapeHtml(chain.name)} · ${escapeHtml(data.payoutAsset || chain.symbol)}</b></div>
             <div><span>To</span><b class="mono">${escapeHtml(data.recipientAddress || '')}</b></div>
         </div>
     </div>`;
@@ -2594,8 +2793,12 @@ function displayFinalSummary(payout) {
         <div class="receipt__cap"><span>Transfers</span><span>Watching the chain</span></div>
         ${transfers.map((t) => {
             const from = PAYOUT_CHAINS[t.chain] || { name: t.chain };
-            const route = t.type === 'DIRECT_TRANSFER' ? `→ ${escapeHtml(dest.name)}` : `→ swap → ${escapeHtml(dest.name)}`;
-            const state = t.type === 'DIRECT_TRANSFER' ? 'Sending' : 'Swapping';
+            const asset = t.asset || chainSymbol(t.chain);
+            const out = t.payoutAsset || payout.payoutAsset || plan.payoutAsset || chainSymbol(dest.code || t.payoutChain);
+            const route = t.route === 'direct' || t.type === 'DIRECT_TRANSFER'
+                ? `${escapeHtml(asset)} → ${escapeHtml(dest.name)}`
+                : (t.route === 'dex' ? `${escapeHtml(asset)} → ${escapeHtml(out)} on ${escapeHtml(from.name)}` : `${escapeHtml(asset)} → swap → ${escapeHtml(out)} on ${escapeHtml(dest.name)}`);
+            const state = t.route === 'direct' || t.type === 'DIRECT_TRANSFER' ? 'Sending' : 'Swapping';
             return `<div class="receipt__src"><div class="h"><span>${escapeHtml(from.name)} · ${escapeHtml(walletLabelFor(t.fromAddress))} ${route}</span><span class="status-pill status-pill--verifying">${state}</span></div></div>`;
         }).join('')}
         <div class="receipt__tot"><div class="net"><span>Arriving</span><span>${usd(payout.netAmountUsd ?? plan.netAmountUsd)}</span></div></div>
@@ -2620,6 +2823,7 @@ async function processWithdrawal() {
             body: JSON.stringify({
                 recipientAddress,
                 payoutChain: selectedPayoutChain(),
+                payoutAsset: selectedPayoutAsset(),
                 selectedWallets
             })
         });

@@ -3,6 +3,7 @@ const PayoutService = require('../services/PayoutService');
 const logger = require('../services/logger');
 const { ValidationError } = require('../utils/errors');
 const { validateCryptoAddress, validateChain, SUPPORTED_CHAINS } = require('../utils/validators');
+const chains = require('../config/chains');
 const { withdrawalLimiter } = require('../middleware/rateLimit');
 const { idempotency } = require('../middleware/idempotency');
 
@@ -20,6 +21,20 @@ function resolvePayoutChain(raw) {
     throw new ValidationError(`payoutChain must be one of: ${SUPPORTED_CHAINS.join(', ')}`);
   }
   return chain;
+}
+
+/**
+ * The asset the payout settles in on that chain: its coin by default, or one
+ * of the dollar tokens the chain carries.
+ */
+function resolvePayoutAsset(raw, payoutChain) {
+  if (raw === undefined || raw === null || raw === '') return chains.get(payoutChain).symbol;
+  const asset = String(raw).toUpperCase();
+  const allowed = chains.assetsOf(payoutChain);
+  if (!allowed.includes(asset)) {
+    throw new ValidationError(`payoutAsset must be one of: ${allowed.join(', ')} for ${payoutChain}`);
+  }
+  return asset;
 }
 
 /**
@@ -53,16 +68,18 @@ router.post('/preview', withdrawalLimiter, async (req, res, next) => {
   try {
     const { recipientAddress } = req.body;
     const payoutChain = resolvePayoutChain(req.body.payoutChain);
+    const payoutAsset = resolvePayoutAsset(req.body.payoutAsset, payoutChain);
     validateRecipient(recipientAddress, payoutChain);
     const selectedWallets = validateSelection(req.body.selectedWallets);
 
-    logger.action(`[WithdrawalRoute] Preview for client: ${req.auth.clientId} in ${payoutChain}`);
+    logger.action(`[WithdrawalRoute] Preview for client: ${req.auth.clientId} in ${payoutAsset} on ${payoutChain}`);
 
     const preview = await PayoutService.getWithdrawalPreview(
       req.auth.clientId,
       recipientAddress,
       selectedWallets,
-      payoutChain
+      payoutChain,
+      payoutAsset
     );
 
     res.json({ success: true, data: preview });
@@ -82,11 +99,12 @@ router.post('/', withdrawalLimiter, idempotency({ required: true }), async (req,
   try {
     const { recipientAddress } = req.body;
     const payoutChain = resolvePayoutChain(req.body.payoutChain);
+    const payoutAsset = resolvePayoutAsset(req.body.payoutAsset, payoutChain);
     validateRecipient(recipientAddress, payoutChain);
     const selectedWallets = validateSelection(req.body.selectedWallets);
 
     logger.action(
-      `[WithdrawalRoute] Creating ${payoutChain} withdrawal for client: ${req.auth.clientId} to ${recipientAddress}`
+      `[WithdrawalRoute] Creating ${payoutAsset}@${payoutChain} withdrawal for client: ${req.auth.clientId} to ${recipientAddress}`
     );
 
     let walletAddresses = selectedWallets;
@@ -102,7 +120,8 @@ router.post('/', withdrawalLimiter, idempotency({ required: true }), async (req,
       req.auth.clientId,
       recipientAddress,
       walletAddresses,
-      payoutChain
+      payoutChain,
+      payoutAsset
     );
 
     res.status(201).json({
@@ -110,6 +129,7 @@ router.post('/', withdrawalLimiter, idempotency({ required: true }), async (req,
       clientId: payout.clientId,
       recipientAddress,
       payoutChain: payout.payoutChain,
+      payoutAsset: payout.payoutAsset,
       netAmountUsd: payout.netAmountUsd,
       totalAmountUsd: payout.totalAmountUsd,
       chain: payout.chain,

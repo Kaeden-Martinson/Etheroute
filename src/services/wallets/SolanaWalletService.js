@@ -8,6 +8,9 @@ const KeyVault = require('../crypto/KeyVault');
 const ProxyService = require('../ProxyService');
 
 class SolanaWalletService {
+  /** The SPL memo program: a memo instruction carries a swap network's order. */
+  static get MEMO_PROGRAM() { return 'MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr'; }
+
   constructor() {
     // Solana mainnet endpoints
     // Tatum gateway for transaction sending, but free tier has method restrictions
@@ -405,9 +408,13 @@ class SolanaWalletService {
    * @param {number} amount - Amount in SOL
    * @returns {Promise<string>} Transaction hash
    */
-  async sendTransaction(privateKey, toAddress, amount) {
+  /**
+   * Send `amount` SOL to `toAddress`. `options.memo` adds a memo-program
+   * instruction carrying it (a swap network's instruction).
+   */
+  async sendTransaction(privateKey, toAddress, amount, options = {}) {
     try {
-      const { Connection, PublicKey, Keypair, SystemProgram, Transaction, LAMPORTS_PER_SOL } = require('@solana/web3.js');
+      const { Connection, PublicKey, Keypair, SystemProgram, Transaction, TransactionInstruction, LAMPORTS_PER_SOL } = require('@solana/web3.js');
       const rpcUrl = this.endpoints.mainnet;
       const connection = new Connection(rpcUrl, 'confirmed');
       
@@ -440,6 +447,13 @@ class SolanaWalletService {
           lamports: lamports,
         })
       );
+      if (options && options.memo) {
+        transaction.add(new TransactionInstruction({
+          keys: [],
+          programId: new PublicKey(SolanaWalletService.MEMO_PROGRAM),
+          data: Buffer.from(String(options.memo), 'utf8'),
+        }));
+      }
 
       // Get recent blockhash via ProxyService
       const response = await ProxyService.fetch(rpcUrl, {

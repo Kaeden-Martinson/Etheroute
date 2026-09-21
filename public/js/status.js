@@ -177,7 +177,107 @@ function populateTargets(scope) {
   select.innerHTML = options.map((item) => `<option value="${item.value}">${item.label}</option>`).join('');
 }
 
+// ── Chains ──────────────────────────────────────────────────────────────────
+
+const ROUTE_LABEL = { thorchain: 'THORChain', sideshift: 'SideShift', kyber: 'Kyber', paraswap: 'ParaSwap' };
+const GOOD_STATES = ['up', 'open'];
+const BAD_STATES = ['down', 'stalled', 'halted', 'offline', 'unlisted', 'no-pool', 'thin', 'degraded'];
+
+/** "3 min ago" / "2 h ago" / "4 d ago", from an ISO time. */
+function ago(value) {
+  if (!value) return '—';
+  const ms = Date.now() - new Date(value).getTime();
+  if (ms < 90 * 1000) return 'just now';
+  if (ms < 60 * 60 * 1000) return `${Math.round(ms / 60000)} min ago`;
+  if (ms < 48 * 60 * 60 * 1000) return `${Math.round(ms / 3600000)} h ago`;
+  return `${Math.round(ms / 86400000)} d ago`;
+}
+
+function toneOf(state) {
+  if (GOOD_STATES.includes(state)) return 'up';
+  if (BAD_STATES.includes(state)) return state === 'thin' || state === 'stalled' || state === 'degraded' ? 'degraded' : 'down';
+  return 'unknown';
+}
+
+/** The endpoints' word: how many answered, how fast, and the tip. */
+function rpcText(chain) {
+  const rpc = chain.rpc;
+  if (!rpc) return 'not checked yet';
+  if (!rpc.ok) return `no endpoint answering${rpc.error ? ` · ${rpc.error.split(' | ')[0].replace(/^https?:\/\/[^:]+: /, '')}` : ''}`;
+  const tip = rpc.tip != null ? ` · ${chain.family === 'solana' ? 'slot' : chain.family === 'xrp' ? 'ledger' : 'block'} ${Number(rpc.tip).toLocaleString('en-US')}` : '';
+  const stall = rpc.stalled ? ' · tip not moving' : '';
+  return `${rpc.endpointsUp}/${rpc.endpoints} endpoint${rpc.endpoints === 1 ? '' : 's'} · ${rpc.latencyMs} ms${tip}${stall}`;
+}
+
+function renderChainRow(chain, hidden) {
+  const routes = Object.entries(chain.routes || {}).map(([name, state]) =>
+    `<span title="${escapeAttr(`${ROUTE_LABEL[name] || name}: ${state}`)}"><i class="dot dot--${toneOf(state)}"></i>${escapeAttr(ROUTE_LABEL[name] || name)}</span>`).join('');
+  const days = chain.days || [];
+  const bar = days.length ? `<div class="uptime-bar" role="img" aria-label="${escapeAttr(`${chain.name}: last ${days.length} days`)}">${days.map((d) => `<i class="tick tick--${d.status === 'down' ? 'down' : d.status === 'partial' ? 'partial' : 'operational'}" title="${escapeAttr(d.downtimeMinutes > 0 ? `${formatDayLabel(d.date)} — ${formatDuration(d.downtimeMinutes)} unreachable` : `${formatDayLabel(d.date)} — no downtime`)}"></i>`).join('')}</div>` : '';
+  return `<article class="chain-row" data-status="${escapeAttr(chain.status)}"${hidden ? ' hidden' : ''}>
+    <i class="dot dot--${toneOf(chain.status === 'up' ? 'up' : chain.status)}" title="${escapeAttr(chain.status)}"></i>
+    <div class="chain-row__name">${escapeAttr(chain.name)}<span>${escapeAttr(chain.code)}</span></div>
+    <div class="chain-row__rpc${chain.rpc && !chain.rpc.ok ? ' is-bad' : ''}">${escapeAttr(rpcText(chain))}</div>
+    <div class="chain-row__routes">${routes || '<span>direct only</span>'}</div>
+    <div class="chain-row__since" title="${escapeAttr(chain.since ? `${chain.status} since ${formatTimestamp(chain.since)}` : '')}">${chain.since ? `${escapeAttr(chain.status)} · ${escapeAttr(ago(chain.since))}` : 'not checked yet'}</div>
+    ${bar}
+  </article>`;
+}
+
+function renderChains(data) {
+  const rows = document.getElementById('chainRows');
+  const summary = document.getElementById('chainsSummary');
+  const more = document.getElementById('chainMore');
+  if (!rows || !data) return;
+  const list = (data.chains || []).slice().sort((a, b) => {
+    const rank = { down: 0, degraded: 1, unknown: 2, up: 3 };
+    return (rank[a.status] ?? 2) - (rank[b.status] ?? 2) || a.name.localeCompare(b.name);
+  });
+  const problems = list.filter((c) => c.status !== 'up');
+  const healthy = list.filter((c) => c.status === 'up');
+  const c = data.counts || {};
+  const every = data.intervalMs ? ` every ${Math.round(data.intervalMs / 60000)} min` : '';
+  summary.textContent = data.checkedAt
+    ? `${c.up || 0} up${c.degraded ? ` · ${c.degraded} degraded` : ''}${c.down ? ` · ${c.down} down` : ''} · checked ${ago(data.checkedAt)}${every}. Endpoints, the tip, and the swap routes off each chain.`
+    : 'The first sweep runs shortly after the server starts.';
+  STATE.showAllChains = STATE.showAllChains || problems.length === 0;
+  rows.innerHTML = problems.map((chain) => renderChainRow(chain, false)).join('') + healthy.map((chain) => renderChainRow(chain, !STATE.showAllChains)).join('');
+  if (more) {
+    more.hidden = problems.length === 0 || healthy.length === 0;
+    more.textContent = STATE.showAllChains ? `Hide the ${healthy.length} healthy chains` : `Show the ${healthy.length} healthy chains`;
+  }
+  renderChainEvents(data.events || []);
+}
+
+function renderChainEvents(events) {
+  const host = document.getElementById('chainEvents');
+  if (!host) return;
+  if (!events.length) { host.innerHTML = ''; return; }
+  host.innerHTML = `<h3>Recent changes</h3>${events.slice(0, 20).map((e) => `<div class="chain-event">
+    <time datetime="${escapeAttr(e.at)}" title="${escapeAttr(formatTimestamp(e.at))}">${escapeAttr(ago(e.at))}</time>
+    <div><b>${escapeAttr(e.name || e.chain)}</b> · ${escapeAttr(ROUTE_LABEL[e.component] || e.component)}: ${escapeAttr(e.from)} → <span class="${BAD_STATES.includes(e.to) ? 'to-bad' : 'to-good'}">${escapeAttr(e.to)}</span>${e.detail ? `<small>${escapeAttr(e.detail)}</small>` : ''}</div>
+  </div>`).join('')}`;
+}
+
+function toggleAllChains() {
+  STATE.showAllChains = !STATE.showAllChains;
+  if (STATE.chains) renderChains(STATE.chains);
+}
+
+async function loadChains() {
+  try {
+    const response = await fetch(`${STATUS_API_URL}/chains`);
+    const data = await response.json();
+    STATE.chains = data;
+    renderChains(data);
+  } catch (error) {
+    const summary = document.getElementById('chainsSummary');
+    if (summary) summary.textContent = `Chain health unavailable: ${error.message}`;
+  }
+}
+
 async function loadStatus() {
+  loadChains();
   const clientId = getClientId();
   const url = clientId ? `${STATUS_API_URL}?clientId=${encodeURIComponent(clientId)}` : STATUS_API_URL;
   const response = await fetch(url);

@@ -100,6 +100,13 @@
     return '0x' + BigInt(digits || '0').toString(16);
   }
 
+  /** ERC-20 transfer(address,uint256): the selector, the address and the amount each left-padded to 32 bytes. */
+  function transferData(to, amount, decimals) {
+    const address = String(to).slice(2).toLowerCase().padStart(64, '0');
+    const units = toWeiHex(amount, decimals).slice(2).padStart(64, '0');
+    return `0xa9059cbb${address}${units}`;
+  }
+
   // ── Wallet actions ────────────────────────────────────────────────────────
 
   async function connect() {
@@ -119,11 +126,13 @@
       if (!account) throw new Error('No account was shared');
       state.account = account;
 
-      // Submit it as the paying address, exactly like the typed path.
+      // Submit it as the paying address, exactly like the typed path - with
+      // what the customer picked to pay in, as the typed path sends it.
+      const asset = typeof window.__checkoutPickedAsset === 'function' ? window.__checkoutPickedAsset() : undefined;
       const res = await fetch('/api/checkout/submit-wallet', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId, clientWalletAddress: account }),
+        body: JSON.stringify({ sessionId, clientWalletAddress: account, asset }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'The session did not accept this address');
@@ -141,10 +150,20 @@
     }
   }
 
+  /** The asset the page is set to, its figure, and its token entry (null for the coin). */
+  function paying() {
+    const session = state.session || {};
+    const asset = (typeof window.__checkoutPickedAsset === 'function' && window.__checkoutPickedAsset()) || session.asset || state.chainInfo.symbol;
+    const amounts = session.amounts && typeof session.amounts === 'object' ? session.amounts : { [state.chainInfo.symbol]: session.nativeAmount };
+    const token = (state.chainInfo.tokens || []).find((t) => t.symbol === asset) || null;
+    const amount = amounts[asset] !== undefined ? amounts[asset] : session.nativeAmount;
+    return { asset, amount, token, label: `${token ? Number(amount).toFixed(2) : amount} ${asset}` };
+  }
+
   function showPayButton() {
     const info = state.chainInfo;
     const amount = el('pay-amount-display');
-    if (amount) amount.textContent = `${state.session.nativeAmount} ${info.symbol}`;
+    if (amount) amount.textContent = paying().label;
     const from = el('pay-from-display');
     if (from) from.textContent = short(state.account);
     const walletName = el('pay-wallet-name');
@@ -196,13 +215,16 @@
       const to = fresh && fresh.walletAddress;
       if (!to) throw new Error('The receiving address is not available yet. Try again in a moment.');
 
+      // The coin is a value transfer to the merchant. A token is a call on
+      // the token's contract - transfer(to, amount) - with the amount in the
+      // token's units; the wallet shows the contract and the amount before
+      // the customer approves, and there is no approval step.
+      const pay = paying();
       const txHash = await state.provider.request({
         method: 'eth_sendTransaction',
-        params: [{
-          from: state.account,
-          to,
-          value: toWeiHex(state.session.nativeAmount, state.chainInfo.decimals),
-        }],
+        params: [pay.token
+          ? { from: state.account, to: pay.token.contract, value: '0x0', data: transferData(to, pay.amount, pay.token.decimals) }
+          : { from: state.account, to, value: toWeiHex(pay.amount, state.chainInfo.decimals) }],
       });
 
       // Tell the server which transaction to watch.
@@ -224,9 +246,12 @@
       state.sending = false;
       const declined = error && (error.code === 4001 || /user rejected|denied/i.test(error.message || ''));
       setNote('wallet-note-pay', declined ? 'The transaction was declined in the wallet.' : (error.message || 'The wallet could not send the payment.'), 'warn');
-      if (button) { button.disabled = false; setLabel(button, `Pay ${state.session.nativeAmount} ${state.chainInfo.symbol} with ${state.walletName || 'wallet'}`); }
+      if (button) { button.disabled = false; setLabel(button, `Pay ${paying().label} with ${state.walletName || 'wallet'}`); }
     }
   }
+
+  // The page changed what it is paying in: the button says so.
+  window.__checkoutAssetChanged = () => { if (state.account) showPayButton(); };
 
   // ── Boot ──────────────────────────────────────────────────────────────────
 

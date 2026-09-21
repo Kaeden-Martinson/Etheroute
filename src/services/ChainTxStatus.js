@@ -35,6 +35,14 @@ const SOLANA_RPC = 'https://api.mainnet-beta.solana.com';
 async function utxoChainStatus(chain, txid) {
   const base = EXPLORERS[chain];
 
+  // A chain whose explorer is not mempool.space-shaped (Bitcoin Cash,
+  // Dogecoin) is asked through its wallet service, which knows the shape.
+  if (!base) {
+    const service = require('./wallets').walletServiceFor(chain);
+    if (typeof service.getTransactionStatus !== 'function') throw new Error(`No status lookup for ${chain}`);
+    return service.getTransactionStatus(txid);
+  }
+
   const response = await ProxyService.fetch(`${base}/tx/${txid}/status`);
   if (response.status === 404) {
     return { status: 'not_found', confirmations: 0, blockHeight: null };
@@ -157,6 +165,7 @@ async function getTransferStatus(chain, txHash) {
     case 'evm': return evmStatus(code, txHash);
     case 'utxo': return utxoChainStatus(code, txHash);
     case 'solana': return solanaStatus(txHash);
+    case 'xrp': return require('./wallets').walletServiceFor(code).getTransactionStatus(txHash);
     default:
       throw new Error(`Unsupported chain for status lookup: ${chain}`);
   }

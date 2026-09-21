@@ -12,6 +12,14 @@ const chains = require('../config/chains');
 // than this is not going to be used anyway.
 const REQUEST_TIMEOUT_MS = 20_000;
 
+// How long the public coin list (which coins on which networks, and which
+// are offline right now) is trusted before it is fetched again.
+const COINS_TTL_MS = 60 * 60 * 1000;
+
+// The coin list, shared by every instance: one fetch an hour, not one per
+// service.
+const coinsCache = { at: 0, byCoin: null, loading: null };
+
 /**
  * The text Sideshift put in an error response, for the log line.
  */
@@ -71,12 +79,69 @@ class SideshiftService {
   }
 
   /**
-   * Sideshift's coin ticker and network name for one of our chain codes.
-   * An L2 is the same coin on another network: BASE is `eth` on `base`.
+   * Sideshift's coin ticker and network name for an asset on one of our
+   * chains. An L2 is the same coin on another network: BASE is `eth` on
+   * `base`; a dollar token is its own coin on that network: USDC on Base is
+   * `usdc` on `base`.
    */
-  asset(code) {
+  asset(code, symbol = null) {
     const chain = chains.get(code);
-    return { coin: chain.sideshift.coin, network: chain.sideshift.network };
+    if (!chains.swappable(code)) {
+      throw new Error(`${chain.name} is not served by SideShift: a payout there can only be direct`);
+    }
+    const wanted = String(symbol || chain.symbol).toUpperCase();
+    if (wanted === chain.symbol) return { coin: chain.sideshift.coin, network: chain.sideshift.network };
+    if (!chains.tokenOf(code, wanted)) throw new Error(`${chain.name} has no ${wanted}`);
+    if (!this.serves(code, wanted)) {
+      throw new Error(`SideShift does not take ${wanted} on ${chain.name}: it can be paid out as ${wanted} there, or swapped on the chain first`);
+    }
+    return { coin: wanted.toLowerCase(), network: chain.sideshift.network };
+  }
+
+  /**
+   * Fetch (and cache) which coins SideShift serves on which networks. Public,
+   * no account involved. A failure keeps the last list; with none ever
+   * loaded, only the registry's native routes are trusted.
+   */
+  async loadCoins() {
+    if (coinsCache.byCoin && Date.now() - coinsCache.at < COINS_TTL_MS) return coinsCache.byCoin;
+    if (coinsCache.loading) return coinsCache.loading;
+    coinsCache.loading = (async () => {
+      try {
+        const response = await this.http.get('/coins');
+        const byCoin = new Map();
+        for (const entry of response.data || []) {
+          // `depositOffline` / `settleOffline` are `true` for the whole coin,
+          // or a list of the networks that are off right now.
+          const offOn = (flag) => (flag === true ? (entry.networks || []) : Array.isArray(flag) ? flag : []);
+          const off = new Set([...offOn(entry.depositOffline), ...offOn(entry.settleOffline)]);
+          byCoin.set(String(entry.coin).toUpperCase(), new Set((entry.networks || []).filter((n) => !off.has(n))));
+        }
+        coinsCache.byCoin = byCoin;
+        coinsCache.at = Date.now();
+      } catch (error) {
+        console.warn(`[SideshiftService] Coin list failed: ${describeAxiosError(error)}`);
+      } finally {
+        coinsCache.loading = null;
+      }
+      return coinsCache.byCoin;
+    })();
+    return coinsCache.loading;
+  }
+
+  /**
+   * Whether SideShift takes and pays an asset on a chain. The chain's coin
+   * is a registry fact; a token is checked against the live coin list, and
+   * is not served until that list has loaded.
+   */
+  serves(code, symbol = null) {
+    if (!chains.has(code) || !chains.swappable(code)) return false;
+    const chain = chains.get(code);
+    const wanted = String(symbol || chain.symbol).toUpperCase();
+    if (wanted === chain.symbol) return true;
+    if (!chains.tokenOf(code, wanted)) return false;
+    const networks = coinsCache.byCoin && coinsCache.byCoin.get(wanted);
+    return Boolean(networks && networks.has(chain.sideshift.network));
   }
 
   /**
@@ -96,17 +161,22 @@ class SideshiftService {
   }
 
   /**
-   * USD rate for a chain, or 0 when prices have not loaded.
+   * USD rate for an asset on a chain: the coin's price, or par for a dollar
+   * token. 0 when prices have not loaded.
    */
-  usdRate(chain) {
+  usdRate(chain, symbol = null) {
+    const wanted = String(symbol || '').toUpperCase();
+    if (wanted && chains.has(chain) && wanted !== chains.get(chain).symbol) return 1;
     return this.priceService[`${String(chain).toLowerCase()}ToUsdRate`] || 0;
   }
 
-  async getGasQuote(fromChain, toChain, amount) {
-    // Same chain in and out is not a swap at all - it is a direct send, so
-    // there is no Sideshift order, no swap spread and no $5 minimum. Only the
-    // network fee comes off. This applies to all four chains now, not just ETH.
-    if (fromChain === toChain) {
+  async getGasQuote(fromChain, toChain, amount, fromAsset = null, toAsset = null) {
+    const fromSymbol = String(fromAsset || chains.get(fromChain).symbol).toUpperCase();
+    const toSymbol = String(toAsset || chains.get(toChain).symbol).toUpperCase();
+    // Same chain and asset in and out is not a swap at all - it is a direct
+    // send, so there is no Sideshift order, no swap spread and no $5 minimum.
+    // Only the network fee comes off.
+    if (fromChain === toChain && fromSymbol === toSymbol) {
       const gasUsd = SideshiftService.DIRECT_TRANSFER_GAS_USD[fromChain] ?? 0.50;
       const rate = this.usdRate(fromChain);
       const gasNative = rate > 0 ? gasUsd / rate : 0;
@@ -121,8 +191,8 @@ class SideshiftService {
     const selected = sideshiftAccountService.getAccount('quote');
     const { account, affiliateId } = selected;
 
-    const deposit = this.asset(fromChain);
-    const settle = this.asset(toChain);
+    const deposit = this.asset(fromChain, fromSymbol);
+    const settle = this.asset(toChain, toSymbol);
     const requestData = {
       depositCoin: deposit.coin,
       depositNetwork: deposit.network,
@@ -153,8 +223,8 @@ class SideshiftService {
       // Cost of the swap in USD: what the input was worth, minus what the
       // output is worth. Previously this was computed through an ETH-only rate
       // pair, which gave a wrong figure for any other destination.
-      const inputUsd = amount * this.usdRate(fromChain);
-      const outputUsd = outputAmount * this.usdRate(toChain);
+      const inputUsd = amount * this.usdRate(fromChain, fromSymbol);
+      const outputUsd = outputAmount * this.usdRate(toChain, toSymbol);
       const estimatedGasUsd = Math.max(0, inputUsd - outputUsd);
 
       return {
@@ -190,6 +260,8 @@ class SideshiftService {
    * @param {Object} params
    * @param {string} params.fromChain - Source chain (BTC, ETH, SOL, LTC)
    * @param {string} params.toChain - Destination chain
+   * @param {string} [params.fromAsset] - Asset deposited; the source chain's coin by default
+   * @param {string} [params.toAsset] - Asset settled; the destination chain's coin by default
    * @param {string} params.destinationAddress - Wallet to receive output
    * @param {string} params.refundAddress - Where a failed shift is refunded
    * @param {Object} [params.quote] - A result of getGasQuote, for a fixed shift
@@ -200,6 +272,8 @@ class SideshiftService {
       const {
         fromChain,
         toChain,
+        fromAsset = null,
+        toAsset = null,
         destinationAddress,
         refundAddress,
         quote = null,
@@ -224,8 +298,8 @@ class SideshiftService {
         };
       } else {
         endpoint = '/shifts/variable';
-        const deposit = this.asset(fromChain);
-        const settle = this.asset(toChain);
+        const deposit = this.asset(fromChain, fromAsset);
+        const settle = this.asset(toChain, toAsset);
         requestBody = {
           depositCoin: deposit.coin,
           depositNetwork: deposit.network,
@@ -276,19 +350,28 @@ class SideshiftService {
   }
 
   /**
-   * Get order status - handles both Sideshift orders and direct transfers.
+   * Whether an order id names something that settles on its own chain - a
+   * direct transfer or an on-chain swap - rather than a Sideshift shift.
+   */
+  static isOnChainOrder(orderId) {
+    return /^(direct_transfer_|dex_swap_)/.test(String(orderId || ''));
+  }
+
+  /**
+   * Get order status - handles Sideshift orders, direct transfers and
+   * on-chain swaps.
    *
-   * @param {string} orderId - "direct_transfer_xxx" or a Sideshift order id
-   * @param {string} txHash - Transaction hash (required for direct transfers)
-   * @param {string} chain - Chain the direct transfer was broadcast on
+   * @param {string} orderId - "direct_transfer_xxx", "dex_swap_xxx" or a Sideshift order id
+   * @param {string} txHash - Transaction hash (required for on-chain orders)
+   * @param {string} chain - Chain the transfer or swap was broadcast on
    * @returns {Promise<Array<Object>>} Order status, as a one-element array to
    *   match the shape of Sideshift's /shifts?ids= response
    */
   async getOrderStatus(orderId, txHash, chain = 'ETH') {
     try {
-      if (orderId.startsWith('direct_transfer_')) {
+      if (SideshiftService.isOnChainOrder(orderId)) {
         if (!txHash) {
-          throw new Error('Direct transfer requires transaction hash');
+          throw new Error('An on-chain order requires its transaction hash');
         }
 
         // A direct transfer settles on its own chain, so it is checked there.
@@ -305,7 +388,7 @@ class SideshiftService {
           confirmations: onChain.confirmations,
           transactionHash: txHash,
           blockNumber: onChain.blockHeight,
-          type: 'direct_transfer',
+          type: orderId.startsWith('dex_swap_') ? 'dex_swap' : 'direct_transfer',
           chain,
         }];
       }

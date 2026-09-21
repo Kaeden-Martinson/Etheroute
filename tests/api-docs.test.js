@@ -149,12 +149,16 @@ describe('Help Center content is well formed', () => {
     }
   });
 
-  test('it reflects the ten-chain product and drops the stale four-chain answer', () => {
+  test('it reflects the whole registry and drops the stale four-chain answer', () => {
     const text = JSON.stringify(loadHelp());
-    for (const needle of ['Polygon', 'Avalanche', 'Base', 'wallet-pay', 'checkout', 'ten']) {
+    const { CODES, list } = require('../src/config/chains');
+    for (const needle of ['Polygon', 'Avalanche', 'Base', 'wallet-pay', 'checkout', String(CODES.length), 'USDC and USDT']) {
       assert.ok(text.includes(needle), `help mentions ${needle}`);
     }
+    // every chain added since the founding ten is named in the networks answer
+    for (const chain of list().slice(10)) assert.ok(text.includes(chain.name), `help names ${chain.name}`);
     assert.ok(!/four major blockchain/.test(text), 'no stale four-chain answer');
+    assert.ok(!/Ten networks across/.test(text), 'no stale ten-chain answer');
   });
 
   test('the support section still offers contact channels', () => {

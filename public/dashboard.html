@@ -430,6 +430,14 @@
                             </select>
                             <p class="field-hint" id="payoutChainHint">Wallets already on this chain are sent directly, with no swap. Everything else is swapped at a rate quoted on the review.</p>
                         </div>
+                        <!-- Shown only for a chain that carries dollar tokens: the
+                             coin, or a token, on that chain. dashboard.js fills the
+                             radios from the registry when the chain changes. -->
+                        <div class="field" id="payoutAssetField" hidden>
+                            <label id="payoutAssetLabel">Paid as</label>
+                            <div class="segmented" role="radiogroup" aria-labelledby="payoutAssetLabel" id="payoutAssetPick" data-on-change="onPayoutAssetChange"></div>
+                            <p class="field-hint" id="payoutAssetHint"></p>
+                        </div>
                         <div class="field">
                             <label for="recipientAddress">Recipient address</label>
                             <input type="text" id="recipientAddress" placeholder="0x&hellip;" autocomplete="off" spellcheck="false" data-on-input="checkRecipientAddress" />

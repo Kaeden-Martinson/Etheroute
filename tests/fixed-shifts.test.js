@@ -238,7 +238,7 @@ describe('The broadcast honours the fixed deposit exactly', () => {
 
   test('the amount sent is the shift\'s own deposit string, not the plan\'s float', () => {
     assert.ok(broadcast.includes("isFixed ? order.depositAmount : transfer.nativeAmount"));
-    assert.ok(broadcast.includes('this.sendTransfer(transfer.chain, sourceWallet, depositAddress, sendAmount)'), 'the family-agnostic sender must receive sendAmount');
+    assert.ok(broadcast.includes('this.sendTransfer(transfer.chain, sourceWallet, depositAddress, sendAmount, asset, tag ? { destinationTag: tag } : {})'), 'the family-agnostic sender must receive sendAmount');
   });
 
   test('an expired fixed shift is skipped, never broadcast into', () => {

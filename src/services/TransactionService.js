@@ -2,7 +2,7 @@ const { v4: uuidv4 } = require('uuid');
 const { db } = require('../config/database');
 
 class TransactionService {
-  createTransaction(clientId, transactionHash, orderId, type, chain, nativeAmount, usdAmount, fromAddress, toAddress, finalAddress) {
+  createTransaction(clientId, transactionHash, orderId, type, chain, nativeAmount, usdAmount, fromAddress, toAddress, finalAddress, extra = {}) {
     const transaction = {
       id: uuidv4(),
       clientId,
@@ -10,7 +10,13 @@ class TransactionService {
       orderId,
       type,
       chain,
-      nativeAmount, 
+      // What left, in `asset`: the chain's coin unless a token is named.
+      asset: extra.asset || null,
+      route: extra.route || null,
+      // Set when a token was swapped for the coin on its chain before the
+      // send: the swap's own hash.
+      preSwapTxHash: extra.preSwapTxHash || null,
+      nativeAmount,
       usdAmount,
       status: 'PENDING',
       fromAddress: fromAddress || null,
@@ -28,6 +34,37 @@ class TransactionService {
     }
 
     return db.create('transactions', transaction);
+  }
+
+  /**
+   * A payment that landed in one of the client's wallets - a checkout that
+   * settled. Recorded confirmed, since settlement only calls this once the
+   * chain has confirmed it; `asset` names what arrived (the chain's coin, or
+   * a dollar token by symbol). One record per settled session.
+   */
+  recordDeposit({ clientId, chain, asset, nativeAmount, usdAmount, transactionHash, fromAddress, toAddress, sessionId }) {
+    const existing = sessionId ? db.findOneBy('transactions', { sessionId }) : null;
+    if (existing) return existing;
+    const now = new Date().toISOString();
+    return db.create('transactions', {
+      id: uuidv4(),
+      clientId,
+      transactionHash: transactionHash || null,
+      orderId: null,
+      sessionId: sessionId || null,
+      type: 'DEPOSIT',
+      chain,
+      asset: asset || null,
+      nativeAmount,
+      usdAmount: Number.isFinite(usdAmount) ? usdAmount : null,
+      status: 'CONFIRMED',
+      fromAddress: fromAddress || null,
+      toAddress: toAddress || null,
+      finalAddress: null,
+      blockNumber: null,
+      createdAt: now,
+      completedAt: now,
+    });
   }
 
   /**

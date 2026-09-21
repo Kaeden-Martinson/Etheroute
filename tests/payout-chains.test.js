@@ -34,8 +34,12 @@ const GAS_NATIVE = { ETH: 0.0004, BTC: 0.00002, LTC: 0.0001, SOL: 0.000005 };
 
 let originalQuote;
 let originalEstimate;
+let originalThor;
 
 beforeEach(() => {
+  // These tests are about the SideShift routes; THORChain is out of the picture.
+  originalThor = SwapService.thorchain;
+  SwapService.thorchain = { ready: async () => {}, serves: () => false, quote: async () => { throw new Error('off'); } };
   for (const [key, value] of Object.entries(RATES)) {
     PriceService[`${key}ToUsdRate`] = value;
   }
@@ -52,6 +56,7 @@ beforeEach(() => {
 
 afterEach(() => {
   SwapService.sideshift.getGasQuote = originalQuote;
+  SwapService.thorchain = originalThor;
   GasEstimator.estimate = originalEstimate;
   GasEstimator.clear();
 });
@@ -115,8 +120,11 @@ describe('Planning a withdrawal', () => {
     assert.strictEqual(plan.payoutChain, 'BTC');
     assert.strictEqual(plan.transfers.length, 1);
     assert.strictEqual(plan.transfers[0].type, 'DIRECT_TRANSFER');
+    assert.strictEqual(plan.transfers[0].route, 'direct');
     assert.strictEqual(plan.transfers[0].payoutChain, 'BTC');
-    assert.deepStrictEqual(calls[0], { from: 'BTC', to: 'BTC', amount: calls[0].amount });
+    assert.strictEqual(plan.transfers[0].asset, 'BTC');
+    // a plain send needs no quote from anyone
+    assert.strictEqual(calls.length, 0);
   });
 
   test('a differing wallet is a swap into the payout chain', async () => {

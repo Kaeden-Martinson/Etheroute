@@ -6,6 +6,7 @@ const { db } = require('../config/database');
 const { validateChain } = require('../utils/validators');
 const { ApiError, ValidationError } = require('../utils/errors');
 const { assertOwnership } = require('../middleware/auth');
+const chains = require('../config/chains');
 
 const router = Router();
 
@@ -47,6 +48,22 @@ function presentWallet(wallet) {
   const walletTxs = db.findBy('transactions', { fromAddress: wallet.address });
   const isProcessing = walletTxs.some((t) => t.status === 'PENDING' || t.status === 'PROCESSING');
 
+  // The chain's dollar tokens, every one listed even at zero so the shape is
+  // the same for every wallet on the chain. At par: a token is its dollars.
+  // A token is withdrawable like the coin - paid out as itself, or swapped
+  // on its chain - but it is reported beside the coin, not folded into
+  // `balance`, because the two are different assets. A token's own platform
+  // fee from earlier withdrawals is held back the same way the coin's is.
+  const held = wallet.tokenBalances || {};
+  const feesHeld = wallet.serviceSubtractionsTokens || {};
+  const tokens = chains.tokensOf(wallet.chain).map((token) => {
+    const onChain = Number(held[token.symbol]) || 0;
+    const feeHeldToken = Math.min(Number(feesHeld[token.symbol]) || 0, onChain);
+    const amount = Math.max(0, onChain - feeHeldToken);
+    return { symbol: token.symbol, contract: token.contract, balance: amount, balanceUSD: amount, onChainBalance: onChain, platformFeeHeld: feeHeldToken };
+  });
+  const tokensUSD = tokens.reduce((sum, token) => sum + token.balanceUSD, 0);
+
   return {
     id: wallet.id,
     address: wallet.address,
@@ -65,6 +82,10 @@ function presentWallet(wallet) {
     // Owed to the platform from earlier withdrawals, if any.
     platformFeeHeld: feeHeld,
     platformFeeHeldUSD: feeHeld * perUnit,
+
+    // Dollar tokens held at the address (EVM chains), and their sum.
+    tokens,
+    tokensUSD,
 
     createdAt: wallet.createdAt,
     isProcessing,

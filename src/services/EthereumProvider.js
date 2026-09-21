@@ -27,6 +27,14 @@ const ENDPOINT_COOLDOWN_MS = 10 * 60 * 1000;
 const TRANSPORT_FAILURE =
     /failed to detect network|could not detect network|SERVER_ERROR|TIMEOUT|ECONNREFUSED|ENOTFOUND|EPROTO|fetch failed|socket hang up|altnames|certificate|usage limit|rate limit|429/i;
 
+// How an endpoint says it will not serve eth_getLogs (bsc-dataseed answers
+// "limit exceeded" to every query, however narrow; others cap the range or
+// lack the method). Not a transport failure: the endpoint is fine for
+// everything else and is kept for it.
+const LOGS_REFUSED = /limit exceeded|not supported|method not found|-32005|-32601|block range|too many|exceeds/i;
+// The endpoint chosen for logs is kept this long before being tried afresh.
+const LOGS_TTL_MS = 30 * 60 * 1000;
+
 class RpcPool {
     constructor(chain) {
         this.chain = chain;
@@ -36,6 +44,7 @@ class RpcPool {
         // when an endpoint answers the first call with an error.
         this.network = ethers.Network.from(chain.chainId);
         this.current = null;   // { provider, url, checkedAt }
+        this.logs = null;      // { provider, url, checkedAt } - the one that serves eth_getLogs
         this.inFlight = null;  // de-duplicates concurrent selections
         this.cooldowns = new Map();
     }
@@ -155,6 +164,56 @@ class RpcPool {
 
     activeUrl() {
         return this.current ? this.current.url : null;
+    }
+
+    /**
+     * Run an operation that reads logs. The main endpoint is tried first;
+     * one that refuses eth_getLogs is not dropped (it serves everything
+     * else), the chain's other endpoints are tried in turn, and the first
+     * that answers is remembered for a while. Any other error is the
+     * operation's own and is thrown as it is.
+     */
+    async withLogs(operation) {
+        const refusal = (error) => {
+            const message = String(error && error.message);
+            return LOGS_REFUSED.test(message) || TRANSPORT_FAILURE.test(message);
+        };
+
+        if (this.logs && Date.now() - this.logs.checkedAt < LOGS_TTL_MS) {
+            try {
+                return await operation(this.logs.provider);
+            } catch (error) {
+                if (!refusal(error)) throw error;
+                if (this.logs.provider !== (this.current && this.current.provider)) {
+                    try { this.logs.provider.destroy(); } catch { /* already gone */ }
+                }
+                this.logs = null;
+            }
+        }
+
+        const main = await this.getProvider();
+        const mainUrl = this.activeUrl();
+        const urls = [mainUrl, ...this.endpoints().filter((url) => url !== mainUrl)];
+        const failures = [];
+        for (const url of urls) {
+            const provider = url === mainUrl
+                ? main
+                : new ethers.JsonRpcProvider(url, this.network, { staticNetwork: this.network, batchMaxCount: 1 });
+            try {
+                const result = await operation(provider);
+                if (url !== mainUrl) logger.info(`${this.tag} Reading logs from ${url}`);
+                this.logs = { provider, url, checkedAt: Date.now() };
+                return result;
+            } catch (error) {
+                if (!refusal(error)) {
+                    if (provider !== main) provider.destroy();
+                    throw error;
+                }
+                failures.push(`${url}: ${String(error.message).slice(0, 80)}`);
+                if (provider !== main) provider.destroy();
+            }
+        }
+        throw new Error(`No ${this.chain.name} RPC endpoint serves eth_getLogs. Tried:\n  ${failures.join('\n  ')}`);
     }
 }
 

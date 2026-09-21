@@ -13,9 +13,14 @@ function walletServiceFor(code) {
     case 'evm':
       return require('./EvmWalletService').createEvmWalletService(chain);
     case 'utxo':
-      return chain.code === 'LTC' ? require('./LitecoinWalletService') : require('./BitcoinWalletService');
+      if (chain.code === 'BTC') return require('./BitcoinWalletService');
+      if (chain.code === 'LTC') return require('./LitecoinWalletService');
+      // Bitcoin Cash, Dogecoin: legacy transactions, their own explorers.
+      return require('./LegacyUtxoWalletService').createLegacyUtxoWalletService(chain.code);
     case 'solana':
       return require('./SolanaWalletService');
+    case 'xrp':
+      return require('./XrpWalletService');
     default:
       throw new Error(`No wallet service for chain family ${chain.family}`);
   }
@@ -27,7 +32,8 @@ function balanceKeyFor(code) {
   switch (chain.family) {
     case 'evm': return 'balanceEth';
     case 'solana': return 'balanceSOL';
-    case 'utxo': return chain.code === 'LTC' ? 'balanceLTC' : 'balanceBTC';
+    case 'xrp': return 'balanceXRP';
+    case 'utxo': return `balance${chain.code}`;
     default: return 'balance';
   }
 }

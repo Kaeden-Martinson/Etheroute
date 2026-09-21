@@ -2,6 +2,7 @@ const { Router } = require('express');
 const crypto = require('crypto');
 const { db } = require('../config/database');
 const BalanceWatcher = require('../services/BalanceWatcher');
+const TransactionService = require('../services/TransactionService');
 const PriceService = require('../services/PriceService');
 const WebhookService = require('../services/WebhookService');
 const QRCode = require('qrcode');
@@ -30,6 +31,23 @@ const RPC_SCAN_MAX_BLOCKS = 40;
 // normally taken the moment the buyer's address arrives, so this only covers
 // a session made before the scan existed, or a baseline the RPC refused.
 const RPC_SCAN_FIRST_LOOKBACK = 20;
+
+// A token payment is a Transfer event, read with eth_getLogs from a cursor
+// the session keeps. Public endpoints cap a query's block range; windows of
+// this many blocks, this many per check, keep under every cap seen and still
+// clear an hour of a sub-second chain in a few checks.
+const LOG_WINDOW_BLOCKS = 1000;
+const LOG_WINDOWS_PER_CHECK = 5;
+// An endpoint that caps the range lower says so ("maximum allowed is 50");
+// the window is cut to what it allows, per chain, and kept. Below this the
+// endpoint is not worth reading through.
+const LOG_WINDOW_FLOOR = 10;
+const logWindowByChain = new Map();
+const logWindowFor = (chain) => logWindowByChain.get(chain) || LOG_WINDOW_BLOCKS;
+// Re-read this many blocks behind the cursor each time: a short reorg can
+// move a transfer into a later block after the cursor passed it.
+const LOG_OVERLAP_BLOCKS = 12;
+const TRANSFER_TOPIC = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
 
 // A session is checked against the chain at most this often, however many
 // times its status is polled. Every check is one or more third-party API calls
@@ -166,8 +184,13 @@ function buildStatusResponse(session) {
     walletAddress: session.walletAddress,
     nativeAmount: session.nativeAmount,
     usdAmount: session.usdAmount,
+    // What the page is set to be paid in, and the figure for each asset the
+    // link can be paid in.
+    asset: sessionAsset(session),
+    amounts: sessionAmounts(session),
     expiresAt: session.expiresAt,
     paidAmount: session.paidAmount ?? null,
+    paidAsset: session.paidAsset ?? null,
     paidTxHash: session.paidTxHash ?? null,
     paidAt: session.paidAt ?? null,
     confirmations: session.confirmations ?? null,
@@ -177,6 +200,7 @@ function buildStatusResponse(session) {
     // confirmations" apart from "the chain is temporarily unreadable" -
     // both are VERIFYING, and they deserve very different screens.
     pendingTxHash: session.pendingTxHash ?? null,
+    pendingAsset: session.pendingAsset ?? null,
     detected: Boolean(session.pendingTxHash || session.paidTxHash),
     // A merchant-initiated cancel is an expiry with a reason, so the page can
     // say "the merchant closed this" rather than "it timed out".
@@ -259,6 +283,7 @@ function notify(session, event) {
       nativeAmount: session.nativeAmount,
       usdAmount: session.usdAmount,
       paidAmount: session.paidAmount ?? null,
+      paidAsset: session.paidAsset ?? null,
       paidTxHash: session.paidTxHash ?? null,
       paidAt: session.paidAt ?? null,
       walletAddress: session.walletAddress,
@@ -279,17 +304,19 @@ function confirmationsOf(chain, tx) {
     return Number.isFinite(value) ? value : null;
   }
 
+  if (family(chain) === 'utxo') {
+    // The history lookup reports depth when it could read the chain tip.
+    // Without it, a block height still proves one confirmation - but only
+    // one, which is why LTC (which requires two) could never settle before
+    // the tip was fetched.
+    const depth = Number(tx.confirmations);
+    if (Number.isFinite(depth) && depth > 0) return depth;
+    return tx.blockHeight ? 1 : 0;
+  }
+
   switch (chain) {
-    case 'BTC':
-    case 'LTC': {
-      // The history lookup reports depth when it could read the chain tip.
-      // Without it, a block height still proves one confirmation - but only
-      // one, which is why LTC (which requires two) could never settle before
-      // the tip was fetched.
-      const depth = Number(tx.confirmations);
-      if (Number.isFinite(depth) && depth > 0) return depth;
-      return tx.blockHeight ? 1 : 0;
-    }
+    case 'XRP':
+      return tx.validated ? 1 : 0;
     case 'SOL':
       if (tx.status === 'finalized') return 32;
       if (tx.status === 'confirmed') return 1;
@@ -309,6 +336,42 @@ function alreadyClaimed(txHash, sessionId) {
     .getAll('checkoutSessions')
     .some((other) => other.paidTxHash === txHash && other.id !== sessionId);
 }
+
+/**
+ * Every figure a session can be paid with: the coin's, fixed at creation,
+ * and a dollar token's, which is the USD figure itself. Keyed by asset
+ * symbol. A session without a USD figure (no price at creation) has only
+ * its coin.
+ */
+function amountsFor(chain, nativeAmount, usdAmount) {
+  if (!chains.has(chain)) return {};
+  const amounts = { [chains.get(chain).symbol]: nativeAmount };
+  if (Number.isFinite(usdAmount) && usdAmount > 0) {
+    for (const token of chains.tokensOf(chain)) amounts[token.symbol] = usdAmount;
+  }
+  return amounts;
+}
+
+/** The session's figures, with the coin-only shape of an older session. */
+function sessionAmounts(session) {
+  if (session.amounts && typeof session.amounts === 'object') return session.amounts;
+  return amountsFor(session.chain, session.nativeAmount, session.usdAmount);
+}
+
+/** The asset a session is set to be paid in: the pick, else the coin. */
+function sessionAsset(session) {
+  if (session.asset && sessionAmounts(session)[session.asset] !== undefined) return session.asset;
+  return chains.has(session.chain) ? chains.get(session.chain).symbol : null;
+}
+
+/** The figure a payment in `asset` has to reach. */
+function amountDue(session, asset) {
+  const amounts = sessionAmounts(session);
+  return amounts[asset] !== undefined ? amounts[asset] : session.nativeAmount;
+}
+
+/** A 20-byte address as a 32-byte log topic. */
+const topicOf = (address) => `0x${String(address).slice(2).toLowerCase().padStart(64, '0')}`;
 
 /** An EVM chain whose payments are found by reading its blocks, not an index. */
 function scansOverRpc(chain) {
@@ -394,6 +457,7 @@ async function scanEvmPaymentOverRpc(session) {
 
       return {
         outcome: 'found',
+        asset: chains.get(session.chain).symbol,
         amount: parseFloat(ethers.formatEther(BigInt(tx.value))),
         txHash: tx.hash,
         confirmations: tip - number + 1,
@@ -418,6 +482,30 @@ async function scanEvmPaymentOverRpc(session) {
  * payment arrived.
  */
 async function findPayment(session, wallet) {
+  const coin = await findCoinPayment(session, wallet);
+  if (coin.outcome === 'found' || family(session.chain) !== 'evm') return coin;
+
+  // Not the coin, or not yet: the chain's dollar tokens are watched too,
+  // whichever the customer picked. A transfer seen on an earlier check is
+  // followed by its hash (findCoinPayment did that above, for any asset).
+  try {
+    const token = await findTokenPayment(session);
+    if (token.outcome === 'found') {
+      if (alreadyClaimed(token.txHash, session.id)) return coin;
+      return token;
+    }
+  } catch (error) {
+    logger.warn(`[Checkout] Token lookup failed for session ${session.id}: ${error.message}`);
+    return { outcome: 'unverifiable' };
+  }
+  return coin;
+}
+
+/**
+ * The buyer's payment in the chain's own coin: a wallet's hint or a seen
+ * transfer by its hash, else the index, else (on an EVM chain) the blocks.
+ */
+async function findCoinPayment(session, wallet) {
   // A payment made through a connected wallet tells us its hash the moment
   // it is sent. Verify that transaction directly over RPC: instant, works on
   // every EVM chain including those with no free transaction index, and does
@@ -458,7 +546,7 @@ async function findPayment(session, wallet) {
 
   let match = null;
 
-  switch (family(session.chain) === 'evm' ? 'EVM' : session.chain) {
+  switch (family(session.chain) === 'evm' ? 'EVM' : (family(session.chain) === 'utxo' ? 'UTXO' : session.chain)) {
     case 'EVM': {
       const buyerLower = String(buyer).toLowerCase();
       const merchantLower = String(merchant).toLowerCase();
@@ -473,6 +561,7 @@ async function findPayment(session, wallet) {
       if (tx) {
         const { ethers } = require('ethers');
         match = {
+          asset: chains.get(session.chain).symbol,
           amount: parseFloat(ethers.formatEther(tx.value || '0')),
           txHash: tx.hash,
           confirmations: confirmationsOf(session.chain, tx),
@@ -481,8 +570,7 @@ async function findPayment(session, wallet) {
       break;
     }
 
-    case 'BTC':
-    case 'LTC': {
+    case 'UTXO': {
       const tx = history.transactions.find((t) => {
         const time = t.time ?? 0;
         if (time > 0 && time < createdAtSec) return false;
@@ -502,6 +590,17 @@ async function findPayment(session, wallet) {
           txHash: tx.hash ?? tx.txid,
           confirmations: confirmationsOf(session.chain, tx),
         };
+      }
+      break;
+    }
+
+    case 'XRP': {
+      // a validated payment from the buyer to the merchant, after the link was made
+      const tx = history.transactions.find((t) =>
+        (t.timestamp ?? 0) >= createdAtSec && t.sender === buyer && t.recipient === merchant && t.validated
+      );
+      if (tx) {
+        match = { amount: tx.amount, txHash: tx.hash, confirmations: 1 };
       }
       break;
     }
@@ -535,6 +634,72 @@ async function findPayment(session, wallet) {
   if (alreadyClaimed(match.txHash, session.id)) return { outcome: 'none' };
 
   return { outcome: 'found', ...match };
+}
+
+/**
+ * A dollar-token payment: the token's Transfer(buyer, merchant) event, read
+ * with eth_getLogs from the block the buyer gave their address (the same
+ * baseline the coin's scan starts from), in bounded windows, with the cursor
+ * kept on the session. A Transfer event only exists in a transaction that
+ * succeeded, so there is no receipt to check. Reads every token the chain
+ * carries, the one picked first.
+ *
+ * Returns a findPayment outcome with `asset` set; throws on RPC failure.
+ */
+async function findTokenPayment(session) {
+  const { ethers } = require('ethers');
+  const tokens = chains.tokensOf(session.chain);
+  if (tokens.length === 0) return { outcome: 'none' };
+  const picked = sessionAsset(session);
+  tokens.sort((a, b) => (a.symbol === picked ? -1 : b.symbol === picked ? 1 : 0));
+
+  // withLogs, not withProvider: not every public endpoint serves getLogs.
+  return EthereumProvider.forChain(session.chain).withLogs(async (provider) => {
+    const tip = await provider.getBlockNumber();
+    const start = Number.isInteger(session.logsFromBlock) ? session.logsFromBlock
+      : Number.isInteger(session.scanFromBlock) ? session.scanFromBlock
+        : Math.max(0, tip - RPC_SCAN_FIRST_LOOKBACK);
+    const from = Math.max(0, start - LOG_OVERLAP_BLOCKS);
+    if (from > tip) return { outcome: 'none' };
+    let window = logWindowFor(session.chain);
+    let end = Math.min(tip, from + window * LOG_WINDOWS_PER_CHECK - 1);
+    const topics = [TRANSFER_TOPIC, topicOf(session.clientWalletAddress), topicOf(session.walletAddress)];
+
+    for (const token of tokens) {
+      for (let lo = from; lo <= end; lo += window) {
+        const hi = Math.min(end, lo + window - 1);
+        let logs;
+        try {
+          logs = await provider.getLogs({ address: token.contract, fromBlock: lo, toBlock: hi, topics });
+        } catch (error) {
+          // "Block range too large: maximum allowed is 50": take the number,
+          // narrow the window for this chain from here on, and read this
+          // stretch again at the new size.
+          const cap = /maximum allowed is (\d+)|max(?:imum)? (?:block )?range (?:is |of )?(\d+)|exceeds (?:the )?limit of (\d+)|limited to (\d+) blocks/i.exec(String(error.message));
+          const allowed = cap ? Number(cap[1] || cap[2] || cap[3] || cap[4]) : 0;
+          if (!(allowed >= LOG_WINDOW_FLOOR && allowed < window)) throw error;
+          window = allowed;
+          logWindowByChain.set(session.chain, window);
+          end = Math.min(tip, from + window * LOG_WINDOWS_PER_CHECK - 1);
+          lo -= window; // the loop's own step lands the retry on `lo` again
+          continue;
+        }
+        const log = (logs || []).find((entry) => !entry.removed && BigInt(entry.data || '0x0') > 0n);
+        if (!log) continue;
+        const block = Number(log.blockNumber);
+        return {
+          outcome: 'found',
+          asset: token.symbol,
+          amount: parseFloat(ethers.formatUnits(BigInt(log.data), token.decimals)),
+          txHash: log.transactionHash,
+          confirmations: tip - block + 1,
+        };
+      }
+    }
+
+    db.update('checkoutSessions', session.id, { logsFromBlock: end + 1 });
+    return { outcome: 'none' };
+  });
 }
 
 /**
@@ -574,23 +739,53 @@ async function verifyHintedEvmPayment(session, txHash = session.hintTxHash) {
       const tx = await provider.getTransaction(txHash);
       if (!tx) return null; // not propagated yet
 
-      const toMerchant = String(tx.to || '').toLowerCase() === String(session.walletAddress).toLowerCase();
       const fromBuyer = String(tx.from || '').toLowerCase() === String(session.clientWalletAddress).toLowerCase();
-      if (!toMerchant || !fromBuyer) {
+      const to = String(tx.to || '').toLowerCase();
+      const toMerchant = to === String(session.walletAddress).toLowerCase();
+      // A token payment is a call to the token's contract; the merchant is
+      // in the Transfer event it emits, which the receipt carries.
+      const token = chains.tokensOf(session.chain).find((t) => t.contract.toLowerCase() === to);
+      if (!fromBuyer || (!toMerchant && !token)) {
         logger.warn(`[Checkout] Hinted tx ${txHash} for ${session.id} is not buyer -> merchant; ignoring`);
         return null;
       }
 
       let confirmations = 0;
+      let receipt = null;
       if (tx.blockNumber) {
-        const receipt = await provider.getTransactionReceipt(txHash);
+        receipt = await provider.getTransactionReceipt(txHash);
         if (receipt && receipt.status !== 1) return { outcome: 'none' }; // reverted
         const tip = await provider.getBlockNumber();
         confirmations = Math.max(1, tip - tx.blockNumber + 1);
       }
 
+      if (token) {
+        // Unmined: the call is to the token, but what it moves and to whom is
+        // only known once the event exists. Seen, with nothing to count yet.
+        if (!receipt) return { outcome: 'found', asset: token.symbol, amount: 0, txHash, confirmations: 0 };
+        const transfer = (receipt.logs || []).find((log) =>
+          String(log.address).toLowerCase() === to &&
+          Array.isArray(log.topics) && log.topics.length === 3 &&
+          String(log.topics[0]).toLowerCase() === TRANSFER_TOPIC &&
+          String(log.topics[1]).toLowerCase() === topicOf(session.clientWalletAddress) &&
+          String(log.topics[2]).toLowerCase() === topicOf(session.walletAddress)
+        );
+        if (!transfer) {
+          logger.warn(`[Checkout] Hinted tx ${txHash} for ${session.id} moved no ${token.symbol} to the merchant; ignoring`);
+          return null;
+        }
+        return {
+          outcome: 'found',
+          asset: token.symbol,
+          amount: parseFloat(ethers.formatUnits(BigInt(transfer.data || '0x0'), token.decimals)),
+          txHash,
+          confirmations,
+        };
+      }
+
       return {
         outcome: 'found',
+        asset: chains.get(session.chain).symbol,
         amount: parseFloat(ethers.formatEther(tx.value || 0n)),
         txHash,
         confirmations,
@@ -650,31 +845,58 @@ async function settleNow(session) {
 
   const required = config.checkout.confirmations[session.chain] ?? 1;
   const confirmations = payment.confirmations;
+  // What arrived: the coin unless the lookup said otherwise (a token).
+  const asset = payment.asset || (chains.has(session.chain) ? chains.get(session.chain).symbol : null);
 
   if (confirmations === null || confirmations < required) {
     // Seen but not yet deep enough to be irreversible.
     const updated = db.update('checkoutSessions', session.id, {
       status: STATUS.VERIFYING,
       pendingTxHash: payment.txHash,
+      pendingAsset: asset,
       confirmations: confirmations ?? 0,
     });
     return normalise(updated) || session;
   }
 
+  // Each asset has its own figure - the coin's fixed at creation, a dollar
+  // token's the dollars themselves - and the tolerance applies to that one.
   const tolerance = config.checkout.underpaymentTolerance;
-  const paidEnough = payment.amount >= session.nativeAmount * (1 - tolerance);
+  const due = amountDue(session, asset);
+  const paidEnough = payment.amount >= due * (1 - tolerance);
   const status = paidEnough ? STATUS.PAID : STATUS.INSUFFICIENT;
 
   const updated = normalise(db.update('checkoutSessions', session.id, {
     status,
     paidAt: new Date().toISOString(),
     paidAmount: payment.amount,
+    paidAsset: asset,
     paidTxHash: payment.txHash,
     confirmations,
     pendingTxHash: null,
+    pendingAsset: null,
   }));
 
-  logger.info(`[Checkout] Session ${session.id} -> ${status} (${payment.amount} ${session.chain}, tx ${payment.txHash})`);
+  logger.info(`[Checkout] Session ${session.id} -> ${status} (${payment.amount} ${asset} on ${session.chain}, tx ${payment.txHash})`);
+  // Money that arrived is a transaction of the merchant's, whatever it was
+  // short of; the transactions tab lists it as received.
+  try {
+    TransactionService.recordDeposit({
+      clientId: session.clientId,
+      chain: session.chain,
+      asset,
+      nativeAmount: payment.amount,
+      usdAmount: asset === (chains.has(session.chain) ? chains.get(session.chain).symbol : asset)
+        ? (Number.isFinite(session.usdAmount) && session.nativeAmount > 0 ? payment.amount * (session.usdAmount / session.nativeAmount) : null)
+        : payment.amount,
+      transactionHash: payment.txHash,
+      fromAddress: session.clientWalletAddress,
+      toAddress: session.walletAddress,
+      sessionId: session.id,
+    });
+  } catch (error) {
+    logger.warn(`[Checkout] Could not record the deposit for ${session.id}: ${error.message}`);
+  }
   notify(updated, paidEnough ? 'checkout.session.completed' : 'checkout.session.underpaid');
 
   return updated;
@@ -772,6 +994,9 @@ router.post('/create', requireAuth, clientLimiter, async (req, res, next) => {
       chain: wallet.chain,
       nativeAmount: amounts.nativeAmount,
       usdAmount: amounts.usdAmount,
+      // One figure per asset the wallet takes; the customer picks on the page.
+      amounts: amountsFor(wallet.chain, amounts.nativeAmount, amounts.usdAmount),
+      asset: chainInfo.symbol,
       successRoute,
       failureRoute,
       webhookUrl: webhookUrl || null,
@@ -800,6 +1025,9 @@ router.post('/create', requireAuth, clientLimiter, async (req, res, next) => {
       walletAddress: wallet.address,
       nativeAmount: amounts.nativeAmount,
       usdAmount: amounts.usdAmount,
+      // The figure for each asset the link can be paid in: the coin's, and
+      // the dollars for each dollar token the chain carries.
+      amounts: amountsFor(wallet.chain, amounts.nativeAmount, amounts.usdAmount),
       // The rate the coin amount was fixed at, so the dashboard can show it
       // exactly rather than back out a rounded ratio of the two amounts.
       usdRate: usdRateFor(wallet.chain),
@@ -831,11 +1059,15 @@ function presentForMerchant(session) {
     walletAddress: session.walletAddress,
     nativeAmount: session.nativeAmount,
     usdAmount: session.usdAmount,
+    amounts: sessionAmounts(session),
+    asset: sessionAsset(session),
     clientWalletAddress: session.clientWalletAddress || null,
     paidAmount: session.paidAmount ?? null,
+    paidAsset: session.paidAsset ?? null,
     paidTxHash: session.paidTxHash ?? null,
     // A transaction seen but not yet deep enough to settle.
     pendingTxHash: session.pendingTxHash ?? null,
+    pendingAsset: session.pendingAsset ?? null,
     paidAt: session.paidAt ?? null,
     lastCheckedAt: session.lastCheckedAt ?? null,
     confirmations: session.confirmations ?? null,
@@ -1008,6 +1240,11 @@ router.get('/session/:sessionId', checkoutLimiter, async (req, res, next) => {
       walletAddress: revealed ? current.walletAddress : null,
       nativeAmount: current.nativeAmount,
       usdAmount: current.usdAmount,
+      // Every way the link can be paid, with its figure, and the one the
+      // page is set to (the coin until the customer picks).
+      amounts: sessionAmounts(current),
+      asset: sessionAsset(current),
+      paidAsset: current.paidAsset ?? null,
       status: current.status,
       expiresAt: current.expiresAt,
       createdAt: current.createdAt,
@@ -1036,6 +1273,16 @@ function paymentUri(session) {
   // the bare form every wallet already understands.
   if (family(chain) === 'evm') {
     const { chainId } = chains.get(chain);
+    const asset = sessionAsset(session);
+    const token = chains.tokenOf(chain, asset);
+    if (token) {
+      // A token payment is a call on the token's contract: the amount in the
+      // token's own units, as an integer.
+      const { ethers } = require('ethers');
+      const units = ethers.parseUnits(String(amountDue(session, asset)), token.decimals).toString();
+      const target = chainId === 1 ? token.contract : `${token.contract}@${chainId}`;
+      return `ethereum:${target}/transfer?address=${walletAddress}&uint256=${units}`;
+    }
     const target = chainId === 1 ? walletAddress : `${walletAddress}@${chainId}`;
     return `ethereum:${target}?value=${nativeAmount}`;
   }
@@ -1045,6 +1292,13 @@ function paymentUri(session) {
       return `bitcoin:${walletAddress}?amount=${nativeAmount}`;
     case 'LTC':
       return `litecoin:${walletAddress}?amount=${nativeAmount}`;
+    case 'BCH':
+      // CashAddr already carries its scheme-like prefix; BIP21 for the rest.
+      return `${walletAddress.includes(':') ? walletAddress : `bitcoincash:${walletAddress}`}?amount=${nativeAmount}`;
+    case 'DOGE':
+      return `dogecoin:${walletAddress}?amount=${nativeAmount}`;
+    case 'XRP':
+      return `ripple:${walletAddress}?amount=${nativeAmount}`;
     case 'SOL':
       return `solana:${walletAddress}?amount=${nativeAmount}`;
     default:
@@ -1104,6 +1358,7 @@ router.post('/submit-wallet', checkoutLimiter, async (req, res, next) => {
 
     const updated = normalise(db.update('checkoutSessions', sessionId, {
       clientWalletAddress,
+      asset: pickAsset(current, req.body.asset),
       status: STATUS.AWAITING_PAYMENT,
       // From here the merchant address is known to the buyer; on an EVM
       // chain this is where a reading of its blocks would start.
@@ -1116,6 +1371,51 @@ router.post('/submit-wallet', checkoutLimiter, async (req, res, next) => {
       walletAddress: updated.walletAddress,
       paymentUri: paymentUri(updated),
       paymentQr: await paymentQr(updated),
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * The asset a session is to be paid in, from the customer's pick. Nothing
+ * given keeps what the session has (the coin, for a fresh one). Anything
+ * else must be one of the assets the link carries a figure for.
+ */
+function pickAsset(session, wanted) {
+  if (wanted === undefined || wanted === null || wanted === '') return sessionAsset(session);
+  const asset = String(wanted).toUpperCase();
+  if (sessionAmounts(session)[asset] === undefined) {
+    throw new ApiError(400, `This link cannot be paid in ${asset}; it takes ${Object.keys(sessionAmounts(session)).join(', ')}`);
+  }
+  return asset;
+}
+
+/**
+ * Change what a session is to be paid in, after the address is on file.
+ * POST /api/checkout/pick-asset
+ *
+ * The page offers "pay in ETH instead" until a payment is seen; from then
+ * on the asset that arrived is the asset. Settlement watches every asset
+ * regardless, so this only changes what the page shows.
+ */
+router.post('/pick-asset', checkoutLimiter, async (req, res, next) => {
+  try {
+    const { sessionId } = req.body;
+    if (!sessionId) throw new ApiError(400, 'sessionId is required');
+    const session = getSession(sessionId);
+    if (!session) throw new ApiError(404, 'Checkout session not found');
+    if (TERMINAL.includes(session.status)) throw new ApiError(409, 'This session is already complete');
+    if (session.pendingTxHash) throw new ApiError(409, 'A payment has already been seen for this session');
+
+    const asset = pickAsset(session, req.body.asset);
+    const updated = normalise(db.update('checkoutSessions', sessionId, { asset }));
+    res.json({
+      success: true,
+      asset,
+      amount: amountDue(updated, asset),
+      paymentUri: updated.clientWalletAddress ? paymentUri(updated) : null,
+      paymentQr: updated.clientWalletAddress ? await paymentQr(updated) : null,
     });
   } catch (error) {
     next(error);
@@ -1193,4 +1493,4 @@ router.get('/status/:sessionId', checkoutLimiter, async (req, res, next) => {
 
 module.exports = router;
 module.exports.STATUS = STATUS;
-module.exports._internals = { resolveAmounts, confirmationsOf, normalise, paymentUri, settlementToken, findPayment, settle, settleNow, checkExpiry, expireIfUnpaid, verifyHintedEvmPayment, scanEvmPaymentOverRpc, rpcScanBaseline, scansOverRpc, readEvmBlocks, RECHECK_INTERVAL_MS, RPC_SCAN_MAX_BLOCKS, RPC_SCAN_FIRST_LOOKBACK };
+module.exports._internals = { resolveAmounts, confirmationsOf, normalise, paymentUri, settlementToken, findPayment, findCoinPayment, findTokenPayment, amountsFor, sessionAmounts, sessionAsset, amountDue, pickAsset, settle, settleNow, checkExpiry, expireIfUnpaid, verifyHintedEvmPayment, scanEvmPaymentOverRpc, rpcScanBaseline, scansOverRpc, readEvmBlocks, RECHECK_INTERVAL_MS, RPC_SCAN_MAX_BLOCKS, RPC_SCAN_FIRST_LOOKBACK, LOG_WINDOW_BLOCKS, LOG_WINDOWS_PER_CHECK, LOG_OVERLAP_BLOCKS, TRANSFER_TOPIC, logWindowByChain };

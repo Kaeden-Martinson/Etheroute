@@ -44,7 +44,10 @@ describe('Registry shape', () => {
         assert.ok(chain[key] !== undefined, `${chain.code} is missing ${key}`);
       }
       assert.ok(chain.explorer.tx.endsWith('/'), `${chain.code} explorer.tx must end with / so a hash can be appended`);
-      assert.ok(chain.sideshift.coin && chain.sideshift.network, `${chain.code} needs a SideShift coin and network`);
+      // SideShift either serves the chain (coin + network) or it is marked
+      // as not served, so a payout knows it is direct-only there.
+      if (chain.sideshift !== null) assert.ok(chain.sideshift.coin && chain.sideshift.network, `${chain.code} needs a SideShift coin and network, or null`);
+      assert.strictEqual(chains.swappable(chain.code), chain.sideshift !== null, chain.code);
       if (chain.family === 'evm') {
         assert.ok(Number.isInteger(chain.chainId) && chain.chainId > 0, `${chain.code} needs a chain id`);
         assert.ok(chain.rpc.length >= 2, `${chain.code} needs at least two RPC endpoints to fail over between`);
@@ -62,8 +65,28 @@ describe('Registry shape', () => {
     }
   });
 
-  test('the ten supported chains are present', () => {
-    assert.deepStrictEqual(chains.CODES, [...EVM, 'BTC', 'LTC', 'SOL']);
+  test('the founding ten come first; the chains added since follow, EVM ones with tokens and wallet-pay, UTXO ones with their own explorer', () => {
+    assert.deepStrictEqual(chains.CODES.slice(0, 10), [...EVM, 'BTC', 'LTC', 'SOL']);
+    const added = chains.CODES.slice(10);
+    assert.ok(added.length >= 20, `${added.length} chains added`);
+    for (const code of added) {
+      const chain = chains.get(code);
+      if (chain.family === 'utxo') {
+        // Bitcoin Cash, Dogecoin: legacy transactions through their own service
+        assert.ok(['haskoin', 'blockcypher'].includes(chain.explorerKind), `${code} names an explorer the service knows`);
+        assert.strictEqual(chain.walletPay, false, `${code}: no wallet-pay on a UTXO chain`);
+        continue;
+      }
+      if (chain.family === 'xrp') {
+        assert.strictEqual(chain.minReserveNative, 1, 'the XRP Ledger keeps its reserve');
+        continue;
+      }
+      assert.strictEqual(chain.family, 'evm', `${code} rides the EVM service`);
+      assert.ok(Array.isArray(chains.tokensOf(code)), `${code} lists its dollar tokens (possibly none)`);
+      assert.ok(chain.walletPay, `${code} takes wallet-pay`);
+    }
+    // the registry only grows; the pages' counts follow it (sync-chain-copy)
+    assert.ok(chains.CODES.length >= 33, `${chains.CODES.length} chains`);
   });
 
   test('an env override replaces the default RPC list', () => {
@@ -78,7 +101,7 @@ describe('Registry shape', () => {
 
   test('public info carries no endpoints or keys beyond the two wallet RPCs', () => {
     const info = chains.publicInfo(chains.get('BASE'));
-    assert.deepStrictEqual(Object.keys(info).sort(), ['blockTimeSec', 'chainId', 'code', 'confirmations', 'decimals', 'explorerTx', 'family', 'manualCheckout', 'name', 'rpcForWallet', 'symbol', 'walletPay'].sort());
+    assert.deepStrictEqual(Object.keys(info).sort(), ['blockTimeSec', 'chainId', 'code', 'confirmations', 'decimals', 'explorerTx', 'family', 'crossChain', 'manualCheckout', 'name', 'onChainSwaps', 'rpcForWallet', 'swappable', 'symbol', 'tokens', 'walletPay'].sort());
     assert.strictEqual(info.rpcForWallet.length, 2);
   });
 
@@ -99,8 +122,15 @@ describe('Everything derives from the registry', () => {
       assert.ok(validateCryptoAddress(ADDR, code), `${code} takes an 0x address`);
       assert.ok(!validateCryptoAddress('bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4', code), `${code} rejects a Bitcoin address`);
     }
-    assert.ok(!validateChain('DOGE'));
-    assert.ok(!validateCryptoAddress(ADDR, 'DOGE'));
+    assert.ok(!validateChain('XYZ'));
+    assert.ok(!validateCryptoAddress(ADDR, 'XYZ'));
+    // the two UTXO chains added by hand
+    assert.ok(validateCryptoAddress('bitcoincash:qpm2qsznhks23z7629mms6s4cwef74vcwvy22gdx6a', 'BCH'));
+    assert.ok(validateCryptoAddress('qpm2qsznhks23z7629mms6s4cwef74vcwvy22gdx6a', 'BCH'), 'the prefix is optional');
+    assert.ok(validateCryptoAddress('1BpEi6DfDAUFd7GtittLSdBeYJvcoaVggu', 'BCH'), 'a legacy address is still an address');
+    assert.ok(!validateCryptoAddress(ADDR, 'BCH'));
+    assert.ok(validateCryptoAddress('DBus3bamQjgJULBJtYXpEzDWQRwF5iwxgC', 'DOGE'));
+    assert.ok(!validateCryptoAddress('1BpEi6DfDAUFd7GtittLSdBeYJvcoaVggu', 'DOGE'), 'a Bitcoin address is not a Dogecoin one');
   });
 
   test('confirmation defaults come from the registry', () => {
@@ -147,7 +177,7 @@ describe('Everything derives from the registry', () => {
     PriceService.baseToUsdRate = 2000;
     assert.strictEqual(PriceService.rateFor('BASE'), 2000);
     assert.strictEqual(PriceService.rateFor('POL'), 0.5);
-    assert.strictEqual(PriceService.rateFor('DOGE'), 0);
+    assert.strictEqual(PriceService.rateFor('XYZ'), 0);
     const ids = chains.coingeckoIds();
     assert.ok(ids.includes('ethereum') && ids.includes('polygon-ecosystem-token') && ids.includes('avalanche-2'));
     assert.strictEqual(ids.filter((id) => id === 'ethereum').length, 1, 'shared ids are requested once');
@@ -270,6 +300,253 @@ describe('Wallet-pay transaction hints', () => {
   });
 });
 
+describe('Dollar tokens: the registry, the balances, the settlement', () => {
+  const { ethers } = require('ethers');
+  const { amountsFor, sessionAmounts, sessionAsset, amountDue, pickAsset, findPayment, findTokenPayment, verifyHintedEvmPayment, settleNow, paymentUri, TRANSFER_TOPIC, LOG_WINDOW_BLOCKS, LOG_WINDOWS_PER_CHECK, LOG_OVERLAP_BLOCKS } = checkout._internals;
+  const MERCHANT = '0x1111111111111111111111111111111111111111';
+  const BUYER = '0x2222222222222222222222222222222222222222';
+  const USDC_BASE = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
+  const HASH = '0x' + 'ab'.repeat(32);
+  const topic = (a) => '0x' + a.slice(2).toLowerCase().padStart(64, '0');
+  let originalForChain;
+  let originalHistory;
+  const BalanceWatcher = require('../src/services/BalanceWatcher');
+  beforeEach(() => { originalForChain = EthereumProvider.forChain; originalHistory = BalanceWatcher.getTransactionHistory; });
+  afterEach(() => { EthereumProvider.forChain = originalForChain; BalanceWatcher.getTransactionHistory = originalHistory; });
+
+  test('every EVM chain lists USDC and USDT by a checksummed contract; the rest list nothing', () => {
+    for (const chain of chains.list()) {
+      const tokens = chains.tokensOf(chain.code);
+      if (chain.family !== 'evm') { assert.deepStrictEqual(tokens, [], chain.code); continue; }
+      assert.ok(tokens.every((t) => ['USDC', 'USDT'].includes(t.symbol)), `${chain.code} lists only dollar tokens`);
+      if (['ETH', 'POL', 'BASE', 'ARB', 'OP', 'BNB', 'AVAX'].includes(chain.code)) assert.deepStrictEqual(tokens.map((t) => t.symbol), ['USDC', 'USDT'], chain.code);
+      for (const token of tokens) {
+        assert.strictEqual(ethers.getAddress(token.contract), token.contract, `${chain.code} ${token.symbol} is checksummed`);
+        // 18-decimal dollars only where the chain's own issue is (BNB Chain and opBNB)
+        assert.strictEqual(token.decimals, ['BNB', 'OPBNB'].includes(chain.code) ? 18 : 6, `${chain.code} ${token.symbol} decimals`);
+      }
+    }
+    // within a chain, USDC and USDT are two contracts (the same address on
+    // two chains is normal on the EVM - USDT0 is deployed identically on several)
+    for (const chain of chains.byFamily('evm')) {
+      const contracts = chains.tokensOf(chain.code).map((t) => t.contract.toLowerCase());
+      assert.strictEqual(new Set(contracts).size, contracts.length, `${chain.code}: one contract per token`);
+    }
+    assert.deepStrictEqual(chains.assetsOf('BASE'), ['ETH', 'USDC', 'USDT']);
+    assert.deepStrictEqual(chains.assetsOf('BTC'), ['BTC']);
+    assert.strictEqual(chains.tokenOf('ARB', 'usdt').onChainSymbol, 'USD₮0', 'the branded ticker is recorded where the contract uses one');
+    assert.deepStrictEqual(chains.publicInfo(chains.get('BASE')).tokens.map((t) => t.symbol), ['USDC', 'USDT']);
+    assert.deepStrictEqual(chains.publicInfo(chains.get('SOL')).tokens, []);
+  });
+
+  test('a link carries one figure per asset: the coin fixed at creation, the tokens at the dollars', () => {
+    assert.deepStrictEqual(amountsFor('BASE', 0.00966, 25), { ETH: 0.00966, USDC: 25, USDT: 25 });
+    assert.deepStrictEqual(amountsFor('BTC', 0.0003, 25), { BTC: 0.0003 });
+    assert.deepStrictEqual(amountsFor('BASE', 0.00966, null), { ETH: 0.00966 }, 'no dollars, no token figures');
+    const older = { chain: 'BASE', nativeAmount: 0.01, usdAmount: 26 };
+    assert.deepStrictEqual(sessionAmounts(older), { ETH: 0.01, USDC: 26, USDT: 26 }, 'a session from before carries the same shape');
+    assert.strictEqual(sessionAsset(older), 'ETH', 'the coin until picked');
+    assert.strictEqual(sessionAsset({ ...older, asset: 'USDC' }), 'USDC');
+    assert.strictEqual(sessionAsset({ ...older, asset: 'DAI' }), 'ETH', 'an asset the link has no figure for is not a pick');
+    assert.strictEqual(amountDue({ ...older, asset: 'USDT' }, 'USDT'), 26);
+    assert.strictEqual(amountDue(older, 'ETH'), 0.01);
+    assert.strictEqual(pickAsset(older, 'usdc'), 'USDC');
+    assert.strictEqual(pickAsset(older, undefined), 'ETH');
+    assert.throws(() => pickAsset(older, 'DAI'), /cannot be paid in DAI/);
+    assert.throws(() => pickAsset({ chain: 'BTC', nativeAmount: 1, usdAmount: 5 }, 'USDC'), /takes BTC/);
+  });
+
+  test('a token pick turns the QR into an EIP-681 transfer on the token contract', () => {
+    const session = { chain: 'BASE', walletAddress: MERCHANT, nativeAmount: 0.00966, usdAmount: 25, asset: 'USDC' };
+    assert.strictEqual(paymentUri(session), `ethereum:${USDC_BASE}@8453/transfer?address=${MERCHANT}&uint256=25000000`);
+    assert.strictEqual(paymentUri({ ...session, asset: 'ETH' }), `ethereum:${MERCHANT}@8453?value=0.00966`);
+    assert.strictEqual(paymentUri({ ...session, chain: 'ETH', asset: 'USDT' }), `ethereum:0xdAC17F958D2ee523a2206206994597C13D831ec7/transfer?address=${MERCHANT}&uint256=25000000`, 'mainnet keeps the bare form');
+    assert.strictEqual(paymentUri({ ...session, chain: 'BNB', asset: 'USDT', usdAmount: 1.5 }), `ethereum:0x55d398326f99059fF775485246999027B3197955@56/transfer?address=${MERCHANT}&uint256=1500000000000000000`, '18 decimals on BNB');
+  });
+
+  function stubLogs({ tip, logsByContract = {}, calls }) {
+    const pool = {
+      withProvider: async (fn) => fn({
+        getBlockNumber: async () => tip,
+        getBalance: async () => 0n,
+        send: async () => null,
+        getTransaction: async () => null,
+        getTransactionReceipt: async () => null,
+        getLogs: async (filter) => {
+          if (calls) calls.push(filter);
+          return (logsByContract[filter.address] || []).filter((l) => Number(l.blockNumber) >= filter.fromBlock && Number(l.blockNumber) <= filter.toBlock);
+        },
+      }),
+    };
+    pool.withLogs = pool.withProvider;
+    EthereumProvider.forChain = () => pool;
+  }
+  const session = (extra = {}) => db.create('checkoutSessions', {
+    id: `tok-${Math.random()}`, chain: 'BASE', walletAddress: MERCHANT, clientWalletAddress: BUYER, clientId: 'c-tok',
+    nativeAmount: 0.00966, usdAmount: 25, amounts: { ETH: 0.00966, USDC: 25, USDT: 25 }, asset: 'USDC',
+    createdAt: new Date(1000 * 1000).toISOString(), status: 'AWAITING_PAYMENT', logsFromBlock: 100, ...extra,
+  });
+  const transfer = (block, value, extra = {}) => ({ address: USDC_BASE, blockNumber: block, transactionHash: HASH, data: '0x' + value.toString(16).padStart(64, '0'), topics: [TRANSFER_TOPIC, topic(BUYER), topic(MERCHANT)], removed: false, ...extra });
+
+  test('a token payment is the Transfer event from the buyer to the merchant, read from the cursor', async () => {
+    const calls = [];
+    stubLogs({ tip: 150, calls, logsByContract: { [USDC_BASE]: [transfer(120, 25_000_000n)] } });
+    const s = session();
+    const result = await findTokenPayment(s);
+    assert.deepStrictEqual(result, { outcome: 'found', asset: 'USDC', amount: 25, txHash: HASH, confirmations: 31 });
+    // the picked token is asked first, from a little behind the cursor, for the buyer -> merchant pair
+    assert.strictEqual(calls[0].address, USDC_BASE);
+    assert.strictEqual(calls[0].fromBlock, 100 - LOG_OVERLAP_BLOCKS);
+    assert.deepStrictEqual(calls[0].topics, [TRANSFER_TOPIC, topic(BUYER), topic(MERCHANT)]);
+  });
+
+  test('nothing found moves the cursor to the tip; a long gap is read in bounded windows', async () => {
+    const calls = [];
+    stubLogs({ tip: 20_000, calls });
+    const s = session();
+    assert.deepStrictEqual(await findTokenPayment(s), { outcome: 'none' });
+    const perToken = calls.filter((c) => c.address === USDC_BASE);
+    assert.strictEqual(perToken.length, LOG_WINDOWS_PER_CHECK, 'so many windows per check');
+    assert.ok(perToken.every((c) => c.toBlock - c.fromBlock + 1 <= LOG_WINDOW_BLOCKS), 'each within the cap');
+    const after = db.getById('checkoutSessions', s.id);
+    assert.strictEqual(after.logsFromBlock, 100 - LOG_OVERLAP_BLOCKS + LOG_WINDOW_BLOCKS * LOG_WINDOWS_PER_CHECK, 'the next check carries on');
+  });
+
+  test('an endpoint that caps the range narrows the window for the chain and carries on', async () => {
+    const { logWindowByChain } = checkout._internals;
+    logWindowByChain.delete('BASE');
+    const calls = [];
+    const pool = {
+      withProvider: async (fn) => fn({ getBlockNumber: async () => 2000 }),
+      withLogs: async (fn) => fn({
+        getBlockNumber: async () => 2000,
+        getLogs: async (filter) => {
+          calls.push([filter.fromBlock, filter.toBlock]);
+          if (filter.toBlock - filter.fromBlock + 1 > 50) throw new Error('Block range too large: maximum allowed is 50 blocks');
+          return filter.fromBlock <= 130 && filter.toBlock >= 130 ? [transfer(130, 25_000_000n)] : [];
+        },
+      }),
+    };
+    EthereumProvider.forChain = () => pool;
+    const result = await findTokenPayment(session({ logsFromBlock: 100 }));
+    assert.strictEqual(result.outcome, 'found');
+    assert.strictEqual(result.confirmations, 2000 - 130 + 1);
+    assert.ok(calls[0][1] - calls[0][0] + 1 > 50, 'asked wide first');
+    assert.ok(calls.slice(1).every(([a, b]) => b - a + 1 <= 50), 'then within the cap');
+    assert.strictEqual(logWindowByChain.get('BASE'), 50, 'and remembers it for the chain');
+    logWindowByChain.delete('BASE');
+  });
+
+  test('a zero-value or removed event is not a payment; the amount honours 18 decimals on BNB', async () => {
+    stubLogs({ tip: 150, logsByContract: { [USDC_BASE]: [transfer(120, 0n), transfer(121, 25_000_000n, { removed: true })] } });
+    assert.deepStrictEqual(await findTokenPayment(session()), { outcome: 'none' });
+    const USDT_BNB = '0x55d398326f99059fF775485246999027B3197955';
+    stubLogs({ tip: 150, logsByContract: { [USDT_BNB]: [{ ...transfer(120, 25n * 10n ** 18n), address: USDT_BNB }] } });
+    const result = await findTokenPayment(session({ chain: 'BNB', asset: 'USDT', amounts: { BNB: 0.03, USDC: 25, USDT: 25 } }));
+    assert.strictEqual(result.asset, 'USDT');
+    assert.strictEqual(result.amount, 25);
+  });
+
+  test('findPayment: the coin first, then the tokens; a token that paid another link does not count', async () => {
+    BalanceWatcher.getTransactionHistory = async () => ({ status: 'ok', transactions: [] });
+    stubLogs({ tip: 150, logsByContract: { [USDC_BASE]: [transfer(120, 25_000_000n)] } });
+    const s = session();
+    const found = await findPayment(s, { id: 'w', chain: 'BASE', address: MERCHANT });
+    assert.strictEqual(found.outcome, 'found');
+    assert.strictEqual(found.asset, 'USDC');
+    db.create('checkoutSessions', { id: 'claimed-' + Math.random(), paidTxHash: HASH, status: 'PAID' });
+    assert.deepStrictEqual(await findPayment(session(), { id: 'w', chain: 'BASE', address: MERCHANT }), { outcome: 'none' });
+  });
+
+  test('a token lookup that fails holds the session; a coin that arrived wins without one', async () => {
+    BalanceWatcher.getTransactionHistory = async () => ({ status: 'ok', transactions: [] });
+    EthereumProvider.forChain = () => ({ withProvider: async (fn) => fn({ getBlockNumber: async () => 150 }), withLogs: async () => { throw new Error('No Base RPC endpoint serves eth_getLogs'); } });
+    assert.deepStrictEqual(await findPayment(session(), { id: 'w', chain: 'BASE', address: MERCHANT }), { outcome: 'unverifiable' });
+    BalanceWatcher.getTransactionHistory = async () => ({ status: 'ok', transactions: [{ from: BUYER, to: MERCHANT, value: '9660000000000000', timeStamp: '2000', hash: '0x' + 'cc'.repeat(32), confirmations: '5', isError: '0' }] });
+    const coin = await findPayment(session(), { id: 'w', chain: 'BASE', address: MERCHANT });
+    assert.strictEqual(coin.asset, 'ETH');
+    assert.strictEqual(coin.amount, 0.00966);
+  });
+
+  test('a wallet\'s hint for a token transfer is read off its receipt', async () => {
+    const receipt = { status: 1, blockNumber: 120, logs: [transfer(120, 25_000_000n)] };
+    const stub = (tx, rcpt) => { EthereumProvider.forChain = () => ({ withProvider: async (fn) => fn({ getTransaction: async () => tx, getTransactionReceipt: async () => rcpt, getBlockNumber: async () => 122 }) }); };
+    stub({ to: USDC_BASE, from: BUYER, value: 0n, blockNumber: 120 }, receipt);
+    const s = session({ hintTxHash: HASH });
+    assert.deepStrictEqual(await verifyHintedEvmPayment(s), { outcome: 'found', asset: 'USDC', amount: 25, txHash: HASH, confirmations: 3 });
+    stub({ to: USDC_BASE, from: BUYER, value: 0n, blockNumber: null }, null);
+    assert.deepStrictEqual(await verifyHintedEvmPayment(s), { outcome: 'found', asset: 'USDC', amount: 0, txHash: HASH, confirmations: 0 }, 'unmined: seen, nothing to count');
+    stub({ to: USDC_BASE, from: BUYER, value: 0n, blockNumber: 120 }, { status: 1, blockNumber: 120, logs: [transfer(120, 25_000_000n, { topics: [TRANSFER_TOPIC, topic(BUYER), topic('0x3333333333333333333333333333333333333333')] })] });
+    assert.strictEqual(await verifyHintedEvmPayment(s), null, 'a transfer to someone else is not a payment');
+    stub({ to: '0x4444444444444444444444444444444444444444', from: BUYER, value: 10n ** 18n, blockNumber: 120 }, { status: 1 });
+    assert.strictEqual(await verifyHintedEvmPayment(s), null, 'a call to some other contract is nothing');
+  });
+
+  test('settling a token payment keeps the asset, measures against its own figure and records the deposit', async () => {
+    BalanceWatcher.getTransactionHistory = async () => ({ status: 'ok', transactions: [] });
+    // its own hash: the earlier test marked HASH as claimed by another link
+    stubLogs({ tip: 150, logsByContract: { [USDC_BASE]: [{ ...transfer(120, 24_900_000n), transactionHash: '0x' + 'f1'.repeat(32) }] } });
+    const wallet = db.create('wallets', { id: 'w-tok-' + Math.random(), clientId: 'c-tok', chain: 'BASE', address: MERCHANT });
+    const s = session({ walletId: wallet.id, lastCheckedAt: null });
+    const settled = await settleNow(s);
+    assert.strictEqual(settled.status, 'PAID', '24.90 is within the 1% tolerance of 25');
+    assert.strictEqual(settled.paidAsset, 'USDC');
+    assert.strictEqual(settled.paidAmount, 24.9);
+    const deposit = db.findOneBy('transactions', { sessionId: s.id });
+    assert.ok(deposit, 'a deposit was recorded');
+    assert.strictEqual(deposit.type, 'DEPOSIT');
+    assert.strictEqual(deposit.asset, 'USDC');
+    assert.strictEqual(deposit.usdAmount, 24.9, 'a dollar token is its dollars');
+    assert.strictEqual(deposit.status, 'CONFIRMED');
+    assert.strictEqual(deposit.toAddress, MERCHANT);
+    // short by more than the tolerance: underpaid, still recorded
+    stubLogs({ tip: 150, logsByContract: { [USDC_BASE]: [{ ...transfer(120, 20_000_000n), transactionHash: '0x' + 'ee'.repeat(32) }] } });
+    const short = await settleNow(session({ walletId: wallet.id, lastCheckedAt: null }));
+    assert.strictEqual(short.status, 'INSUFFICIENT');
+    assert.strictEqual(short.paidAsset, 'USDC');
+  });
+
+  test('a coin payment on a token-carrying chain still settles against the coin figure', async () => {
+    BalanceWatcher.getTransactionHistory = async () => ({ status: 'ok', transactions: [{ from: BUYER, to: MERCHANT, value: '9660000000000000', timeStamp: '2000', hash: '0x' + 'dd'.repeat(32), confirmations: '5', isError: '0' }] });
+    stubLogs({ tip: 150 });
+    const wallet = db.create('wallets', { id: 'w-coin-' + Math.random(), clientId: 'c-tok', chain: 'BASE', address: MERCHANT });
+    const settled = await settleNow(session({ walletId: wallet.id, lastCheckedAt: null, asset: 'USDC' }));
+    assert.strictEqual(settled.status, 'PAID', 'picked USDC, sent ETH: still paid');
+    assert.strictEqual(settled.paidAsset, 'ETH');
+    const deposit = db.findOneBy('transactions', { sessionId: settled.id });
+    assert.strictEqual(deposit.asset, 'ETH');
+    assert.strictEqual(deposit.usdAmount, 25, 'the coin\'s dollars at the link\'s own rate');
+  });
+});
+
+describe('The chain tooling', () => {
+  const { execFileSync } = require('node:child_process');
+  test('the page copy is in step with the registry (scripts/sync-chain-copy.js --check)', () => {
+    // Adding a chain regenerates the pages; editing the registry by hand
+    // without running the sync leaves the pages stating the wrong count.
+    const out = execFileSync(process.execPath, [path.join(__dirname, '../scripts/sync-chain-copy.js'), '--check'], { encoding: 'utf-8' });
+    assert.match(out, /in step with the registry/);
+  });
+  test('the importer and the verifier parse, and the importer refuses to run with nothing to add', () => {
+    for (const file of ['add-chain.js', 'verify-chains.js', 'sync-chain-copy.js']) {
+      execFileSync(process.execPath, ['--check', path.join(__dirname, '../scripts', file)]);
+    }
+    assert.throws(() => execFileSync(process.execPath, [path.join(__dirname, '../scripts/add-chain.js')], { stdio: 'pipe' }), (error) => error.status === 2 && /usage/.test(String(error.stdout)));
+    for (const script of ['chains:add', 'chains:verify', 'chains:sync']) {
+      assert.ok(require('../package.json').scripts[script], `npm run ${script}`);
+    }
+  });
+  test('every entry the importer wrote says so, and carries what the app reads', () => {
+    const source = fs.readFileSync(path.join(__dirname, '../src/config/chains.js'), 'utf-8');
+    const imported = chains.list().filter((c) => source.includes(`${c.code}: {`) && source.slice(source.indexOf(`  ${c.code}: {`), source.indexOf('  },', source.indexOf(`  ${c.code}: {`))).includes('Added by scripts/add-chain.js'));
+    assert.ok(imported.length >= 10, `${imported.length} imported chains`);
+    for (const chain of imported) {
+      assert.ok(chain.rpc.length >= 2 && chain.blockTimeSec > 0 && chain.directGasUsd > 0 && chain.explorer.tx.endsWith('/tx/'), chain.code);
+      assert.ok(/^[A-Z][A-Za-z0-9 .-]+$/.test(chain.name), `${chain.code} has a presentable name: ${chain.name}`);
+    }
+  });
+});
+
 describe('Wallet labels', () => {
   const { db } = require('../src/config/database');
   const WalletService = require('../src/services/WalletService');
@@ -334,7 +611,7 @@ describe('Chains with no transaction index are read over RPC', () => {
    */
   function stubChain({ tip, balance, blocks = {}, receipts = {} }) {
     const read = [];
-    EthereumProvider.forChain = () => ({
+    const pool = {
       withProvider: async (fn) => fn({
         getBlockNumber: async () => tip,
         getBalance: async () => BigInt(balance),
@@ -347,8 +624,11 @@ describe('Chains with no transaction index are read over RPC', () => {
         },
         getTransactionReceipt: async (hash) => receipts[hash] ?? { status: 1 },
         getTransaction: async () => null,
+        getLogs: async () => [],
       }),
-    });
+    };
+    pool.withLogs = pool.withProvider;
+    EthereumProvider.forChain = () => pool;
     return read;
   }
 

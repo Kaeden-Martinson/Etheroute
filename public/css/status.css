@@ -173,6 +173,76 @@ a {
     flex: none;
 }
 
+/* ── Chain rows ───────────────────────────────────────────────────────────
+   One line per chain: a dot for its state, the name, what its endpoints
+   said, the routes off it as small marks, and when it last changed. The
+   thirty-day bar sits under the line, thinner than the services' - there are
+   sixty of these. */
+.dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: var(--radius-pill);
+    background: var(--ok);
+    flex: none;
+}
+.dot--degraded { background: var(--warn); }
+.dot--down { background: var(--danger); }
+.dot--unknown { background: var(--line-strong); }
+
+.chain-row {
+    display: grid;
+    grid-template-columns: 8px minmax(0, 1.2fr) minmax(0, 1.4fr) minmax(0, 1.2fr) auto;
+    gap: 12px;
+    align-items: center;
+    padding: 10px 0;
+    border-top: 1px solid var(--line);
+    font-size: 12.5px;
+    color: var(--ink-3);
+}
+.chain-row:first-child { border-top: 0; }
+.chain-row[hidden] { display: none; }
+.chain-row__name { color: var(--ink); font-weight: 600; font-size: 13.5px; }
+.chain-row__name span { color: var(--ink-3); font-weight: 500; font-size: 11.5px; margin-left: 6px; }
+.chain-row__rpc { font-variant-numeric: tabular-nums; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chain-row__rpc.is-bad { color: var(--danger); }
+.chain-row__routes { display: flex; flex-wrap: wrap; gap: 4px 10px; }
+.chain-row__routes span { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+.chain-row__since { font-size: 11.5px; white-space: nowrap; }
+.chain-row .uptime-bar { grid-column: 2 / -1; height: 10px; margin-top: 2px; }
+
+.chain-more {
+    all: unset;
+    display: block;
+    margin: 12px 0 4px;
+    padding: 8px 14px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    font: inherit;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--ink-2);
+    cursor: pointer;
+}
+.chain-more:hover { color: var(--ink); border-color: var(--line-strong); }
+.chain-more:focus-visible { box-shadow: var(--focus-ring); }
+
+.chain-events { margin-top: 18px; }
+.chain-events h3 { font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-3); margin: 0 0 8px; }
+.chain-event { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 12px; padding: 6px 0; border-top: 1px solid var(--line); font-size: 12.5px; color: var(--ink-2); }
+.chain-event time { color: var(--ink-3); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.chain-event b { color: var(--ink); font-weight: 600; }
+.chain-event .to-bad { color: var(--danger); font-weight: 600; }
+.chain-event .to-good { color: var(--ok); font-weight: 600; }
+.chain-event small { display: block; color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+@media (max-width: 760px) {
+    .chain-row { grid-template-columns: 8px minmax(0, 1fr) auto; }
+    .chain-row__since { grid-column: 3; grid-row: 1; }
+    .chain-row__rpc, .chain-row__routes { grid-column: 2 / -1; }
+    .chain-row .uptime-bar { grid-column: 1 / -1; }
+}
+
 /* ── Service rows ─────────────────────────────────────────────────────────
    A row per service with a tick per day, rather than a card grid. The uptime
    bar is the point of a status page; making it the widest element on the row

@@ -85,7 +85,7 @@ describe('H1 - settlement never assumes payment', () => {
 
   test('an unknown chain reports unverifiable rather than accepting', async () => {
     stubHistory({ status: 'success', transactions: [] });
-    const result = await findPayment({ ...session, chain: 'DOGE' }, wallet);
+    const result = await findPayment({ ...session, chain: 'XYZ' }, wallet);
     assert.strictEqual(result.outcome, 'unverifiable');
   });
 

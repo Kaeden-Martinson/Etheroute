@@ -21,6 +21,8 @@ router.get('/list', (req, res, next) => {
         transactionHash: transaction.transactionHash,
         type: transaction.type,
         chain: transaction.chain,
+        // What moved: the chain's coin unless a dollar token is named.
+        asset: transaction.asset || null,
         nativeAmount: transaction.nativeAmount,
         usdAmount: transaction.usdAmount,
         status: transaction.status,

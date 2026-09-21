@@ -102,6 +102,10 @@ class GasEstimator {
         const lamports = await service.estimateFee(1);
         return Number.isFinite(lamports) ? lamports / LAMPORTS : null;
       }
+      case 'xrp': {
+        const drops = await service.estimateFee();
+        return Number.isFinite(drops) ? drops / 1_000_000 : null;
+      }
       default:
         return null;
     }

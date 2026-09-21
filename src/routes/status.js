@@ -1,8 +1,19 @@
 const { Router } = require('express');
 const StatusService = require('../services/StatusService');
+const ChainHealthService = require('../services/ChainHealthService');
 const { optionalAuth, requireAuth, requireDeveloper } = require('../middleware/auth');
 
 const router = Router();
+
+/**
+ * Every chain's health: what answered on the last sweep, which routes are
+ * open, when it last changed, and thirty days of daily uptime from the
+ * recorded changes. Public - it names public endpoints and public networks.
+ * GET /api/status/chains
+ */
+router.get('/chains', (req, res) => {
+  res.json({ success: true, ...ChainHealthService.getSnapshot() });
+});
 
 /**
  * Public status snapshot. Incident detail is included only for developers.

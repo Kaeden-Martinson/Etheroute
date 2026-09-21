@@ -14,6 +14,7 @@ const logger = require('./services/logger');
 const { ApiError } = require('./utils/errors');
 const { db } = require('./config/database');
 const MaintenanceService = require('./services/MaintenanceService');
+const ChainHealthService = require('./services/ChainHealthService');
 const BackupService = require('./services/BackupService');
 const AlertService = require('./services/AlertService');
 
@@ -292,6 +293,7 @@ function start() {
 
   MaintenanceService.start();
   BackupService.start();
+  ChainHealthService.start();
 
   return server;
 }
@@ -304,6 +306,7 @@ function shutdown(signal) {
   logger.info(`Received ${signal} - shutting down`);
   MaintenanceService.stop();
   BackupService.stop();
+  ChainHealthService.stop();
 
   if (!server) process.exit(0);
 
