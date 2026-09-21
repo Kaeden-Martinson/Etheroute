@@ -34,6 +34,11 @@ const STATE = {
     chainsSnapshot: null,
     openPayouts: new Set(),
     searchQuery: '',
+    // pages that have drawn real data once: a refresh keeps what is there,
+    // a first visit shows the skeleton
+    loaded: new Set(),
+    lastMerchantId: null,
+    lastSearch: '',
 };
 
 // ── Plumbing ─────────────────────────────────────────────────────────────────
@@ -158,6 +163,91 @@ function empty(colspan, text) {
     return `<tr class="dash-table__empty"><td colspan="${colspan}">${escapeHtml(text)}</td></tr>`;
 }
 
+// ── Skeletons ────────────────────────────────────────────────────────────────
+
+const sk = (kind) => `<span class="sk sk--${kind}" aria-hidden="true"></span>`;
+const skRows = (colspan, n = 5) => Array.from({ length: n }, () => `<tr class="sk-row"><td colspan="${colspan}">${sk('short')}${sk('num')}${sk('pill')}</td></tr>`).join('');
+const skKv = (n = 6) => Array.from({ length: n }, () => `<div class="own-kv__row sk-row"><span>${sk('kv')}</span><span>${sk('kv')}</span></div>`).join('');
+
+function setSk(id, html) {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = html;
+}
+function setSkText(id) {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = sk(el.classList.contains('dash-balance') || el.classList.contains('dash-head__title') ? 'big' : 'num');
+}
+
+/** What each page looks like before its first answer. */
+const SKELETONS = {
+    overview() {
+        setSkText('ovVolume');
+        for (const id of ['ovMerchants', 'ovOnChain', 'ovPayouts30', 'ovFees30', 'ovFeesHeld', 'ovChains']) setSkText(id);
+        for (const id of ['ovMerchantsNew', 'ovPayouts30Count', 'ovFeesDelta', 'ovFeesNext', 'ovChainsProblems', 'ovVolumeDelta']) { const el = document.getElementById(id); if (el) el.textContent = ''; }
+        skeletonChart('ovChart', STATE.flowChart);
+        setSk('ovAttention', Array.from({ length: 4 }, () => `<div class="own-attention__row sk-row">${sk('line')}</div>`).join(''));
+        setSk('ovPayoutRows', skRows(4, 4));
+    },
+    search() {
+        document.getElementById('searchTitle').textContent = STATE.searchQuery;
+        document.getElementById('searchLede').innerHTML = sk('short');
+        setSk('searchResults', `<div class="own-results__group">${sk('num')}</div>${Array.from({ length: 4 }, () => `<div class="own-results__row"><span>${sk('num')}</span><span>${sk('line')}</span><span>${sk('num')}</span><span>${sk('pill')}</span></div>`).join('')}`);
+    },
+    merchants() { setSk('merchantRows', skRows(9, 6)); },
+    merchant() {
+        setSkText('mName');
+        document.getElementById('mLede').innerHTML = sk('line');
+        setSk('mFacts', Array.from({ length: 4 }, () => `<div><b>${sk('num')}</b><span>${sk('short')}</span></div>`).join(''));
+        setSk('mWalletRows', skRows(6, 4)); setSk('mPayoutRows', skRows(5, 3)); setSk('mSessionRows', skRows(5, 3)); setSk('mTxRows', skRows(6, 3));
+    },
+    payouts() { setSk('payoutRows', skRows(9, 6)); },
+    inflight() { setSk('txRows', skRows(9, 4)); },
+    checkout() { setSk('sessionRows', skRows(7, 6)); },
+    fees() {
+        setSkText('feeHeld');
+        for (const id of ['feeCollected', 'feeHeldWallets', 'feeThreshold', 'feeConfigured']) setSkText(id);
+        setSk('feeHeldRows', skRows(6, 4)); setSk('feeByChainRows', skRows(3, 3)); setSk('feeRecentRows', skRows(8, 4));
+        setSk('feeAddresses', Array.from({ length: 7 }, () => `<div class="own-addresses__row"><b>${sk('num')}</b><span>${sk('line')}</span></div>`).join(''));
+    },
+    usage() {
+        setSkText('usageTotal');
+        skeletonChart('usageChart', STATE.usageChart);
+        setSk('usageMerchantRows', skRows(2, 4)); setSk('usageEndpointRows', skRows(2, 4));
+    },
+    chains() { setSk('chainRows', skRows(6, 8)); setSk('chainEventRows', Array.from({ length: 4 }, () => `<div class="own-events__row"><time>${sk('num')}</time><b>${sk('num')}</b><span>${sk('line')}</span></div>`).join('')); },
+    server() {
+        setSkText('serverTitle');
+        document.getElementById('serverLede').innerHTML = sk('line');
+        setSk('serverFacts', Array.from({ length: 5 }, () => `<div><b>${sk('num')}</b><span>${sk('short')}</span></div>`).join(''));
+        setSk('serverLog', Array.from({ length: 6 }, () => `<div class="line">${sk('line')}</div>`).join(''));
+        setSk('serverConfig', skKv(8)); setSk('serverFloat', skKv(3));
+    },
+};
+
+/** A chart not yet drawn hides behind one ghost; painting twice adds none. */
+function skeletonChart(canvasId, drawn) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas || drawn) return;
+    if (!canvas.parentElement.querySelector('[data-sk-chart]')) canvas.insertAdjacentHTML('beforebegin', '<div class="sk sk--chart" data-sk-chart aria-hidden="true"></div>');
+    canvas.hidden = true;
+}
+
+/** The canvas comes back before it is drawn, so the chart sizes to it. */
+function unskeletonChart(canvasId) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    canvas.hidden = false;
+    canvas.parentElement.querySelectorAll('[data-sk-chart]').forEach((ghost) => ghost.remove());
+}
+
+/** The first time a page is opened (or a new merchant, a new search), it is drawn as a skeleton. */
+function paintSkeleton(page) {
+    const fresh = !STATE.loaded.has(page)
+        || (page === 'merchant' && STATE.merchantId !== STATE.lastMerchantId)
+        || (page === 'search' && STATE.searchQuery !== STATE.lastSearch);
+    if (fresh && SKELETONS[page]) SKELETONS[page]();
+}
+
 function toast(message, type = 'success', duration = 4000) {
     let container = document.getElementById('toastContainer');
     if (!container) {
@@ -219,13 +309,28 @@ function switchOwnerPage(page) {
         if (active) link.setAttribute('aria-current', 'page'); else link.removeAttribute('aria-current');
     });
     window.scrollTo({ top: 0 });
+    paintSkeleton(page);
     refreshCurrentPage();
 }
 
 function refreshCurrentPage() {
-    const loader = LOADERS[STATE.page];
+    const page = STATE.page;
+    const loader = LOADERS[page];
     if (!loader) return;
-    loader().catch((error) => { if (!/Owner access|Session expired/.test(error.message)) toast(error.message, 'error'); });
+    loader().then(() => {
+        STATE.loaded.add(page);
+        if (page === 'merchant') STATE.lastMerchantId = STATE.merchantId;
+        if (page === 'search') STATE.lastSearch = STATE.searchQuery;
+    }).catch((error) => {
+        if (/Owner access|Session expired/.test(error.message)) return;
+        toast(error.message, 'error');
+        // a skeleton that never fills is a page that looks stuck
+        document.querySelectorAll(`#${page}Page .sk-row`).forEach((row) => {
+            if (row.tagName === 'TR') row.outerHTML = `<tr class="dash-table__empty"><td colspan="9">Could not load: ${escapeHtml(error.message)}</td></tr>`;
+            else row.remove();
+        });
+        document.querySelectorAll(`#${page}Page .sk`).forEach((el) => { el.replaceWith(document.createTextNode('—')); });
+    });
 }
 
 async function loadOverview() {
@@ -261,6 +366,7 @@ async function loadOverview() {
     probs.textContent = d.chains.problems.length ? `· ${d.chains.problems.map((p) => p.code).join(', ')}` : (d.chains.checkedAt ? '· all clear' : '· not checked yet');
     probs.className = d.chains.problems.length ? 'is-bad' : 'is-ok';
 
+    unskeletonChart('ovChart');
     drawFlowChart(d.trend || []);
 
     document.getElementById('ovPayoutsSub').textContent = `${plural(d.payouts.total, 'payout')} across every merchant`;
@@ -334,8 +440,12 @@ function tickLive() {
 
 function submitSearch(event) {
     if (event && event.preventDefault) event.preventDefault();
-    const q = (document.getElementById('ownerSearch').value || '').trim();
+    // whichever of the two search forms submitted (the rail's, or the page's on a tablet)
+    const form = event && event.target && event.target.closest ? event.target.closest('form') : null;
+    const input = (form && form.querySelector('input[type="search"]')) || document.getElementById('ownerSearch');
+    const q = (input.value || '').trim();
     if (q.length < 3) { toast('Search needs at least three characters', 'error'); return; }
+    document.querySelectorAll('.own-search input').forEach((el) => { el.value = q; });
     STATE.searchQuery = q;
     switchOwnerPage('search');
 }
@@ -710,6 +820,7 @@ async function loadUsage() {
         return STATE.usagePeriod === 'week' ? t.toLocaleDateString(undefined, { weekday: 'short' }) : `${String(t.getHours()).padStart(2, '0')}:00`;
     });
     const canvas = document.getElementById('usageChart');
+    unskeletonChart('usageChart');
     if (STATE.usageChart) STATE.usageChart.destroy();
     if (window.Chart) {
         const ink = getComputedStyle(document.documentElement).getPropertyValue('--ink').trim() || '#000';
@@ -868,6 +979,8 @@ window.addEventListener('load', async () => {
     const username = localStorage.getItem('username') || 'User';
     document.getElementById('username').textContent = username;
     document.getElementById('userAvatar').textContent = username.charAt(0).toUpperCase();
+    // the overview is a skeleton from the first paint, not a page of zeros
+    paintSkeleton('overview');
 
     let verify;
     try {
@@ -897,7 +1010,8 @@ window.addEventListener('load', async () => {
         const tag = (e.target && e.target.tagName) || '';
         if (['INPUT', 'TEXTAREA', 'SELECT'].includes(tag) || (e.target && e.target.isContentEditable)) return;
         e.preventDefault();
-        document.getElementById('ownerSearch').focus();
+        const boxes = [...document.querySelectorAll('.own-search input')].filter((el) => el.offsetParent !== null);
+        (boxes[0] || document.getElementById('ownerSearch')).focus();
     });
 });
 

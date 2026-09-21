@@ -115,6 +115,13 @@
 
     <main class="container" id="dashMain">
 
+        <!-- Between the wide rail and the phone strip the rail is icons only,
+             so the search sits at the top of the page instead. -->
+        <form class="own-search own-search--page" data-on-submit="submitSearch" role="search">
+            <input type="search" placeholder="Address, hash, reference, merchant" aria-label="Search the platform" autocomplete="off" spellcheck="false">
+            <button type="submit" class="own-search__go" aria-label="Search">›</button>
+        </form>
+
         <!-- Shown instead of everything when the session is not an owner's. -->
         <div id="notOwner" class="own-denied" hidden>
             <span class="dash-head__eyebrow">Owner panel</span>
@@ -207,21 +214,21 @@
             <div class="dash-facts" id="mFacts"></div>
             <section class="dash-section">
                 <div class="dash-section__head"><div><h2 class="dash-section__title">Wallets</h2><p class="dash-section__sub" id="mWalletsSub"></p></div></div>
-                <table class="dash-table"><thead><tr><th>Chain</th><th>Address</th><th class="num">Balance</th><th class="num">Tokens</th><th class="num">Fee held</th><th>Read</th></tr></thead><tbody id="mWalletRows"></tbody></table>
+                <div class="own-scroll"><table class="dash-table"><thead><tr><th>Chain</th><th>Address</th><th class="num">Balance</th><th class="num">Tokens</th><th class="num">Fee held</th><th>Read</th></tr></thead><tbody id="mWalletRows"></tbody></table></div>
             </section>
             <div class="own-grid">
                 <section class="dash-section">
                     <div class="dash-section__head"><div><h2 class="dash-section__title">Payouts</h2><p class="dash-section__sub" id="mPayoutsSub"></p></div></div>
-                    <table class="dash-table"><thead><tr><th>When</th><th>To</th><th class="num">Gross</th><th class="num">Fee</th><th>Status</th></tr></thead><tbody id="mPayoutRows"></tbody></table>
+                    <div class="own-scroll"><table class="dash-table"><thead><tr><th>When</th><th>To</th><th class="num">Gross</th><th class="num">Fee</th><th>Status</th></tr></thead><tbody id="mPayoutRows"></tbody></table></div>
                 </section>
                 <section class="dash-section">
                     <div class="dash-section__head"><div><h2 class="dash-section__title">Payment links</h2><p class="dash-section__sub" id="mSessionsSub"></p></div></div>
-                    <table class="dash-table"><thead><tr><th>When</th><th>Chain</th><th class="num">Amount</th><th>Reference</th><th>Status</th></tr></thead><tbody id="mSessionRows"></tbody></table>
+                    <div class="own-scroll"><table class="dash-table"><thead><tr><th>When</th><th>Chain</th><th class="num">Amount</th><th>Reference</th><th>Status</th></tr></thead><tbody id="mSessionRows"></tbody></table></div>
                 </section>
             </div>
             <section class="dash-section">
                 <div class="dash-section__head"><div><h2 class="dash-section__title">Transfers</h2><p class="dash-section__sub" id="mTxSub"></p></div></div>
-                <table class="dash-table"><thead><tr><th>When</th><th>Kind</th><th>Chain</th><th class="num">Amount</th><th>Hash</th><th>Status</th></tr></thead><tbody id="mTxRows"></tbody></table>
+                <div class="own-scroll"><table class="dash-table"><thead><tr><th>When</th><th>Kind</th><th>Chain</th><th class="num">Amount</th><th>Hash</th><th>Status</th></tr></thead><tbody id="mTxRows"></tbody></table></div>
             </section>
         </div>
 
@@ -314,7 +321,7 @@
                         <div><h2 class="dash-section__title">Held</h2><p class="dash-section__sub">Per wallet and asset, at today's rates</p></div>
                         <div class="dash-section__actions"><button class="btn-small btn-secondary" type="button" data-on-click="feeReconcile" title="Cap every held figure at what its wallet holds">Reconcile</button></div>
                     </div>
-                    <table class="dash-table"><thead><tr><th>Chain</th><th>Merchant</th><th>Wallet</th><th class="num">Held</th><th class="num">On chain</th><th class="num">USD</th></tr></thead><tbody id="feeHeldRows"></tbody></table>
+                    <div class="own-scroll"><table class="dash-table"><thead><tr><th>Chain</th><th>Merchant</th><th>Wallet</th><th class="num">Held</th><th class="num">On chain</th><th class="num">USD</th></tr></thead><tbody id="feeHeldRows"></tbody></table></div>
                 </section>
                 <section class="dash-section">
                     <div class="dash-section__head">
@@ -324,12 +331,12 @@
                     <div class="dash-section__head" style="margin-top: 28px;">
                         <div><h2 class="dash-section__title">Collected by chain</h2></div>
                     </div>
-                    <table class="dash-table"><thead><tr><th>Chain</th><th class="num">Transactions</th><th class="num">USD</th></tr></thead><tbody id="feeByChainRows"></tbody></table>
+                    <div class="own-scroll"><table class="dash-table"><thead><tr><th>Chain</th><th class="num">Transactions</th><th class="num">USD</th></tr></thead><tbody id="feeByChainRows"></tbody></table></div>
                 </section>
             </div>
             <section class="dash-section">
                 <div class="dash-section__head"><div><h2 class="dash-section__title">Recent collections</h2><p class="dash-section__sub">In the withdrawal's own transaction, or swept</p></div></div>
-                <table class="dash-table"><thead><tr><th>When</th><th>Chain</th><th>Merchant</th><th class="num">Amount</th><th class="num">USD</th><th>How</th><th>Hash</th><th>Status</th></tr></thead><tbody id="feeRecentRows"></tbody></table>
+                <div class="own-scroll"><table class="dash-table"><thead><tr><th>When</th><th>Chain</th><th>Merchant</th><th class="num">Amount</th><th class="num">USD</th><th>How</th><th>Hash</th><th>Status</th></tr></thead><tbody id="feeRecentRows"></tbody></table></div>
             </section>
         </div>
 
@@ -352,11 +359,11 @@
             <div class="own-grid">
                 <section class="dash-section">
                     <div class="dash-section__head"><div><h2 class="dash-section__title">Busiest merchants</h2></div></div>
-                    <table class="dash-table"><thead><tr><th>Merchant</th><th class="num">Requests</th></tr></thead><tbody id="usageMerchantRows"></tbody></table>
+                    <div class="own-scroll"><table class="dash-table"><thead><tr><th>Merchant</th><th class="num">Requests</th></tr></thead><tbody id="usageMerchantRows"></tbody></table></div>
                 </section>
                 <section class="dash-section">
                     <div class="dash-section__head"><div><h2 class="dash-section__title">Busiest endpoints</h2></div></div>
-                    <table class="dash-table"><thead><tr><th>Endpoint</th><th class="num">Requests</th></tr></thead><tbody id="usageEndpointRows"></tbody></table>
+                    <div class="own-scroll"><table class="dash-table"><thead><tr><th>Endpoint</th><th class="num">Requests</th></tr></thead><tbody id="usageEndpointRows"></tbody></table></div>
                 </section>
             </div>
         </div>

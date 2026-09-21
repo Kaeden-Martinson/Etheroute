@@ -371,6 +371,17 @@ describe('The CLI and the page', () => {
     assert.ok(js.includes('is-stuck'), 'age past the usual time is marked');
     const css = read('public/css/owner.css');
     assert.ok(css.includes('a.rail__account, a.rail__account:visited { color: inherit; text-decoration: none; }'), 'the foot link does not wear the browser blue');
+    // a phone: every table scrolls in its own box, the strip drops the badge, the tablet gets a page-top search
+    assert.strictEqual((html.match(/<table class="dash-table">/g) || []).length, (html.match(/<div class="own-scroll"><table class="dash-table">/g) || []).length, 'every table is wrapped');
+    assert.ok(css.includes('.own-scroll { overflow-x: auto;'));
+    assert.ok(/@media \(max-width: 860px\) \{[\s\S]*?\.own-badge \{ display: none; \}/.test(css), 'the badge leaves the phone strip');
+    assert.ok(html.includes('class="own-search own-search--page"') && css.includes('@media (max-width: 1100px) and (min-width: 861px)'), 'the icon rail gets a page-top search');
+    // skeletons: painted on a first visit, with a sheen only for those who allow motion
+    for (const name of ['paintSkeleton', 'skeletonChart', 'unskeletonChart']) assert.ok(new RegExp(`function ${name}\\(`).test(js), name);
+    for (const page of ['overview', 'search', 'merchants', 'merchant', 'payouts', 'inflight', 'checkout', 'fees', 'usage', 'chains', 'server']) assert.ok(new RegExp(`\\n    ${page}\\(\\) \\{`).test(js), `a skeleton for ${page}`);
+    assert.ok(js.includes("paintSkeleton('overview');"), 'the overview is a skeleton from the first paint');
+    assert.ok(css.includes('@keyframes sk-sheen') && /@media \(prefers-reduced-motion: no-preference\) \{\s*\.sk::after \{ animation: sk-sheen/.test(css), 'the sheen respects reduced motion');
+    assert.ok(js.includes('Could not load:'), 'a skeleton that cannot fill says so');
     assert.ok(js.includes("api('/owner/overview')") && js.includes("api('/owner/fees/collect'") && js.includes('window.confirm('), 'a sweep asks first');
     // the dashboard shows the way in to owners alone
     const dash = read('public/dashboard.html');

@@ -41,6 +41,43 @@ a.rail__account:hover .rail__who span { color: var(--ink); }
 .own-back { color: var(--ink-3); cursor: pointer; }
 .own-back:hover { color: var(--ink); }
 
+/* Skeletons: what a region looks like while its first answer is on the
+   way. A bar the height of the type it stands in, with a slow sheen; the
+   sheen is off for anyone who asked for less motion, and the bar stays. */
+.sk {
+    display: inline-block;
+    height: 1em;
+    width: 8ch;
+    border-radius: 4px;
+    background: color-mix(in srgb, var(--ink) 9%, transparent);
+    vertical-align: middle;
+    position: relative;
+    overflow: hidden;
+}
+.sk::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--surface) 55%, transparent), transparent);
+}
+@media (prefers-reduced-motion: no-preference) {
+    .sk::after { animation: sk-sheen 1.6s ease-in-out infinite; }
+}
+@keyframes sk-sheen { to { transform: translateX(100%); } }
+.sk--num { width: 6ch; height: 0.9em; }
+.sk--big { width: 7ch; height: 0.85em; border-radius: 6px; }
+.sk--line { width: 100%; height: 12px; }
+.sk--short { width: 40%; height: 12px; }
+.sk--pill { width: 64px; height: 20px; border-radius: 999px; }
+.sk--chart { display: block; width: 100%; height: 180px; border-radius: 8px; }
+.sk--kv { width: 60%; height: 12px; }
+.dash-table tr.sk-row td { padding: 14px 12px 14px 0; }
+.dash-table tr.sk-row td .sk + .sk { margin-left: 12px; }
+.own-attention__row.sk-row::before { background: var(--line); }
+.own-attention__row.sk-row .sk { flex: 1; }
+.own-kv__row.sk-row span:first-child .sk { width: 70%; }
+
 /* The search, at the top of the rail on every page. */
 .own-search { display: flex; align-items: center; gap: 6px; margin: 0 6px 14px; padding: 0 8px 0 10px; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--surface); }
 .own-search input { flex: 1; min-width: 0; border: 0; background: transparent; font: inherit; font-size: 12.5px; color: var(--ink); padding: 8px 0; outline: none; }
@@ -54,8 +91,37 @@ a.rail__account:hover .rail__who span { color: var(--ink); }
 /* The merchants page's own filter box keeps the dashboard's search look. */
 .own-filter input { width: 240px; }
 
-/* A table that can be wider than a phone scrolls in its own box. */
-.own-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+/* A table that can be wider than a phone scrolls in its own box, and a
+   number column never wraps inside it. */
+.own-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 0 -2px; padding: 0 2px; }
+.own-scroll .dash-table { min-width: 560px; }
+.own-scroll .dash-table td.num, .own-scroll .dash-table td.chain { white-space: nowrap; }
+
+/* The page-top search shows only while the rail is icons (861-1100px). */
+.own-search--page { display: none; margin: 14px 0 6px; max-width: 520px; }
+@media (max-width: 1100px) and (min-width: 861px) {
+    .own-search--page { display: flex; }
+    .rail .own-search { display: none; }
+}
+@media (max-width: 860px) {
+    /* The strip has room for the wordmark, the theme, the account and the
+       menu on one row - not for the badge as well. */
+    .own-badge { display: none; }
+    .rail__links .own-search { margin: 0 0 10px; }
+    /* the foot is the avatar alone on the strip; it still goes home */
+    .dash-head__actions { justify-content: flex-start; }
+    .dash-head__actions .dash-chips { width: 100%; }
+    .own-chart canvas { max-height: 220px; }
+    .own-events__row { grid-template-columns: minmax(0, 1fr); gap: 2px; padding: 10px 0; }
+    .own-events__row time { font-size: 11px; }
+    .own-addresses__row { grid-template-columns: 52px minmax(0, 1fr); }
+    .own-kv__row { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+    .own-kv__row span:first-child { font-size: 11.5px; }
+    .own-plan { padding: 12px 14px; }
+    .own-log { max-height: 320px; font-size: 11px; }
+    .own-break { font-size: 17px; }
+    .own-denied { padding: 32px 0; }
+}
 
 /* Six facts on the overview, so each has room for its direction. */
 .dash-facts--six { grid-template-columns: repeat(6, minmax(0, 1fr)); }
