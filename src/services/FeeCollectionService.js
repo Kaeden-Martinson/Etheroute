@@ -327,8 +327,16 @@ class FeeCollectionService {
         const total = collected.reduce((sum, r) => sum + r.usd, 0);
         AlertService.notify(
           `Fee sweep: ${collected.length} collected ($${total.toFixed(2)})${failed.length ? `, ${failed.length} failed` : ''}`,
-          [...collected.map((r) => `${r.chain} ${r.amount} ${r.asset} → ${r.txHash}`), ...failed.map((f) => `${f.chain} ${f.amount} ${f.asset}: ${f.error}`)].join('\n'),
+          collected.length ? `${collected.length} transfer${collected.length === 1 ? '' : 's'} to the platform's addresses, $${total.toFixed(2)} in all.` : 'Nothing was collected.',
           'fee-sweep',
+          {
+            level: failed.length ? 'warning' : 'success',
+            fields: [
+              ...collected.slice(0, 10).map((r) => ({ name: `${r.chain} · ${r.asset}${r.via === 'closure' ? ' · closed wallet' : ''}`, value: `${r.amount} ($${Number(r.usd).toFixed(2)})\n\`${String(r.txHash).slice(0, 10)}…${String(r.txHash).slice(-6)}\`` })),
+              ...failed.slice(0, 5).map((f) => ({ name: `${f.chain} · ${f.asset} failed`, value: `${f.amount}: ${f.error}`, inline: false })),
+              ...(skipped.length ? [{ name: 'Waiting', value: `${skipped.length} held fee${skipped.length === 1 ? '' : 's'} not yet worth a transaction`, inline: false }] : []),
+            ],
+          },
         );
       }
       return { collected, skipped, failed };

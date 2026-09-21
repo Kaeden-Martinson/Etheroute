@@ -362,7 +362,15 @@ class ChainHealthService {
     const recovered = ['up', 'open'].includes(change.to) && change.from && change.from !== 'unknown';
     logger[bad ? 'warn' : 'info'](`[ChainHealth] ${chain.name} ${change.component}: ${change.from} -> ${change.to}${change.detail ? ` (${change.detail})` : ''}`);
     if (!change.quiet && (bad || recovered)) {
-      AlertService.notify(`${chain.name} ${change.component} ${change.to}`, change.detail || `${change.component} went from ${change.from} to ${change.to}`, `chain-health:${chain.code}:${change.component}`);
+      const severe = ['down', 'halted', 'offline'].includes(change.to);
+      AlertService.notify(`${chain.name} ${change.component} ${change.to}`, change.detail || `${change.component} went from ${change.from} to ${change.to}`, `chain-health:${chain.code}:${change.component}`, {
+        level: recovered ? 'success' : (severe ? 'error' : 'warning'),
+        fields: [
+          { name: 'Chain', value: `${chain.name} (${chain.code})` },
+          { name: 'Component', value: change.component },
+          { name: 'Change', value: `${change.from || 'unknown'} → ${change.to}` },
+        ],
+      });
     }
   }
 

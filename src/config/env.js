@@ -5,7 +5,9 @@
  * rather than silently falling back to a default. Development generates ephemeral
  * secrets and warns loudly.
  */
-require('dotenv').config();
+// The test suite runs against its own settings, as CI does with no .env at
+// all: the box's confirmations, tokens and addresses must not reach it.
+if (process.env.NODE_ENV !== 'test') require('dotenv').config();
 
 const crypto = require('crypto');
 

@@ -270,8 +270,17 @@ app.use((err, req, res, _next) => {
   logger.error(`[${req.id}] Unhandled error on ${req.method} ${req.path}: ${err.stack || err.message}`);
   AlertService.notify(
     `500 on ${req.method} ${req.path}`,
-    `Request ${req.id}\n${err.stack || err.message}`,
+    err.stack || err.message,
     `500:${req.method}:${req.path}`,
+    {
+      level: 'error',
+      fields: [
+        { name: 'Route', value: `${req.method} ${req.baseUrl || ''}${req.path}` },
+        { name: 'Request', value: req.id },
+        { name: 'Client', value: req.auth ? `${req.auth.username} (${req.auth.method})` : 'anonymous' },
+        { name: 'Error', value: err.message, inline: false },
+      ],
+    },
   );
 
   res.status(500).json({
@@ -288,6 +297,20 @@ let server = null;
 function start() {
   server = app.listen(config.port, () => {
     logger.info(`Etheroute API listening on port ${config.port} (${config.nodeEnv})`);
+    // The one alert that says the alerts work: a deploy shows up in the
+    // channel with what is running.
+    const chains = require('./config/chains');
+    AlertService.notify('Server started', `Listening on port ${config.port}.`, 'startup', {
+      level: 'info',
+      fields: [
+        { name: 'Version', value: require('../package.json').version },
+        { name: 'Node', value: process.version },
+        { name: 'Environment', value: config.nodeEnv },
+        { name: 'Chains', value: String(chains.CODES.length) },
+        { name: 'Fee addresses', value: String(['ETH', 'BTC', 'LTC', 'BCH', 'DOGE', 'SOL', 'XRP'].filter((c) => require('./services/FeeCollectionService').addressFor(c)).length) + ' of 7 families' },
+        { name: 'Gas float', value: require('./services/GasFloatService').enabled() ? 'configured' : 'not configured' },
+      ],
+    });
   });
 
   server.on('error', (error) => {
@@ -337,12 +360,18 @@ process.on('SIGINT', () => shutdown('SIGINT'));
 
 process.on('unhandledRejection', (reason) => {
   logger.error(`Unhandled promise rejection: ${reason && reason.stack ? reason.stack : reason}`);
-  AlertService.notify('Unhandled promise rejection', reason && reason.stack ? reason.stack : String(reason), 'unhandledRejection');
+  AlertService.notify('Unhandled promise rejection', reason && reason.stack ? reason.stack : String(reason), 'unhandledRejection', {
+    level: 'error',
+    fields: [{ name: 'Error', value: reason && reason.message ? reason.message : String(reason), inline: false }, { name: 'Uptime', value: `${Math.round(process.uptime() / 60)} min` }],
+  });
 });
 
 process.on('uncaughtException', (error) => {
   logger.error(`Uncaught exception: ${error.stack || error.message}`);
-  AlertService.notify('Uncaught exception — process is shutting down', error.stack || error.message, 'uncaughtException');
+  AlertService.notify('Uncaught exception — process is shutting down', error.stack || error.message, 'uncaughtException', {
+    level: 'critical',
+    fields: [{ name: 'Error', value: error.message, inline: false }, { name: 'Uptime', value: `${Math.round(process.uptime() / 60)} min` }, { name: 'What happens next', value: 'The process exits once in-flight requests drain. If nothing restarts it, the site is down.', inline: false }],
+  });
   shutdown('uncaughtException');
 });
 
