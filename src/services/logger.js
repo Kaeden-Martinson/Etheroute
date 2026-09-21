@@ -78,6 +78,9 @@ class LoggerService {
   }
 
   _writeFile(level, line) {
+    // The test suite runs from the project folder; its noise (invented
+    // addresses, stubbed failures) is not the operator's log.
+    if (process.env.NODE_ENV === 'test') return;
     const dayKey = this._dateKey();
     const logPath = path.join(this.logDir, `logs-${dayKey}.log`);
     fs.appendFileSync(logPath, `${line}\n`, 'utf8');

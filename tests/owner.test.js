@@ -369,6 +369,8 @@ describe('The CLI and the page', () => {
     for (const name of ['submitSearch', 'togglePayout', 'recheckOne', 'recheckAll', 'filterChains', 'checkChainsNow', 'snapshotNow', 'drawFlowChart', 'legsHtml', 'ticksHtml']) assert.ok(new RegExp(`function ${name}\\(`).test(js), name);
     assert.ok(js.includes("e.key !== '/'"), 'slash focuses the search');
     assert.ok(js.includes('is-stuck'), 'age past the usual time is marked');
+    const css = read('public/css/owner.css');
+    assert.ok(css.includes('a.rail__account, a.rail__account:visited { color: inherit; text-decoration: none; }'), 'the foot link does not wear the browser blue');
     assert.ok(js.includes("api('/owner/overview')") && js.includes("api('/owner/fees/collect'") && js.includes('window.confirm('), 'a sweep asks first');
     // the dashboard shows the way in to owners alone
     const dash = read('public/dashboard.html');
