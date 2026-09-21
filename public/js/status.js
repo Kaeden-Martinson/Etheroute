@@ -199,14 +199,20 @@ function toneOf(state) {
   return 'unknown';
 }
 
-/** The endpoints' word: how many answered, how fast, and the tip. */
+/** A host without its scheme: "litecoinspace.org/api". */
+function hostOf(url) {
+  return String(url || '').replace(/^https?:\/\//, '');
+}
+
+/** The endpoints' word: how many answered, how fast, the tip, and which are not answering. */
 function rpcText(chain) {
   const rpc = chain.rpc;
   if (!rpc) return 'not checked yet';
   if (!rpc.ok) return `no endpoint answering${rpc.error ? ` · ${rpc.error.split(' | ')[0].replace(/^https?:\/\/[^:]+: /, '')}` : ''}`;
   const tip = rpc.tip != null ? ` · ${chain.family === 'solana' ? 'slot' : chain.family === 'xrp' ? 'ledger' : 'block'} ${Number(rpc.tip).toLocaleString('en-US')}` : '';
   const stall = rpc.stalled ? ' · tip not moving' : '';
-  return `${rpc.endpointsUp}/${rpc.endpoints} endpoint${rpc.endpoints === 1 ? '' : 's'} · ${rpc.latencyMs} ms${tip}${stall}`;
+  const down = Array.isArray(rpc.down) && rpc.down.length ? ` · ${rpc.down.map(hostOf).join(', ')} down` : '';
+  return `${rpc.endpointsUp}/${rpc.endpoints} endpoint${rpc.endpoints === 1 ? '' : 's'} · ${rpc.latencyMs} ms${tip}${stall}${down}`;
 }
 
 function renderChainRow(chain, hidden) {
@@ -217,7 +223,7 @@ function renderChainRow(chain, hidden) {
   return `<article class="chain-row" data-status="${escapeAttr(chain.status)}"${hidden ? ' hidden' : ''}>
     <i class="dot dot--${toneOf(chain.status === 'up' ? 'up' : chain.status)}" title="${escapeAttr(chain.status)}"></i>
     <div class="chain-row__name">${escapeAttr(chain.name)}<span>${escapeAttr(chain.code)}</span></div>
-    <div class="chain-row__rpc${chain.rpc && !chain.rpc.ok ? ' is-bad' : ''}">${escapeAttr(rpcText(chain))}</div>
+    <div class="chain-row__rpc${chain.rpc && !chain.rpc.ok ? ' is-bad' : (chain.rpc && (chain.rpc.partial || chain.rpc.stalled) ? ' is-partial' : '')}" title="${escapeAttr(chain.rpc && chain.rpc.down && chain.rpc.down.length ? `Not answering: ${chain.rpc.down.join(', ')}` : '')}">${escapeAttr(rpcText(chain))}</div>
     <div class="chain-row__routes">${routes || '<span>direct only</span>'}</div>
     <div class="chain-row__since" title="${escapeAttr(chain.since ? `${chain.status} since ${formatTimestamp(chain.since)}` : '')}">${chain.since ? `${escapeAttr(chain.status)} · ${escapeAttr(ago(chain.since))}` : 'not checked yet'}</div>
     ${bar}
@@ -233,12 +239,14 @@ function renderChains(data) {
     const rank = { down: 0, degraded: 1, unknown: 2, up: 3 };
     return (rank[a.status] ?? 2) - (rank[b.status] ?? 2) || a.name.localeCompare(b.name);
   });
-  const problems = list.filter((c) => c.status !== 'up');
-  const healthy = list.filter((c) => c.status === 'up');
+  const worthShowing = (c) => c.status !== 'up' || (c.rpc && (c.rpc.partial || c.rpc.stalled));
+  const problems = list.filter(worthShowing);
+  const healthy = list.filter((c) => !worthShowing(c));
   const c = data.counts || {};
   const every = data.intervalMs ? ` every ${Math.round(data.intervalMs / 60000)} min` : '';
+  const partial = list.filter((ch) => ch.status === 'up' && ch.rpc && ch.rpc.partial).length;
   summary.textContent = data.checkedAt
-    ? `${c.up || 0} up${c.degraded ? ` · ${c.degraded} degraded` : ''}${c.down ? ` · ${c.down} down` : ''} · checked ${ago(data.checkedAt)}${every}. Endpoints, the tip, and the swap routes off each chain.`
+    ? `${c.up || 0} up${partial ? ` (${partial} with an endpoint down)` : ''}${c.degraded ? ` · ${c.degraded} degraded` : ''}${c.down ? ` · ${c.down} down` : ''} · checked ${ago(data.checkedAt)}${every}. Endpoints, the tip, and the swap routes off each chain.`
     : 'The first sweep runs shortly after the server starts.';
   STATE.showAllChains = STATE.showAllChains || problems.length === 0;
   rows.innerHTML = problems.map((chain) => renderChainRow(chain, false)).join('') + healthy.map((chain) => renderChainRow(chain, !STATE.showAllChains)).join('');
@@ -246,6 +254,7 @@ function renderChains(data) {
     more.hidden = problems.length === 0 || healthy.length === 0;
     more.textContent = STATE.showAllChains ? `Hide the ${healthy.length} healthy chains` : `Show the ${healthy.length} healthy chains`;
   }
+  STATE.chainsDrawnAt = Date.now();
   renderChainEvents(data.events || []);
 }
 
@@ -276,8 +285,37 @@ async function loadChains() {
   }
 }
 
+// The page refreshes itself: the services and chains every minute, and the
+// "ago" wording every few seconds so it never reads stale.
+const AUTO_REFRESH_MS = 60 * 1000;
+
+function markRefreshed() {
+  STATE.refreshedAt = Date.now();
+  tickLive();
+}
+
+function tickLive() {
+  const live = document.getElementById('statusLive');
+  if (!live) return;
+  if (!STATE.refreshedAt) { live.textContent = 'Loading…'; return; }
+  const s = Math.round((Date.now() - STATE.refreshedAt) / 1000);
+  live.textContent = s < 5 ? 'Live · just now' : `Live · ${s < 60 ? `${s}s` : `${Math.round(s / 60)} min`} ago`;
+  live.title = `This page refreshes itself every ${Math.round(AUTO_REFRESH_MS / 1000)} seconds; the server sweeps every chain every few minutes.`;
+}
+
+function startAutoRefresh() {
+  if (STATE.autoTimer) return;
+  STATE.autoTimer = setInterval(() => {
+    if (document.hidden) return;
+    loadStatus().catch(() => {});
+  }, AUTO_REFRESH_MS);
+  setInterval(tickLive, 5000);
+  // coming back to the tab: catch up at once
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) loadStatus().catch(() => {}); });
+}
+
 async function loadStatus() {
-  loadChains();
+  loadChains().then(markRefreshed);
   const clientId = getClientId();
   const url = clientId ? `${STATUS_API_URL}?clientId=${encodeURIComponent(clientId)}` : STATUS_API_URL;
   const response = await fetch(url);
@@ -399,6 +437,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     }
   });
   populateTargets('chain');
+  startAutoRefresh();
 
   try {
     await loadStatus();

@@ -15,6 +15,7 @@ const { ApiError } = require('./utils/errors');
 const { db } = require('./config/database');
 const MaintenanceService = require('./services/MaintenanceService');
 const ChainHealthService = require('./services/ChainHealthService');
+const BalanceWatcher = require('./services/BalanceWatcher');
 const BackupService = require('./services/BackupService');
 const AlertService = require('./services/AlertService');
 
@@ -294,6 +295,7 @@ function start() {
   MaintenanceService.start();
   BackupService.start();
   ChainHealthService.start();
+  BalanceWatcher.start();
 
   return server;
 }
@@ -307,6 +309,7 @@ function shutdown(signal) {
   MaintenanceService.stop();
   BackupService.stop();
   ChainHealthService.stop();
+  BalanceWatcher.stop();
 
   if (!server) process.exit(0);
 

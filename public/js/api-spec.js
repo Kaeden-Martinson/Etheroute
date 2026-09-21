@@ -20,7 +20,7 @@ window.API_SPEC = {
       title: 'Overview',
       icon: 'overview',
       intro: [
-        'Etheroute lets you accept payments in 67 chains, hold the funds in wallets you control through the API, and cash out in whichever chain you like. Everything the dashboard does is available here.',
+        'Etheroute lets you accept payments in 65 chains, hold the funds in wallets you control through the API, and cash out in whichever chain you like. Everything the dashboard does is available here.',
         'All requests and responses are JSON over HTTPS. The base URL is the host you are talking to plus <code>/api</code>. Timestamps are ISO 8601 in UTC. Amounts in a chain\'s own units are decimals (<code>0.0021</code>); USD amounts are decimals too.',
       ],
       facts: [
@@ -127,7 +127,7 @@ window.API_SPEC = {
       title: 'Chains',
       icon: 'globalCheck',
       intro: [
-        '67 chains are supported. A chain is identified by its <strong>code</strong> in every request and response (<code>payoutChain</code>, <code>wallet.chain</code>); its <strong>symbol</strong> is the ticker to show next to amounts. They differ on the L2s: <code>BASE</code>, <code>ARB</code> and <code>OP</code> are all <code>ETH</code>.',
+        '65 chains are supported. A chain is identified by its <strong>code</strong> in every request and response (<code>payoutChain</code>, <code>wallet.chain</code>); its <strong>symbol</strong> is the ticker to show next to amounts. They differ on the L2s: <code>BASE</code>, <code>ARB</code> and <code>OP</code> are all <code>ETH</code>.',
       ],
       table: {
         head: ['Code', 'Coin', 'Family', 'Confirmations', 'Dollar tokens', 'Wallet-pay', 'Cross-chain swaps', 'On-chain swaps'],
@@ -169,7 +169,6 @@ window.API_SPEC = {
           ['ABS', 'ETH', 'EVM', '3', 'USDC, USDT', 'yes', 'direct only', '\u2014'],
           ['XPL', 'XPL', 'EVM', '3', 'USDT', 'yes', 'SideShift', 'yes'],
           ['MANTLE', 'MNT', 'EVM', '3', 'USDC, USDT', 'yes', 'SideShift', '\u2014'],
-          ['MBEAM', 'GLMR', 'EVM', '3', '\u2014', 'yes', 'direct only', '\u2014'],
           ['MODE', 'ETH', 'EVM', '3', 'USDC, USDT', 'yes', 'direct only', '\u2014'],
           ['FRAX', 'FRAX', 'EVM', '3', 'USDC', 'yes', 'direct only', '\u2014'],
           ['IMX', 'IMX', 'EVM', '3', 'USDC', 'yes', 'direct only', '\u2014'],
@@ -197,7 +196,6 @@ window.API_SPEC = {
           ['ZKCRO', 'ZKCRO', 'EVM', '3', 'USDC', 'yes', 'direct only', '\u2014'],
           ['BLAST', 'ETH', 'EVM', '3', '\u2014', 'yes', 'direct only', '\u2014'],
           ['ZORA', 'ETH', 'EVM', '3', '\u2014', 'yes', 'direct only', '\u2014'],
-          ['MRIVER', 'MOVR', 'EVM', '3', 'USDC', 'yes', 'direct only', '\u2014'],
           ['BTT', 'BTT', 'EVM', '3', '\u2014', 'yes', 'direct only', '\u2014'],
         ],
       },
@@ -229,7 +227,15 @@ window.API_SPEC = {
           id: 'wallets-list', method: 'GET', path: '/wallets/list', auth: 'key',
           summary: 'List your wallets',
           response: [
-            { id: 'd3be47a8-…', address: '0x9Ba140Ff2333252F169E8c78cB171c107c9FF0C8', chain: 'ETH', label: 'Shop payouts', balance: 0.42, balanceUSD: 1004.51, onChainBalance: 0.44, onChainBalanceUSD: 1052.34, platformFeeHeld: 0.02, platformFeeHeldUSD: 47.83, createdAt: '2026-09-16T02:13:55.006Z', isProcessing: false },
+            { id: 'd3be47a8-…', address: '0x9Ba140Ff2333252F169E8c78cB171c107c9FF0C8', chain: 'ETH', label: 'Shop payouts', balance: 0.42, balanceUSD: 1004.51, onChainBalance: 0.44, onChainBalanceUSD: 1052.34, platformFeeHeld: 0.02, platformFeeHeldUSD: 47.83, tokens: [{ symbol: 'USDC', contract: '0xA0b8…', balance: 120, balanceUSD: 120, onChainBalance: 120, platformFeeHeld: 0 }], tokensUSD: 120, lastUpdated: '2026-09-21T03:10:04.000Z', createdAt: '2026-09-16T02:13:55.006Z', isProcessing: false },
+          ],
+        },
+        {
+          id: 'wallets-refresh', method: 'POST', path: '/wallets/refresh', auth: 'key',
+          summary: 'Read every wallet from its chain now',
+          description: 'Balances are otherwise read on a rolling sweep (every wallet at least every few minutes, sooner with a transaction in flight) and at once when the platform moves money through a wallet. Call this when you want the figures fresh right now - after a withdrawal, say. Throttled per account: a second call inside a few seconds returns what the first read. <code>lastUpdated</code> on each wallet says when its chain was last read; <code>balanceUSD</code> is always at the current rate.',
+          response: [
+            { id: 'd3be47a8-…', address: '0x9Ba140Ff2333252F169E8c78cB171c107c9FF0C8', chain: 'ETH', balance: 0.31, balanceUSD: 812.66, onChainBalance: 0.33, lastUpdated: '2026-09-21T03:12:40.512Z', isProcessing: true },
           ],
         },
         {

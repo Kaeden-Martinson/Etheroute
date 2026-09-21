@@ -102,11 +102,29 @@ class ChainHealthService {
       tip: up.length ? Math.max(...up.map((r) => r.tip)) : null,
       latencyMs: up.length ? Math.min(...up.map((r) => r.latencyMs)) : null,
       error: up.length ? null : results.map((r) => `${r.url}: ${r.error}`).join(' | '),
+      down: results.filter((r) => !r.ok).map((r) => r.url),
     };
   }
 
-  /** The explorer's tip, the way the wallet service reads it. */
+  /**
+   * A UTXO chain's explorers: every mirror and the fallback, each asked for
+   * the tip, so the page can say "1/2 explorers" when one has gone away.
+   */
   async probeUtxo(chain) {
+    const service = require('./wallets').walletServiceFor(chain.code);
+    if (typeof service.probeExplorers === 'function') {
+      const results = await withTimeout(service.probeExplorers(), PROBE_TIMEOUT_MS * 3, `${chain.code} explorers`).catch((error) => [{ url: chain.explorerApi, ok: false, error: error.message, latencyMs: PROBE_TIMEOUT_MS * 3 }]);
+      const up = results.filter((r) => r.ok);
+      return {
+        ok: up.length > 0,
+        endpointsUp: up.length,
+        endpoints: results.length,
+        tip: up.length ? Math.max(...up.map((r) => r.tip)) : null,
+        latencyMs: up.length ? Math.min(...up.map((r) => r.latencyMs)) : null,
+        error: up.length ? null : results.map((r) => `${r.url}: ${r.error}`).join(' | '),
+        down: results.filter((r) => !r.ok).map((r) => r.url),
+      };
+    }
     const started = Date.now();
     try {
       let tip;
@@ -160,6 +178,7 @@ class ChainHealthService {
       tip: up.length ? Math.max(...up.map((r) => r.tip)) : null,
       latencyMs: up.length ? Math.min(...up.map((r) => r.latencyMs)) : null,
       error: up.length ? null : results.map((r) => `${r.url}: ${r.error}`).join(' | '),
+      down: results.filter((r) => !r.ok).map((r) => r.url),
     };
   }
 
@@ -261,13 +280,16 @@ class ChainHealthService {
       dexDetail[provider.name] = probe;
     }
 
+    // Some endpoints answering and some not is still up - the app fails
+    // over - but it is worth a line on the page and an event when it changes.
+    const down = (rpc.down || []).slice().sort();
     const state = {
       id: chain.code,
       code: chain.code,
       name: chain.name,
       symbol: chain.symbol,
       family: chain.family,
-      rpc: { ok: rpc.ok, endpointsUp: rpc.endpointsUp, endpoints: rpc.endpoints, tip: rpc.tip, latencyMs: rpc.latencyMs, error: rpc.error, stalled: rpc.stalled },
+      rpc: { ok: rpc.ok, endpointsUp: rpc.endpointsUp, endpoints: rpc.endpoints, tip: rpc.tip, latencyMs: rpc.latencyMs, error: rpc.error, stalled: rpc.stalled, partial: rpc.ok && down.length > 0, down },
       routes,
       dexDetail,
       lastTip,
@@ -285,6 +307,10 @@ class ChainHealthService {
     for (const [component, to] of Object.entries(routes)) {
       const from = before.routes && before.routes[component] !== undefined ? before.routes[component] : null;
       if (from !== null && from !== to) changes.push({ component, from, to, detail: dexDetail[component] && dexDetail[component].error ? dexDetail[component].error : '' });
+    }
+    const beforeDown = (before.rpc && before.rpc.down) ? before.rpc.down.slice().sort() : null;
+    if (beforeDown !== null && rpc.ok && beforeDown.join() !== down.join()) {
+      changes.push({ component: 'endpoints', from: `${rpc.endpoints - beforeDown.length}/${rpc.endpoints}`, to: `${rpc.endpointsUp}/${rpc.endpoints}`, detail: down.length ? `not answering: ${down.map((u) => u.replace(/^https?:\/\//, '')).join(', ')}` : 'all answering', quiet: true });
     }
     if (before.status && before.status !== state.status) {
       changes.push({ component: 'chain', from: before.status, to: state.status, detail: '' });
@@ -314,7 +340,7 @@ class ChainHealthService {
     const bad = ['down', 'stalled', 'halted', 'offline', 'unlisted', 'no-pool', 'degraded'].includes(change.to);
     const recovered = ['up', 'open'].includes(change.to) && change.from && change.from !== 'unknown';
     logger[bad ? 'warn' : 'info'](`[ChainHealth] ${chain.name} ${change.component}: ${change.from} -> ${change.to}${change.detail ? ` (${change.detail})` : ''}`);
-    if (bad || recovered) {
+    if (!change.quiet && (bad || recovered)) {
       AlertService.notify(`${chain.name} ${change.component} ${change.to}`, change.detail || `${change.component} went from ${change.from} to ${change.to}`, `chain-health:${chain.code}:${change.component}`);
     }
   }
@@ -415,7 +441,7 @@ class ChainHealthService {
       if (!s) return { code: chain.code, name: chain.name, symbol: chain.symbol, family: chain.family, status: 'unknown', rpc: null, routes: {}, since: null, checkedAt: null, days: this.days(chain.code, events, now) };
       return {
         code: s.code, name: s.name, symbol: s.symbol, family: s.family, status: s.status,
-        rpc: { ok: s.rpc.ok, endpointsUp: s.rpc.endpointsUp, endpoints: s.rpc.endpoints, tip: s.rpc.tip, latencyMs: s.rpc.latencyMs, stalled: s.rpc.stalled, error: s.rpc.error },
+        rpc: { ok: s.rpc.ok, endpointsUp: s.rpc.endpointsUp, endpoints: s.rpc.endpoints, tip: s.rpc.tip, latencyMs: s.rpc.latencyMs, stalled: s.rpc.stalled, partial: Boolean(s.rpc.partial), down: s.rpc.down || [], error: s.rpc.error },
         routes: s.routes || {},
         since: s.since,
         checkedAt: s.checkedAt,

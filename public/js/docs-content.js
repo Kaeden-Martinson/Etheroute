@@ -12,7 +12,7 @@ window.DOCS_CONTENT = {
     {
       id: 'introduction', title: 'Introduction', icon: 'overview', group: 'Getting Started',
       blocks: [
-        { type: 'lead', html: 'Etheroute is a multi-chain crypto payments platform. Accept payments across 67 chains, hold the funds in wallets you control, and cash out in whichever chain you like — through the dashboard or the API.' },
+        { type: 'lead', html: 'Etheroute is a multi-chain crypto payments platform. Accept payments across 65 chains, hold the funds in wallets you control, and cash out in whichever chain you like — through the dashboard or the API.' },
         { type: 'p', html: 'This guide covers the whole flow: creating an account, generating and naming wallets, taking payments with checkout links, and withdrawing. For the endpoint-by-endpoint reference, see the <a href="/api-reference">API Reference</a>.' },
         { type: 'callout', tone: 'info', title: 'No KYC for a basic account', body: 'Sign up with a username and password. Accepting funds on behalf of others and paying them out may be regulated where you operate — see <a href="/compliance">Compliance</a>.' },
       ],
@@ -36,7 +36,7 @@ window.DOCS_CONTENT = {
     {
       id: 'chains', title: 'Supported chains', icon: 'globalCheck', group: 'Getting Started',
       blocks: [
-        { type: 'p', html: '67 chains across four families. A chain is named by its <strong>code</strong> everywhere in the product; the <strong>coin</strong> is what shows next to amounts. On every EVM chain a wallet also takes the chain\'s dollar tokens, USDC and USDT, at par. They differ on Ethereum L2s, where the network is Base, Arbitrum or Optimism but the coin is still ETH.' },
+        { type: 'p', html: '65 chains across four families. A chain is named by its <strong>code</strong> everywhere in the product; the <strong>coin</strong> is what shows next to amounts. On every EVM chain a wallet also takes the chain\'s dollar tokens, USDC and USDT, at par. They differ on Ethereum L2s, where the network is Base, Arbitrum or Optimism but the coin is still ETH.' },
         { type: 'table', head: ['Chain', 'Code', 'Coin', 'Dollar tokens', 'On-chain swaps', 'Typical confirmation wait'], rows: [
           ['Ethereum', 'ETH', 'ETH', 'USDC, USDT', 'yes', '~36 seconds (3 blocks)'],
           ['Polygon', 'POL', 'POL', 'USDC, USDT', 'yes', '~40 seconds (20 blocks)'],
@@ -75,7 +75,6 @@ window.DOCS_CONTENT = {
           ['Abstract', 'ABS', 'ETH', 'USDC, USDT', '\u2014', 'a few seconds (3 blocks)'],
           ['Plasma', 'XPL', 'XPL', 'USDT', 'yes', 'a few seconds (3 blocks)'],
           ['Mantle', 'MANTLE', 'MNT', 'USDC, USDT', '\u2014', '~6 seconds (3 blocks)'],
-          ['Moonbeam', 'MBEAM', 'GLMR', '\u2014', '\u2014', '~18 seconds (3 blocks)'],
           ['Mode', 'MODE', 'ETH', 'USDC, USDT', '\u2014', '~6 seconds (3 blocks)'],
           ['Fraxtal', 'FRAX', 'FRAX', 'USDC', '\u2014', '~6 seconds (3 blocks)'],
           ['Immutable zkEVM', 'IMX', 'IMX', 'USDC', '\u2014', '~6 seconds (3 blocks)'],
@@ -103,7 +102,6 @@ window.DOCS_CONTENT = {
           ['Cronos zkEVM', 'ZKCRO', 'ZKCRO', 'USDC', '\u2014', '~7 minutes (3 blocks)'],
           ['Blast', 'BLAST', 'ETH', '\u2014', '\u2014', '~6 seconds (3 blocks)'],
           ['Zora', 'ZORA', 'ETH', '\u2014', '\u2014', '~6 seconds (3 blocks)'],
-          ['Moonriver', 'MRIVER', 'MOVR', 'USDC', '\u2014', '~21 seconds (3 blocks)'],
           ['BitTorrent Chain', 'BTT', 'BTT', '\u2014', '\u2014', '~6 seconds (3 blocks)'],
         ] },
         { type: 'callout', tone: 'info', title: 'The live list', body: 'The dashboard and the API read the supported chains from <code>GET /api/chains</code>, so this list stays in step with what the server actually offers. Build against that endpoint rather than hardcoding chains.' },

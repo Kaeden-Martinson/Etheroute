@@ -195,15 +195,55 @@ window.addEventListener('load', async () => {
     loadDashboardData();
     setupEventListeners();
 
-    // Auto-refresh the overview's wallets and activity every 10 seconds (but
-    // not on the withdrawal page, where a re-render would fight the form).
+    // Auto-refresh the overview's wallets and activity every 10 seconds. On
+    // the withdrawal page only the head's figure follows, and only on the
+    // first and last steps, where nothing is being chosen or reviewed.
     setInterval(async () => {
+        if (document.hidden) return;
         if (currentDashboardPage !== 'withdrawal') {
             await loadWallets();
             await loadTransactions();
+        } else if (currentStep === 1 || currentStep === 4) {
+            await loadWithdrawalPage(true);
         }
     }, 10000);
+    setInterval(tickBalanceAge, 5000);
 });
+
+/**
+ * Ask the server to read every wallet from its chain right now and use the
+ * answer. Called after a withdrawal is sent and as its transfers settle;
+ * the server throttles it per account, so calling it twice costs nothing.
+ */
+async function refreshWallets() {
+    try {
+        const response = await apiFetch(`${API_URL}/wallets/refresh`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('authToken')}` }
+        });
+        const data = await response.json();
+        if (!response.ok || !Array.isArray(data)) return false;
+        wallets = data;
+        if (currentDashboardPage !== 'withdrawal') displayWallets();
+        calculateTotalBalance();
+        updateWithdrawalAvailable();
+        tickBalanceAge();
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+/** "refreshed 12s ago" under the big figure: the newest chain read across the wallets. */
+function tickBalanceAge() {
+    const el = document.getElementById('balanceAge');
+    if (!el) return;
+    const list = Array.isArray(wallets) ? wallets : [];
+    const newest = list.reduce((max, w) => (w.lastUpdated && (!max || w.lastUpdated > max) ? w.lastUpdated : max), null);
+    if (!newest) { el.textContent = ''; return; }
+    const seconds = Math.max(0, Math.round((Date.now() - new Date(newest).getTime()) / 1000));
+    el.textContent = seconds < 10 ? '· refreshed just now' : `· refreshed ${seconds < 90 ? `${seconds}s` : `${Math.round(seconds / 60)} min`} ago`;
+}
 
 function setupEventListeners() {
     const withdrawalAmount = document.getElementById('withdrawalAmount');
@@ -240,6 +280,7 @@ async function loadWallets() {
         wallets = await response.json();
         displayWallets();
         calculateTotalBalance();
+        tickBalanceAge();
     } catch (error) {
     }
 }
@@ -2779,9 +2820,12 @@ function displayPreview() {
  * Sent: the payout the server created, and the transfers on their way. Drawn
  * from the response and the plan that was just confirmed.
  */
-function displayFinalSummary(payout) {
+function displayFinalSummary(payout, liveTransfers = null) {
     const plan = previewData || {};
-    const transfers = Array.isArray(plan.transfers) ? plan.transfers : [];
+    const planned = Array.isArray(plan.transfers) ? plan.transfers : [];
+    // The plan's legs, with the states the server has recorded since.
+    const live = Array.isArray(liveTransfers) ? liveTransfers : [];
+    const transfers = planned.map((t) => ({ ...t, ...(live.find((l) => l.fromAddress === t.fromAddress && (l.asset || chainSymbol(l.chain)) === (t.asset || chainSymbol(t.chain))) || {}) }));
     const to = payout.recipientAddress || plan.recipientAddress || '';
     const shortTo = to ? `${to.slice(0, 6)}…${to.slice(-4)}` : '';
     const dest = PAYOUT_CHAINS[payout.payoutChain || plan.payoutChain] || { name: payout.payoutChain || plan.payoutChain };
@@ -2790,7 +2834,7 @@ function displayFinalSummary(payout) {
         `Payout <b>#${escapeHtml(String(payout.id || '').slice(0, 8))}</b> · ${transfers.length} transfer${transfers.length === 1 ? '' : 's'} on the way to <b>${escapeHtml(shortTo)}</b>`;
 
     document.getElementById('wdSentReceipt').innerHTML = `<div class="receipt">
-        <div class="receipt__cap"><span>Transfers</span><span>Watching the chain</span></div>
+        <div class="receipt__cap"><span>Transfers</span><span>${live.length && transfers.every((t) => ['CONFIRMED', 'FAILED'].includes(String(t.status || '').toUpperCase())) ? 'Settled' : 'Watching the chain'}</span></div>
         ${transfers.map((t) => {
             const from = PAYOUT_CHAINS[t.chain] || { name: t.chain };
             const asset = t.asset || chainSymbol(t.chain);
@@ -2798,8 +2842,11 @@ function displayFinalSummary(payout) {
             const route = t.route === 'direct' || t.type === 'DIRECT_TRANSFER'
                 ? `${escapeHtml(asset)} → ${escapeHtml(dest.name)}`
                 : (t.route === 'dex' ? `${escapeHtml(asset)} → ${escapeHtml(out)} on ${escapeHtml(from.name)}` : `${escapeHtml(asset)} → swap → ${escapeHtml(out)} on ${escapeHtml(dest.name)}`);
-            const state = t.route === 'direct' || t.type === 'DIRECT_TRANSFER' ? 'Sending' : 'Swapping';
-            return `<div class="receipt__src"><div class="h"><span>${escapeHtml(from.name)} · ${escapeHtml(walletLabelFor(t.fromAddress))} ${route}</span><span class="status-pill status-pill--verifying">${state}</span></div></div>`;
+            const status = String(t.status || 'PENDING').toUpperCase();
+            const state = status === 'CONFIRMED' ? 'Confirmed' : status === 'FAILED' ? 'Failed' : (t.route === 'direct' || t.type === 'DIRECT_TRANSFER' ? 'Sending' : 'Swapping');
+            const tone = status === 'CONFIRMED' ? 'confirmed' : status === 'FAILED' ? 'closed' : 'verifying';
+            const why = status === 'FAILED' && (t.failureDetail || t.failureReason) ? `<small class="muted"> · ${escapeHtml(t.failureDetail || t.failureReason)}</small>` : '';
+            return `<div class="receipt__src"><div class="h"><span>${escapeHtml(from.name)} · ${escapeHtml(walletLabelFor(t.fromAddress))} ${route}${why}</span><span class="status-pill status-pill--${tone}">${state}</span></div></div>`;
         }).join('')}
         <div class="receipt__tot"><div class="net"><span>Arriving</span><span>${usd(payout.netAmountUsd ?? plan.netAmountUsd)}</span></div></div>
     </div>`;
@@ -2834,13 +2881,56 @@ async function processWithdrawal() {
         showToast('Withdrawal sent', 'success');
         displayFinalSummary(result);
         goToStep(4);
-        // The swept wallets are now busy; the head's figure says so.
-        loadWithdrawalPage(true);
+        // The swept wallets have moved: read them again now rather than
+        // waiting for the next sweep, then follow the payout until it settles.
+        refreshWallets();
+        watchPayout(result.id);
     } catch (error) {
         document.getElementById('step3-message').innerHTML = `<div class="alert alert-error">${escapeHtml(error.message)}</div>`;
         setSendButton(net, false);
     }
 }
+
+/**
+ * Follow a payout the page just sent: its transfers' states on the receipt,
+ * and the wallets read again each time one settles, until the payout is
+ * done or half an hour has passed (a Bitcoin leg can take that).
+ */
+function watchPayout(payoutId) {
+    if (!payoutId) return;
+    if (STATE_WATCH.timer) clearInterval(STATE_WATCH.timer);
+    STATE_WATCH.id = payoutId;
+    STATE_WATCH.started = Date.now();
+    STATE_WATCH.seen = '';
+    const poll = async () => {
+        if (STATE_WATCH.id !== payoutId) return;
+        if (Date.now() - STATE_WATCH.started > 30 * 60 * 1000) { clearInterval(STATE_WATCH.timer); STATE_WATCH.timer = null; return; }
+        try {
+            const response = await apiFetch(`${API_URL}/payouts/${payoutId}`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('authToken')}` } });
+            const data = await response.json();
+            const payout = data && data.payout;
+            if (!response.ok || !payout) return;
+            const transfers = (payout.withdrawalPlan && payout.withdrawalPlan.transfers) || [];
+            const signature = `${payout.status}:${transfers.map((t) => t.status).join(',')}`;
+            if (signature === STATE_WATCH.seen) return;
+            STATE_WATCH.seen = signature;
+            if (currentStep === 4) displayFinalSummary(payout, transfers);
+            // something moved: the wallets have too
+            refreshWallets();
+            if (['COMPLETED', 'PARTIAL', 'FAILED'].includes(String(payout.status).toUpperCase())) {
+                clearInterval(STATE_WATCH.timer);
+                STATE_WATCH.timer = null;
+                showToast(payout.status === 'COMPLETED' ? 'Withdrawal settled' : `Withdrawal ${String(payout.status).toLowerCase()}`, payout.status === 'COMPLETED' ? 'success' : 'error');
+                loadTransactions();
+            }
+        } catch {
+            // the next poll
+        }
+    };
+    STATE_WATCH.timer = setInterval(poll, 8000);
+    setTimeout(poll, 3000);
+}
+const STATE_WATCH = { id: null, timer: null, started: 0, seen: '' };
 
 function clearStep1() { document.getElementById('recipientAddress').value = ''; }
 

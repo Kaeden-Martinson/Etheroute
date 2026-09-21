@@ -88,6 +88,13 @@ async function checkEvm(chain, report) {
     rpc(url, 'eth_getBlockByNumber', [`0x${Math.max(0, tip - 200).toString(16)}`, false]),
   ]);
   if (newest && older) {
+    // A tip whose timestamp is old is a chain that has stopped, whatever the
+    // spread of its last blocks says. Moonbeam and Moonriver stopped in
+    // August 2026 and every endpoint kept serving the last block; this is
+    // the check that catches it.
+    const tipAgeSec = Math.floor(Date.now() / 1000) - parseInt(newest.timestamp, 16);
+    const stallAfterSec = Math.max(20 * chain.blockTimeSec, 15 * 60);
+    if (tipAgeSec > stallAfterSec) report.fail(`the chain has stopped: the tip block is ${Math.round(tipAgeSec / 3600)} hours old`);
     const seconds = (parseInt(newest.timestamp, 16) - parseInt(older.timestamp, 16)) / Math.min(200, tip);
     const stated = chain.blockTimeSec;
     // Loose: block times drift, and sub-second chains batch. Off by more

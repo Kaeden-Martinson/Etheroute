@@ -33,6 +33,11 @@ class BitcoinWalletService {
     this.apiEndpoints = {
       mainnet: 'https://mempool.space/api',
     };
+    // Explorers that speak the mempool.space API, tried in order. When none
+    // answers, the reads go through BlockCypher via the legacy-UTXO service;
+    // a send still signs here (the wallets are segwit) with the unspent
+    // outputs BlockCypher lists.
+    this.mirrors = ['https://mempool.space/api', 'https://blockstream.info/api'];
 
     // Cache for network names
     this.networkConfig = {
@@ -93,11 +98,43 @@ class BitcoinWalletService {
    * @param {string} network - Network to query
    * @returns {Promise<Object>} Balance information
    */
-  async getBalance(address) {
-    try {
-      const endpoint = this.apiEndpoints.mainnet;
+  /** The BlockCypher-backed twin, for when no mempool mirror answers. */
+  get fallback() {
+    return require('./LegacyUtxoWalletService').createLegacyUtxoWalletService('BTC');
+  }
 
-      const response = await ProxyService.fetch(`${endpoint}/address/${address}`);
+  /**
+   * One explorer call on the first mirror that answers. An answer - even a
+   * 404 or a 429 - is returned; a dead mirror is tried past. Throws when
+   * every mirror is dead.
+   */
+  async mempool(path, init) {
+    const failures = [];
+    for (const base of this.mirrors) {
+      try {
+        const response = await ProxyService.fetch(`${base}${path}`, init);
+        if (response.status >= 500) throw new Error(`HTTP ${response.status}`);
+        return response;
+      } catch (error) {
+        failures.push(`${base}: ${error.message}`);
+      }
+    }
+    const error = new Error(`every Bitcoin explorer failed: ${failures.join(' | ')}`);
+    error.explorersDown = true;
+    throw error;
+  }
+
+  async getBalance(address) {
+    const first = await this.getBalanceFromMempool(address);
+    if (first.status !== 'error') return first;
+    console.warn(`[BitcoinWalletService] mempool mirrors failed for ${address} (${first.error}); reading BlockCypher`);
+    const second = await this.fallback.getBalance(address);
+    return second.status === 'success' ? second : first;
+  }
+
+  async getBalanceFromMempool(address) {
+    try {
+      const response = await this.mempool(`/address/${address}`);
 
       // Handle rate limiting (429 Too Many Requests)
       if (response.status === 429) {
@@ -186,10 +223,16 @@ class BitcoinWalletService {
    * @returns {Promise<Array>} Recent transactions
    */
   async getTransactionHistory(address, limit = 10) {
-    try {
-      const endpoint = this.apiEndpoints.mainnet;
+    const first = await this.getTransactionHistoryFromMempool(address, limit);
+    if (first.status !== 'error') return first;
+    console.warn(`[BitcoinWalletService] mempool mirrors failed for ${address} history (${first.error}); reading BlockCypher`);
+    const second = await this.fallback.getTransactionHistory(address, limit);
+    return second.status === 'error' ? first : second;
+  }
 
-      const response = await ProxyService.fetch(`${endpoint}/address/${address}/txs`);
+  async getTransactionHistoryFromMempool(address, limit = 10) {
+    try {
+      const response = await this.mempool(`/address/${address}/txs`);
       
       if (!response.ok) {
         throw new Error(`API error: ${response.statusText}`);
@@ -247,14 +290,54 @@ class BitcoinWalletService {
    */
   async getTipHeight() {
     try {
-      const response = await ProxyService.fetch(`${this.apiEndpoints.mainnet}/blocks/tip/height`);
-      if (!response.ok) return null;
+      const response = await this.mempool('/blocks/tip/height');
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const height = Number(await response.text());
-      return Number.isFinite(height) ? height : null;
+      if (Number.isFinite(height)) return height;
+      throw new Error('no height');
     } catch (error) {
-      console.warn(`[BitcoinWalletService] Tip height unavailable: ${error.message}`);
-      return null;
+      console.warn(`[BitcoinWalletService] Tip height unavailable (${error.message}); asking BlockCypher`);
+      return this.fallback.getTipHeight();
     }
+  }
+
+  /** Where a broadcast transaction stands, from whichever explorer answers. */
+  async getTransactionStatus(txid) {
+    try {
+      const response = await this.mempool(`/tx/${txid}/status`);
+      if (response.status === 404) return { status: 'not_found', confirmations: 0, blockHeight: null };
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const data = await response.json();
+      if (!data.confirmed) return { status: 'waiting', confirmations: 0, blockHeight: null };
+      const tip = await this.getTipHeight();
+      return { status: 'settled', confirmations: tip ? tip - data.block_height + 1 : 1, blockHeight: data.block_height };
+    } catch (error) {
+      console.warn(`[BitcoinWalletService] Status of ${txid} unavailable (${error.message}); asking BlockCypher`);
+      return this.fallback.getTransactionStatus(txid);
+    }
+  }
+
+  /**
+   * Each explorer asked for the tip, for the health page: the mirrors, then
+   * BlockCypher.
+   */
+  async probeExplorers() {
+    const results = [];
+    for (const base of this.mirrors) {
+      const started = Date.now();
+      try {
+        const response = await ProxyService.fetch(`${base}/blocks/tip/height`);
+        const tip = Number(await response.text());
+        if (!response.ok || !Number.isFinite(tip)) throw new Error(`HTTP ${response.status}`);
+        results.push({ url: base, ok: true, tip, latencyMs: Date.now() - started });
+      } catch (error) {
+        results.push({ url: base, ok: false, error: error.message, latencyMs: Date.now() - started });
+      }
+    }
+    const started = Date.now();
+    const tip = await this.fallback.getTipHeight();
+    results.push({ url: this.fallback.spec.explorerBase, ok: Boolean(tip), tip, latencyMs: Date.now() - started, error: tip ? null : 'no tip' });
+    return results;
   }
 
   /**
@@ -317,7 +400,7 @@ class BitcoinWalletService {
   async estimateFeeRate(targetConfirmations = 6) {
     try {
       // mempool.space returns real-time fee rates in sat/vB
-      const res = await ProxyService.fetch(`${this.apiEndpoints.mainnet}/v1/fees/recommended`);
+      const res = await this.mempool('/v1/fees/recommended');
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
       const fees = await res.json();
@@ -449,9 +532,17 @@ class BitcoinWalletService {
         network: bitcoin.networks.bitcoin,
       });
 
-      // Get UTXOs for this address
-      const response = await ProxyService.fetch(`${this.apiEndpoints.mainnet}/address/${address}/utxo`);
-      const data = await response.json();
+      // Get UTXOs for this address: a mempool mirror, else BlockCypher's
+      // list (the same fields, and the segwit signing below needs no more).
+      let data;
+      try {
+        const response = await this.mempool(`/address/${address}/utxo`);
+        data = await response.json();
+      } catch (error) {
+        if (!error.explorersDown) throw error;
+        console.warn(`[BitcoinWalletService] ${error.message}; listing unspent outputs through BlockCypher`);
+        data = await this.fallback.getUtxos(address);
+      }
       
       if (!Array.isArray(data) || data.length === 0) {
         throw new Error('No unspent outputs (UTXOs) available');

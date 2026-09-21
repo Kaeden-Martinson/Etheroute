@@ -3980,6 +3980,9 @@ textarea:user-invalid:focus {
 .link-ready__foot { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 18px; }
 
 /* ── Payment links: the row's extras ─────────────────────────────────────── */
+/* when the chains were last read, beside the big figure's caption */
+.dash-balance__age { font-style: normal; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+
 .dash-live {
     display: inline-flex;
     align-items: center;

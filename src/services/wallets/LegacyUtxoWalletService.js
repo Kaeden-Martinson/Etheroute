@@ -151,6 +151,49 @@ const SPECS = {
     explorerBase: 'https://api.haskoin.com/bch',
     rpc: 'https://bch-mainnet.gateway.tatum.io',
   },
+  // Litecoin and Bitcoin are here as the fallback behind their own
+  // services: when litecoinspace / mempool.space stop answering, balances,
+  // unspent outputs, history and status come from BlockCypher through this
+  // spec instead. Litecoin's wallets are pay-to-pubkey-hash, so this spec
+  // can sign and send for them too; Bitcoin's are segwit, so for Bitcoin
+  // only the reads are used.
+  LTC: {
+    name: 'Litecoin',
+    network: {
+      messagePrefix: '\x19Litecoin Signed Message:\n',
+      bech32: 'ltc',
+      bip32: { public: 0x019da462, private: 0x019d9cfe },
+      pubKeyHash: 0x30,
+      scriptHash: 0x32,
+      wif: 0xb0,
+    },
+    derivation: "m/44'/2'/0'/0/0",
+    address: 'base58',
+    bech32: 'ltc',
+    sighash: 'legacy',
+    txVersion: 2,
+    dustSats: 1000,
+    minFeeSats: 1000,
+    fallbackFeeRate: 10,
+    explorer: 'blockcypher',
+    explorerBase: 'https://api.blockcypher.com/v1/ltc/main',
+    rpc: 'https://litecoin-mainnet.gateway.tatum.io',
+  },
+  BTC: {
+    name: 'Bitcoin',
+    network: bitcoin.networks.bitcoin,
+    derivation: "m/44'/0'/0'/0/0",
+    address: 'base58',
+    bech32: 'bc',
+    sighash: 'legacy',
+    txVersion: 2,
+    dustSats: 546,
+    minFeeSats: 500,
+    fallbackFeeRate: 15,
+    explorer: 'blockcypher',
+    explorerBase: 'https://api.blockcypher.com/v1/btc/main',
+    rpc: 'https://bitcoin-rpc.publicnode.com',
+  },
   DOGE: {
     name: 'Dogecoin',
     network: {
@@ -233,6 +276,15 @@ class LegacyUtxoWalletService {
    */
   parseAddress(address) {
     const text = String(address || '').trim();
+    // A segwit address on a chain that has them: fine to read by, not
+    // something this signer can spend from.
+    if (this.spec.bech32 && text.toLowerCase().startsWith(`${this.spec.bech32}1`)) {
+      try {
+        const { data } = bitcoin.address.fromBech32(text);
+        const program = Buffer.from(data);
+        return { type: program.length === 20 ? 'p2wpkh' : 'p2wsh', hash: program, script: Buffer.from(bitcoin.script.compile([0, program])), normalized: text.toLowerCase() };
+      } catch { return null; }
+    }
     if (this.spec.address === 'cashaddr') {
       const decoded = cashaddrDecode(text, this.spec.cashaddrPrefix);
       if (decoded) return { ...decoded, script: this.scriptFor(decoded.type, decoded.hash), normalized: cashaddrEncode(this.spec.cashaddrPrefix, decoded.type, decoded.hash) };

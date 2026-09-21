@@ -305,7 +305,7 @@ describe('Wired into the rest', () => {
 
   test('a transfer\'s status and the health probe go through the service that knows the explorer', () => {
     const status = read('src/services/ChainTxStatus.js');
-    assert.ok(status.includes("if (typeof service.getTransactionStatus !== 'function') throw new Error(`No status lookup for ${chain}`);"));
+    assert.ok(status.includes("if (typeof service.getTransactionStatus === 'function') return service.getTransactionStatus(txid);"));
     const health = read('src/services/ChainHealthService.js');
     assert.ok(health.includes("if (chain.explorerKind && chain.explorerKind !== 'mempool') {"));
     assert.ok(health.includes('tip = await withTimeout(service.getTipHeight()'));

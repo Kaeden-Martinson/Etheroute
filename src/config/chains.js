@@ -271,7 +271,6 @@ const CHAINS = {
     walletPay: false,
   },
 
-
   SOL: {
     code: 'SOL',
     name: 'Solana',
@@ -968,30 +967,6 @@ const CHAINS = {
       USDC: { contract: '0x09Bc4E0D864854c6aFB6eB9A9cdF58aC190D0dF9', decimals: 6 },
       USDT: { contract: '0x779Ded0c9e1022225f8E0630b35a9b54bE713736', decimals: 6, onChainSymbol: 'USDT0' },
     },
-  },
-
-  MBEAM: {
-    code: 'MBEAM',
-    name: 'Moonbeam',
-    symbol: 'GLMR',
-    family: 'evm',
-    chainId: 1284,
-    decimals: 18,
-    coingeckoId: 'moonbeam',
-    rpcEnv: 'MBEAM_RPC_URLS',
-    rpc: ['https://moonbeam.api.onfinality.io/public', 'https://moonbeam.drpc.org'],
-    // No index on the free tier; checkout reads the blocks over RPC.
-    history: [],
-    explorer: { tx: 'https://moonbeam.moonscan.io/tx/', address: 'https://moonbeam.moonscan.io/address/' },
-    confirmations: 3,
-    blockTimeSec: 6,
-    // SideShift does not serve this network: payouts here are direct only.
-    sideshift: null,
-    directGasUsd: 0.001,
-    fallbackGasNative: 0.00196875,
-    minReserveNative: 0,
-    walletPay: true,
-    // Added by scripts/add-chain.js from chainid.network and CoinGecko, verified on chain.
   },
 
   MODE: {
@@ -1705,33 +1680,6 @@ const CHAINS = {
     minReserveNative: 0,
     walletPay: true,
     // Added by scripts/add-chain.js from chainid.network and CoinGecko, verified on chain.
-  },
-
-  MRIVER: {
-    code: 'MRIVER',
-    name: 'Moonriver',
-    symbol: 'MOVR',
-    family: 'evm',
-    chainId: 1285,
-    decimals: 18,
-    coingeckoId: 'moonriver',
-    rpcEnv: 'MRIVER_RPC_URLS',
-    rpc: ['https://moonriver.api.onfinality.io/public', 'https://moonriver.drpc.org'],
-    // No index on the free tier; checkout reads the blocks over RPC.
-    history: [],
-    explorer: { tx: 'https://moonriver.moonscan.io/tx/', address: 'https://moonriver.moonscan.io/address/' },
-    confirmations: 3,
-    blockTimeSec: 7,
-    // SideShift does not serve this network: payouts here are direct only.
-    sideshift: null,
-    directGasUsd: 0.001,
-    fallbackGasNative: 0.00001969,
-    minReserveNative: 0,
-    walletPay: true,
-    // Added by scripts/add-chain.js from chainid.network and CoinGecko, verified on chain.
-    tokens: {
-      USDC: { contract: '0xE3F5a90F9cb311505cd691a46596599aA1A0AD7D', decimals: 6 },
-    },
   },
 
   BTT: {

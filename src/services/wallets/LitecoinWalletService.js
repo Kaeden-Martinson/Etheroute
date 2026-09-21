@@ -29,6 +29,11 @@ class LitecoinWalletService {
     this.apiEndpoints = {
       mainnet: 'https://litecoinspace.org/api',
     };
+    // Explorers that speak the mempool.space API, tried in order. When none
+    // answers, the reads - and a send - go through BlockCypher via the
+    // legacy-UTXO service (Litecoin's wallets are pay-to-pubkey-hash, which
+    // that signer handles).
+    this.mirrors = ['https://litecoinspace.org/api'];
 
     // RPC endpoints for Litecoin
     this.rpcEndpoints = {
@@ -101,17 +106,48 @@ class LitecoinWalletService {
     }
   }
 
+  /** The BlockCypher-backed twin, for when litecoinspace is not answering. */
+  get fallback() {
+    return require('./LegacyUtxoWalletService').createLegacyUtxoWalletService('LTC');
+  }
+
   /**
-   * Get wallet balance in LTC
+   * One explorer call on the first mirror that answers. An answer - even a
+   * 404 or a 429 - is returned; a dead mirror is tried past. Throws when
+   * every mirror is dead.
+   */
+  async mempool(path, init) {
+    const failures = [];
+    for (const base of this.mirrors) {
+      try {
+        const response = await ProxyService.fetch(`${base}${path}`, init);
+        if (response.status >= 500) throw new Error(`HTTP ${response.status}`);
+        return response;
+      } catch (error) {
+        failures.push(`${base}: ${error.message}`);
+      }
+    }
+    const error = new Error(`every Litecoin explorer failed: ${failures.join(' | ')}`);
+    error.explorersDown = true;
+    throw error;
+  }
+
+  /**
+   * Get wallet balance in LTC: litecoinspace, else BlockCypher.
    * @param {string} address - Litecoin wallet address
-   * @param {string} network - Network to query
    * @returns {Promise<Object>} Balance information
    */
   async getBalance(address) {
-    try {
-      const endpoint = this.apiEndpoints.mainnet;
+    const first = await this.getBalanceFromMempool(address);
+    if (first.status !== 'error') return first;
+    console.warn(`[LitecoinWalletService] litecoinspace failed for ${address} (${first.error}); reading BlockCypher`);
+    const second = await this.fallback.getBalance(address);
+    return second.status === 'success' ? second : first;
+  }
 
-      const response = await ProxyService.fetch(`${endpoint}/address/${address}`);
+  async getBalanceFromMempool(address) {
+    try {
+      const response = await this.mempool(`/address/${address}`);
 
       // Handle rate limiting (429 Too Many Requests)
       if (response.status === 429) {
@@ -237,10 +273,16 @@ class LitecoinWalletService {
    * @returns {Promise<Array>} Recent transactions
    */
   async getTransactionHistory(address, limit = 10) {
-    try {
-      const endpoint = this.apiEndpoints.mainnet;
+    const first = await this.getTransactionHistoryFromMempool(address, limit);
+    if (first.status !== 'error') return first;
+    console.warn(`[LitecoinWalletService] litecoinspace history failed for ${address} (${first.error}); reading BlockCypher`);
+    const second = await this.fallback.getTransactionHistory(address, limit);
+    return second.status === 'error' ? first : second;
+  }
 
-      const response = await fetch(`${endpoint}/address/${address}/txs`);
+  async getTransactionHistoryFromMempool(address, limit = 10) {
+    try {
+      const response = await this.mempool(`/address/${address}/txs`);
 
       if (!response.ok) {
         throw new Error(`API error: ${response.statusText}`);
@@ -299,14 +341,54 @@ class LitecoinWalletService {
    */
   async getTipHeight() {
     try {
-      const response = await ProxyService.fetch(`${this.apiEndpoints.mainnet}/blocks/tip/height`);
-      if (!response.ok) return null;
+      const response = await this.mempool('/blocks/tip/height');
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const height = Number(await response.text());
-      return Number.isFinite(height) ? height : null;
+      if (Number.isFinite(height)) return height;
+      throw new Error('no height');
     } catch (error) {
-      console.warn(`[LitecoinWalletService] Tip height unavailable: ${error.message}`);
-      return null;
+      console.warn(`[LitecoinWalletService] Tip height unavailable (${error.message}); asking BlockCypher`);
+      return this.fallback.getTipHeight();
     }
+  }
+
+  /** Where a broadcast transaction stands, from whichever explorer answers. */
+  async getTransactionStatus(txid) {
+    try {
+      const response = await this.mempool(`/tx/${txid}/status`);
+      if (response.status === 404) return { status: 'not_found', confirmations: 0, blockHeight: null };
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const data = await response.json();
+      if (!data.confirmed) return { status: 'waiting', confirmations: 0, blockHeight: null };
+      const tip = await this.getTipHeight();
+      return { status: 'settled', confirmations: tip ? tip - data.block_height + 1 : 1, blockHeight: data.block_height };
+    } catch (error) {
+      console.warn(`[LitecoinWalletService] Status of ${txid} unavailable (${error.message}); asking BlockCypher`);
+      return this.fallback.getTransactionStatus(txid);
+    }
+  }
+
+  /**
+   * Each explorer asked for the tip, for the health page: the mirrors, then
+   * BlockCypher.
+   */
+  async probeExplorers() {
+    const results = [];
+    for (const base of this.mirrors) {
+      const started = Date.now();
+      try {
+        const response = await ProxyService.fetch(`${base}/blocks/tip/height`);
+        const tip = Number(await response.text());
+        if (!response.ok || !Number.isFinite(tip)) throw new Error(`HTTP ${response.status}`);
+        results.push({ url: base, ok: true, tip, latencyMs: Date.now() - started });
+      } catch (error) {
+        results.push({ url: base, ok: false, error: error.message, latencyMs: Date.now() - started });
+      }
+    }
+    const started = Date.now();
+    const tip = await this.fallback.getTipHeight();
+    results.push({ url: this.fallback.spec.explorerBase, ok: Boolean(tip), tip, latencyMs: Date.now() - started, error: tip ? null : 'no tip' });
+    return results;
   }
 
   /**
@@ -371,7 +453,7 @@ class LitecoinWalletService {
   async estimateFeeRate(targetConfirmations = 6) {
     try {
       // litecoinspace.org uses the same API format as mempool.space (sat/vB)
-      const res = await ProxyService.fetch(`${this.apiEndpoints.mainnet}/v1/fees/recommended`);
+      const res = await this.mempool('/v1/fees/recommended');
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
       const fees = await res.json();
@@ -523,8 +605,16 @@ class LitecoinWalletService {
       console.log(`[LitecoinWalletService] Sender address: ${senderAddress}`);
       console.log(`[LitecoinWalletService] Recipient address: ${toAddress}`);
 
-      // Get UTXOs using ProxyService with Litecoin API
-      const response = await ProxyService.fetch(`${this.apiEndpoints.mainnet}/address/${senderAddress}/utxo`);
+      // Get UTXOs from litecoinspace; if no explorer answers, the whole
+      // send goes through BlockCypher and the legacy signer instead.
+      let response;
+      try {
+        response = await this.mempool(`/address/${senderAddress}/utxo`);
+      } catch (error) {
+        if (!error.explorersDown) throw error;
+        console.warn(`[LitecoinWalletService] ${error.message}; sending through BlockCypher`);
+        return this.fallback.sendTransaction(privateKey, toAddress, amount, options);
+      }
       
       // Check if response is valid before parsing
       if (!response.ok) {
@@ -597,7 +687,7 @@ class LitecoinWalletService {
       for (const utxo of selectedUtxos) {
         try {
           // Try to fetch the raw transaction hex from the API
-          const txResponse = await ProxyService.fetch(`${this.apiEndpoints.mainnet}/tx/${utxo.txid}/hex`);
+          const txResponse = await this.mempool(`/tx/${utxo.txid}/hex`);
           if (txResponse.ok) {
             const txHex = (await txResponse.text()).trim();
             const nonWitnessUtxo = Buffer.from(txHex, 'hex');
@@ -616,7 +706,7 @@ class LitecoinWalletService {
         // If raw transaction fetch failed, try to construct it from API data
         // This is a fallback but may not work for all cases
         try {
-          const txResponse = await ProxyService.fetch(`${this.apiEndpoints.mainnet}/tx/${utxo.txid}`);
+          const txResponse = await this.mempool(`/tx/${utxo.txid}`);
           const txData = await txResponse.json();
           
           // Build a minimal transaction from the data we have

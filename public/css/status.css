@@ -206,6 +206,15 @@ a {
 .chain-row__name span { color: var(--ink-3); font-weight: 500; font-size: 11.5px; margin-left: 6px; }
 .chain-row__rpc { font-variant-numeric: tabular-nums; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .chain-row__rpc.is-bad { color: var(--danger); }
+.chain-row__rpc.is-partial { color: var(--warn); }
+
+/* the page's own pulse: it refreshes itself, and says how long ago */
+.status-live { color: var(--ok); font-weight: 600; white-space: nowrap; }
+.status-live::before { content: ""; display: inline-block; width: 6px; height: 6px; margin-right: 5px; border-radius: var(--radius-pill); background: currentColor; vertical-align: 1px; }
+@media (prefers-reduced-motion: no-preference) {
+    .status-live::before { animation: live-pulse 2.6s ease-in-out infinite; }
+}
+@keyframes live-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
 .chain-row__routes { display: flex; flex-wrap: wrap; gap: 4px 10px; }
 .chain-row__routes span { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
 .chain-row__since { font-size: 11.5px; white-space: nowrap; }

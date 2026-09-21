@@ -897,6 +897,8 @@ async function settleNow(session) {
   } catch (error) {
     logger.warn(`[Checkout] Could not record the deposit for ${session.id}: ${error.message}`);
   }
+  // The receiving wallet's stored figure is behind the chain now.
+  require('../services/BalanceWatcher').nudge([session.walletId]);
   notify(updated, paidEnough ? 'checkout.session.completed' : 'checkout.session.underpaid');
 
   return updated;

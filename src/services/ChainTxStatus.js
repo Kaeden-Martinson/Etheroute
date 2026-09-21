@@ -35,13 +35,12 @@ const SOLANA_RPC = 'https://api.mainnet-beta.solana.com';
 async function utxoChainStatus(chain, txid) {
   const base = EXPLORERS[chain];
 
-  // A chain whose explorer is not mempool.space-shaped (Bitcoin Cash,
-  // Dogecoin) is asked through its wallet service, which knows the shape.
-  if (!base) {
-    const service = require('./wallets').walletServiceFor(chain);
-    if (typeof service.getTransactionStatus !== 'function') throw new Error(`No status lookup for ${chain}`);
-    return service.getTransactionStatus(txid);
-  }
+  // The wallet service knows its explorer, its mirrors and its fallback;
+  // it answers when it can. The direct read below is what remains for a
+  // service without one.
+  const service = require('./wallets').walletServiceFor(chain);
+  if (typeof service.getTransactionStatus === 'function') return service.getTransactionStatus(txid);
+  if (!base) throw new Error(`No status lookup for ${chain}`);
 
   const response = await ProxyService.fetch(`${base}/tx/${txid}/status`);
   if (response.status === 404) {

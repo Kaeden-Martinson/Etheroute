@@ -2,6 +2,7 @@ const { Router } = require('express');
 const QRCode = require('qrcode');
 const WalletService = require('../services/WalletService');
 const BalanceWatcher = require('../services/BalanceWatcher');
+const PriceService = require('../services/PriceService');
 const { db } = require('../config/database');
 const { validateChain } = require('../utils/validators');
 const { ApiError, ValidationError } = require('../utils/errors');
@@ -34,7 +35,11 @@ function normaliseLabel(raw) {
  */
 function presentWallet(wallet) {
   const rawBalance = wallet.balance || 0;
-  const rawBalanceUSD = wallet.balanceUSD || 0;
+  // Dollars at today's rate, not the rate of the last chain read: prices
+  // move between refreshes and the figure should follow. The stored USD is
+  // the fallback for a coin the price feed has not priced yet.
+  const liveRate = PriceService.rateFor(wallet.chain);
+  const rawBalanceUSD = liveRate > 0 ? rawBalance * liveRate : (wallet.balanceUSD || 0);
 
   // Platform fees charged on past withdrawals that are still sitting at this
   // address awaiting collection. Reported separately rather than silently
@@ -88,6 +93,8 @@ function presentWallet(wallet) {
     tokensUSD,
 
     createdAt: wallet.createdAt,
+    // When the chain was last read for this wallet.
+    lastUpdated: wallet.lastUpdated || null,
     isProcessing,
     ...(isProcessing && { ineligibilityReason: 'Transaction currently processing' }),
   };
@@ -118,6 +125,22 @@ router.get('/list', (req, res, next) => {
       });
     }
 
+    res.json(wallets.map(presentWallet));
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * Read every wallet's balance from its chain now and return them fresh.
+ * The dashboard asks right after it sends a withdrawal, and when a payout
+ * it is watching settles. Throttled per client: a second ask inside a few
+ * seconds returns what the first read.
+ * POST /api/wallets/refresh
+ */
+router.post('/refresh', async (req, res, next) => {
+  try {
+    const wallets = await BalanceWatcher.refreshClient(req.auth.clientId);
     res.json(wallets.map(presentWallet));
   } catch (error) {
     next(error);

@@ -9,6 +9,7 @@ const TransactionService = require('./TransactionService');
 const SideshiftService = require('./SideshiftService');
 const ThorchainService = require('./ThorchainService');
 const GasFloatService = require('./GasFloatService');
+const BalanceWatcher = require('./BalanceWatcher');
 const KeyVault = require('./crypto/KeyVault');
 const { config } = require('../config/env');
 const { validateChain, validateCryptoAddress } = require('../utils/validators');
@@ -754,6 +755,10 @@ class PayoutService {
 
         // The funds have left; the platform fee is what stayed behind.
         this._recordServiceFee(storedWallet, transfer);
+
+        // The wallet's stored figure is wrong from this moment: read it again
+        // now, and the recipient's too if it is one of ours.
+        BalanceWatcher.nudge([storedWallet.id], [recipientAddress]);
       } catch (error) {
         console.error(`[PayoutService] Error broadcasting ${transfer.chain} transfer:`, error.message);
         skip(transfer, 'BROADCAST_ERROR', error.message);
@@ -767,6 +772,9 @@ class PayoutService {
     // its full timeout.
     const monitoredIds = broadcastedTransfers.map((transfer) => transfer.transactionId);
     const { confirmedCount, failedCount, unresolvedCount } = await this.monitorTransactionConfirmation(payoutId, monitoredIds, broadcastedTransfers);
+
+    // What settled (or came back) has landed somewhere by now.
+    this._nudgeWalletsOf(payoutId);
 
     // Every transfer in the plan that was not broadcast is a failure, whether
     // or not a transaction record was written for it.
@@ -782,6 +790,17 @@ class PayoutService {
     }
 
     this.finalisePayout(payoutId, confirmedCount, failedCount + preBroadcastFailures);
+  }
+
+  /**
+   * Read the balances of every wallet a payout drew from, and of its
+   * recipient when that is a wallet of ours. Off the caller's path.
+   */
+  _nudgeWalletsOf(payoutId) {
+    const payout = db.getById('payouts', payoutId);
+    if (!payout) return;
+    const froms = ((payout.withdrawalPlan && payout.withdrawalPlan.transfers) || []).map((t) => t.fromAddress);
+    BalanceWatcher.nudge([], [...froms, payout.recipientAddress]);
   }
 
   /**
@@ -1095,12 +1114,15 @@ class PayoutService {
     if (outcome.confirmed) {
       TransactionService.updateTransactionStatus(transaction.id, 'CONFIRMED', null);
       this._updatePayoutTransferByTransaction(transaction.id, { status: 'CONFIRMED' });
+      BalanceWatcher.nudge([], [transaction.fromAddress, transaction.finalAddress]);
       return 'confirmed';
     }
 
     if (outcome.failed) {
       TransactionService.markTransactionFailed(transaction.id, outcome.reason, `Order ${transaction.orderId} ${status}`);
       this._updatePayoutTransferByTransaction(transaction.id, { status: 'FAILED', failureReason: outcome.reason });
+      // a refund has come back to the source wallet
+      BalanceWatcher.nudge([], [transaction.fromAddress]);
       return 'failed';
     }
 

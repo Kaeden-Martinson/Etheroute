@@ -144,6 +144,10 @@ async function measure(url) {
     rpc(url, 'eth_getBlockByNumber', [`0x${Math.max(0, tip - 200).toString(16)}`, false]),
     rpc(url, 'eth_gasPrice', []),
   ]);
+  // a tip more than an hour old is a chain that has stopped, not one to add
+  if (newest && Math.floor(Date.now() / 1000) - parseInt(newest.timestamp, 16) > 60 * 60) {
+    throw new Error(`the chain has stopped: its tip block is ${Math.round((Math.floor(Date.now() / 1000) - parseInt(newest.timestamp, 16)) / 3600)} hours old`);
+  }
   const seconds = newest && older ? (parseInt(newest.timestamp, 16) - parseInt(older.timestamp, 16)) / Math.min(200, tip) : null;
   // The units a plain transfer takes: 21000 on Ethereum, hundreds of
   // thousands on the ZKsync stack, tens of millions on Mantle. Read off
