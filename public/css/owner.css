@@ -1,0 +1,143 @@
+/* ── Owner panel ───────────────────────────────────────────────────────────
+   Everything here sits on dashboard.css: the rail, the head, the facts
+   strip, the tables and the pills are the merchant dashboard's own. What
+   follows is only what the owner's view adds - a badge on the wordmark,
+   two-column regions, the fee sweep's report, key/value lists. */
+
+.own-badge {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 1px 6px;
+    border-radius: 4px;
+    border: 1px solid var(--line-strong);
+    font-style: normal;
+    font-size: 9.5px;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-2);
+    vertical-align: 2px;
+}
+
+.own-denied { padding: 60px 0; max-width: 60ch; }
+.own-denied code { font-family: var(--font-mono, ui-monospace, monospace); font-size: 0.92em; }
+
+.own-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+    gap: 0 40px;
+}
+@media (max-width: 1100px) { .own-grid { grid-template-columns: minmax(0, 1fr); } }
+
+.own-back { color: var(--ink-3); cursor: pointer; }
+.own-back:hover { color: var(--ink); }
+
+.own-search input { width: 240px; }
+
+/* A hash or address: monospace, cut to fit, whole on hover. */
+.own-mono {
+    font-family: var(--font-mono, ui-monospace, monospace);
+    font-size: 12px;
+    color: var(--ink-2);
+    max-width: 16ch;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    display: inline-block;
+    vertical-align: middle;
+}
+.own-mono a { color: inherit; text-decoration: none; }
+.own-mono a:hover { color: var(--ink); text-decoration: underline; }
+
+.own-sub { display: block; font-size: 11.5px; color: var(--ink-3); }
+.own-link { color: var(--ink); font-weight: 600; cursor: pointer; }
+.own-link:hover { text-decoration: underline; }
+
+/* The facts strip's small note beside a label. */
+.dash-facts em { font-style: normal; color: var(--ink-3); }
+.dash-facts em.is-bad { color: var(--danger); }
+.dash-facts em.is-ok { color: var(--ok); }
+
+/* Attention: a list of things worth a look, each a line. */
+.own-attention { margin-top: 4px; }
+.own-attention__row {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--line);
+    font-size: 13px;
+    color: var(--ink-2);
+}
+.own-attention__row b { color: var(--ink); font-weight: 600; white-space: nowrap; }
+.own-attention__row .status-pill { flex: none; }
+.own-attention__row a { color: var(--ink); cursor: pointer; }
+
+/* The sweep's report: what would go, what would not, and why. */
+.own-plan {
+    margin: 0 0 32px;
+    padding: 16px 18px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    font-size: 13px;
+}
+.own-plan h3 { margin: 0 0 8px; font-size: var(--text-sm); font-weight: 700; color: var(--ink); }
+.own-plan h3 + h3 { margin-top: 16px; }
+.own-plan ul { margin: 0; padding: 0; list-style: none; }
+.own-plan li { padding: 6px 0; border-top: 1px solid var(--line); color: var(--ink-2); display: flex; gap: 12px; flex-wrap: wrap; align-items: baseline; }
+.own-plan li b { color: var(--ink); font-variant-numeric: tabular-nums; }
+.own-plan li .why { color: var(--ink-3); }
+.own-plan__note { color: var(--ink-3); margin: 0 0 8px; }
+
+/* Family → address, one per line. */
+.own-addresses { margin-top: 4px; }
+.own-addresses__row {
+    display: grid;
+    grid-template-columns: 60px minmax(0, 1fr);
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--line);
+    font-size: 13px;
+    align-items: baseline;
+}
+.own-addresses__row b { color: var(--ink); font-weight: 700; letter-spacing: 0.04em; font-size: 11.5px; }
+.own-addresses__row .own-mono { max-width: 100%; }
+.own-addresses__row .unset { color: var(--ink-3); }
+
+/* Key / value, for the server page. */
+.own-kv { margin-top: 4px; }
+.own-kv__row {
+    display: grid;
+    grid-template-columns: minmax(140px, 0.6fr) minmax(0, 1fr);
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--line);
+    font-size: 13px;
+}
+.own-kv__row span:first-child { color: var(--ink-3); }
+.own-kv__row span:last-child { color: var(--ink); font-variant-numeric: tabular-nums; word-break: break-all; }
+.own-kv__row .is-ok { color: var(--ok); }
+.own-kv__row .is-bad { color: var(--danger); }
+.own-kv__row .is-off { color: var(--ink-3); }
+
+/* Chain events, one per line, as the status page has them. */
+.own-events__row {
+    display: grid;
+    grid-template-columns: 150px 70px minmax(0, 1fr);
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--line);
+    font-size: 13px;
+    color: var(--ink-2);
+}
+.own-events__row time { color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.own-events__row b { color: var(--ink); }
+
+/* Chain status dot, borrowed from the status page. */
+.own-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 8px; background: var(--line-strong); vertical-align: 1px; }
+.own-dot--up { background: var(--ok); }
+.own-dot--degraded { background: var(--warn); }
+.own-dot--down { background: var(--danger); }
+
+.btn-small.is-busy { opacity: 0.6; pointer-events: none; }

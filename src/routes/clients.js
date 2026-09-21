@@ -30,6 +30,7 @@ router.get('/me', (req, res, next) => {
       createdAt: user.createdAt,
       lastLogin: user.lastLogin,
       developer: !!user.developer,
+      owner: !!user.owner,
       recoveryCodesRemaining: codes.remaining,
       recoveryCodesTotal: codes.total,
     });

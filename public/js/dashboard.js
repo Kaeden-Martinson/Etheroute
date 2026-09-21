@@ -183,6 +183,10 @@ window.addEventListener('load', async () => {
             endSession('expired');
             return;
         }
+        // the owner's way into the owner panel, and nobody else's
+        const identity = await check.json().catch(() => null);
+        const ownerLink = document.getElementById('ownerLink');
+        if (ownerLink && identity && identity.owner) ownerLink.hidden = false;
     } catch {
         // Network trouble is not a bad token; carry on and let the page's own
         // requests surface it.

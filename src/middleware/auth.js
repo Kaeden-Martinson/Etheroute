@@ -30,6 +30,9 @@ function asIdentity(user, method) {
     username: user.username,
     method,
     developer: !!user.developer,
+    // The platform's operator: set on the record by scripts/owner.js, never
+    // from a request.
+    owner: !!user.owner,
   };
 }
 
@@ -93,6 +96,22 @@ function requireDeveloper(req, res, next) {
 }
 
 /**
+ * Require the owner flag, on a signed-in session. Must run after requireAuth.
+ * An API key is an integration's credential and never opens the owner panel,
+ * however the account is flagged: a leaked key must not become the keys to
+ * every merchant.
+ */
+function requireOwner(req, res, next) {
+  if (!req.auth || !req.auth.owner) {
+    return next(new ForbiddenError('Owner access required'));
+  }
+  if (req.auth.method !== 'jwt') {
+    return next(new ForbiddenError('Owner access needs a signed-in session, not an API key'));
+  }
+  next();
+}
+
+/**
  * Assert that a record belongs to the authenticated caller.
  *
  * Reports NotFound rather than Forbidden for records owned by someone else, so
@@ -109,6 +128,7 @@ module.exports = {
   requireAuth,
   optionalAuth,
   requireDeveloper,
+  requireOwner,
   assertOwnership,
   resolveIdentity,
 };

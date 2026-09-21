@@ -207,6 +207,8 @@ router.get('/verify', requireAuth, (req, res) => {
     clientId: req.auth.clientId,
     username: req.auth.username,
     method: req.auth.method,
+    // the dashboard shows the owner panel's link to the owner alone
+    owner: !!req.auth.owner,
   });
 });
 

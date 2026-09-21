@@ -33,6 +33,7 @@ const apiKeysRoutes = require('./routes/api-keys');
 const apiCallsRoutes = require('./routes/api-calls');
 const statusRoutes = require('./routes/status');
 const checkoutRoutes = require('./routes/checkout');
+const ownerRoutes = require('./routes/owner');
 
 const app = express();
 const PUBLIC_DIR = path.join(__dirname, '../public');
@@ -129,6 +130,7 @@ const PAGES = {
   '/help': 'help.html',
   '/compliance': 'compliance.html',
   '/status': 'status.html',
+  '/owner': 'owner.html',
 };
 
 for (const [route, file] of Object.entries(PAGES)) {
@@ -232,6 +234,9 @@ app.use('/api/transactions', requireAuth, clientLimiter, trackApiCall, transacti
 app.use('/api/payouts', requireAuth, clientLimiter, trackApiCall, payoutRoutes);
 app.use('/api/api-keys', requireAuth, clientLimiter, trackApiCall, apiKeysRoutes);
 app.use('/api/api-calls', requireAuth, clientLimiter, apiCallsRoutes);
+// The owner's view across every merchant. Guarded inside the router: a
+// signed-in session on an account flagged owner, never an API key.
+app.use('/api/owner', requireAuth, clientLimiter, ownerRoutes);
 
 // ── 404 ──────────────────────────────────────────────────────────────────────
 

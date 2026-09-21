@@ -210,6 +210,25 @@ node scripts/collect-fees.js --reconcile  # cap held figures at what the wallets
 can exceed what the wallet has; the sweep never sends more than the wallet can
 spare after its gas reserve in any case.
 
+### The owner panel
+
+`/owner` is the platform as its operator sees it: every merchant with what
+they hold and have moved, payouts and transfers across the platform, the
+checkout links, the fee book with a dry run and a sweep button, usage, every
+chain's health, and the process itself (what is configured, never the values).
+It opens to an account flagged `owner` on the server, and only to a signed-in
+session - never to an API key, however the account is flagged:
+
+```bash
+node scripts/owner.js grant <username>    # the flag is read on each request; no new login needed
+node scripts/owner.js list
+node scripts/owner.js revoke <username>
+```
+
+The dashboard shows an "Owner panel" link to owners alone. The API behind the
+page is `/api/owner/*`; it returns no secret and is not part of the
+integrator reference.
+
 ### Rate limits and the upstream APIs
 
 Everything on-chain is read through free public services, and each of them

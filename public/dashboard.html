@@ -96,6 +96,12 @@
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                 <span>Account</span>
             </a>
+            <!-- The owner panel's link: shown by dashboard.js once /auth/verify
+                 says the session is an owner's, kept out of everyone else's way. -->
+            <a class="nav-link" id="ownerLink" href="/owner" data-on-click="navigateTo" data-arg="/owner" hidden>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7l8-4z"/><path d="M9 12l2 2 4-4"/></svg>
+                <span>Owner panel</span>
+            </a>
         </div>
 
         <!-- The foot is who is signed in, and the way out. The account page

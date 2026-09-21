@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex">
+    <title>Owner - Etheroute</title>
+    <link rel="icon" type="image/svg+xml" href="/svg/favicon.svg">
+    <script src="/js/common/theme.js"></script>
+    <link rel="stylesheet" href="/css/tokens.css">
+    <link rel="stylesheet" href="/css/dashboard.css">
+    <link rel="stylesheet" href="/css/owner.css">
+    <script src="/js/vendor/chart.umd.js"></script>
+    <script src="/js/common/icons.js"></script>
+</head>
+
+<body>
+    <!-- The owner panel wears the dashboard's chrome - the same rail, the same
+         head, the same tables - so the operator's view reads like the
+         merchant's, one level up. Every id here is written to by owner.js. -->
+    <div class="dash-shell">
+    <nav class="rail" id="dashRail" aria-label="Owner panel">
+        <div class="rail__top">
+            <a class="rail__brand" href="/" data-on-click="navigateTo" data-arg="/">
+                <span class="rail__mark" data-icon="logoOutline"></span>
+                <span class="rail__word">Etheroute <em class="own-badge">Owner</em></span>
+            </a>
+            <button class="theme-toggle rail__icon" id="themeToggle" data-on-click="cycleTheme"
+                    aria-label="Switch colour theme" title="Switch colour theme">
+                <svg class="theme-icon theme-icon--sun" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="12" cy="12" r="4"/>
+                    <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>
+                </svg>
+                <svg class="theme-icon theme-icon--moon" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>
+                </svg>
+                <svg class="theme-icon theme-icon--auto" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="12" cy="12" r="9"/>
+                    <path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor" stroke="none"/>
+                </svg>
+            </button>
+        </div>
+
+        <button class="rail__toggle" id="dashNavToggle" aria-label="Toggle navigation" aria-expanded="false" aria-controls="dashNavLinks">
+            <span class="rail__bars" aria-hidden="true"><i></i><i></i><i></i></span>
+        </button>
+
+        <div class="rail__links" id="dashNavLinks">
+            <span class="rail__group">Platform</span>
+            <a class="nav-link active" data-on-click="switchOwnerPage" data-arg="overview" aria-current="page">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+                <span>Overview</span>
+            </a>
+            <a class="nav-link" data-on-click="switchOwnerPage" data-arg="merchants">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                <span>Merchants</span>
+            </a>
+            <a class="nav-link" data-on-click="switchOwnerPage" data-arg="payouts">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v16M5 11l7-7 7 7"/></svg>
+                <span>Payouts</span>
+            </a>
+            <a class="nav-link" data-on-click="switchOwnerPage" data-arg="inflight">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+                <span>In flight</span>
+            </a>
+            <a class="nav-link" data-on-click="switchOwnerPage" data-arg="checkout">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg>
+                <span>Checkout</span>
+            </a>
+
+            <span class="rail__group">Money</span>
+            <a class="nav-link" data-on-click="switchOwnerPage" data-arg="fees">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2v20M17 6.5a4 4 0 0 0-4-2.5H11a3.5 3.5 0 0 0 0 7h2a3.5 3.5 0 0 1 0 7h-2a4 4 0 0 1-4-2.5"/></svg>
+                <span>Fees</span>
+            </a>
+
+            <span class="rail__group">Operations</span>
+            <a class="nav-link" data-on-click="switchOwnerPage" data-arg="usage">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19V5M4 19h16M8 15l3-4 3 2 5-6"/></svg>
+                <span>Usage</span>
+            </a>
+            <a class="nav-link" data-on-click="switchOwnerPage" data-arg="chains">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>
+                <span>Chains</span>
+            </a>
+            <a class="nav-link" data-on-click="switchOwnerPage" data-arg="server">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3" y="4" width="18" height="7" rx="1.5"/><rect x="3" y="13" width="18" height="7" rx="1.5"/><path d="M7 7.5h.01M7 16.5h.01"/></svg>
+                <span>Server</span>
+            </a>
+        </div>
+
+        <div class="rail__foot">
+            <a class="rail__account" href="/dashboard" data-on-click="navigateTo" data-arg="/dashboard" title="Back to your dashboard">
+                <div class="rail__avatar" id="userAvatar">U</div>
+                <div class="rail__who">
+                    <b id="username">User</b>
+                    <span>Back to dashboard</span>
+                </div>
+            </a>
+            <button class="rail__icon" data-on-click="logout" aria-label="Sign out" title="Sign out">
+                <span data-icon="logout"></span>
+            </button>
+        </div>
+    </nav>
+
+    <main class="container" id="dashMain">
+
+        <!-- Shown instead of everything when the session is not an owner's. -->
+        <div id="notOwner" class="own-denied" hidden>
+            <span class="dash-head__eyebrow">Owner panel</span>
+            <h1 class="dash-head__title">This account is not an owner.</h1>
+            <p class="dash-head__lede">The panel opens to accounts flagged on the server (<code>node scripts/owner.js grant &lt;username&gt;</code>), and only to a signed-in session. <a href="/dashboard">Back to the dashboard.</a></p>
+        </div>
+
+        <!-- Overview -->
+        <div id="overviewPage" class="dashboard-page" style="display: block;">
+            <header class="dash-head">
+                <div>
+                    <span class="dash-head__eyebrow">Platform</span>
+                    <div class="dash-balance" id="ovVolume">$0.00</div>
+                    <div class="dash-balance__meta"><span>Payout volume, all time <em class="dash-balance__age" id="ovAge"></em></span></div>
+                </div>
+                <div class="dash-head__actions">
+                    <button class="btn-small btn-secondary" data-on-click="refreshCurrentPage" type="button">Refresh</button>
+                </div>
+            </header>
+
+            <div class="dash-facts" id="ovFacts">
+                <div><b id="ovMerchants">–</b><span>Merchants <em id="ovMerchantsNew"></em></span></div>
+                <div><b id="ovOnChain">–</b><span>Held in merchant wallets</span></div>
+                <div><b id="ovPayouts30">–</b><span>Payouts, 30 days <em id="ovPayouts30Count"></em></span></div>
+                <div><b id="ovFees30">–</b><span>Fees earned, 30 days</span></div>
+                <div><b id="ovCheckout30">–</b><span>Checkout paid, 30 days <em id="ovCheckout30Count"></em></span></div>
+                <div><b id="ovInFlight">–</b><span>Transfers in flight</span></div>
+                <div><b id="ovRequests">–</b><span>Requests, 24 hours <em id="ovErrors"></em></span></div>
+                <div><b id="ovChains">–</b><span>Chains up <em id="ovChainsProblems"></em></span></div>
+            </div>
+
+            <div class="own-grid">
+                <section class="dash-section">
+                    <div class="dash-section__head">
+                        <div><h2 class="dash-section__title">Latest payouts</h2><p class="dash-section__sub" id="ovPayoutsSub">Across every merchant</p></div>
+                        <div class="dash-section__actions"><a class="dash-section__link" data-on-click="switchOwnerPage" data-arg="payouts">All payouts</a></div>
+                    </div>
+                    <table class="dash-table"><thead><tr><th>When</th><th>Merchant</th><th>To</th><th class="num">Gross</th><th class="num">Fee</th><th>Status</th></tr></thead><tbody id="ovPayoutRows"></tbody></table>
+                </section>
+                <section class="dash-section">
+                    <div class="dash-section__head">
+                        <div><h2 class="dash-section__title">Attention</h2><p class="dash-section__sub">What needs a look</p></div>
+                    </div>
+                    <div class="own-attention" id="ovAttention"></div>
+                </section>
+            </div>
+        </div>
+
+        <!-- Merchants -->
+        <div id="merchantsPage" class="dashboard-page">
+            <header class="dash-head">
+                <div>
+                    <span class="dash-head__eyebrow">Merchants</span>
+                    <h1 class="dash-head__title">Every account on the platform</h1>
+                    <p class="dash-head__lede">What each holds, what each has moved, and when they were last here. Open one for its wallets, payouts, links and transfers.</p>
+                </div>
+                <div class="dash-head__actions">
+                    <label class="search-field own-search"><input type="search" id="merchantSearch" placeholder="Search by username or id" data-on-input="filterMerchants" autocomplete="off"></label>
+                </div>
+            </header>
+            <table class="dash-table"><thead><tr><th>Merchant</th><th class="num">Wallets</th><th class="num">On chain</th><th class="num">Fees held</th><th class="num">Payouts</th><th class="num">Volume</th><th class="num">Paid links</th><th>Last activity</th><th></th></tr></thead><tbody id="merchantRows"></tbody></table>
+        </div>
+
+        <!-- One merchant -->
+        <div id="merchantPage" class="dashboard-page">
+            <header class="dash-head">
+                <div>
+                    <span class="dash-head__eyebrow"><a data-on-click="switchOwnerPage" data-arg="merchants" class="own-back">Merchants</a> · Merchant</span>
+                    <h1 class="dash-head__title" id="mName">–</h1>
+                    <p class="dash-head__lede" id="mLede"></p>
+                </div>
+            </header>
+            <div class="dash-facts" id="mFacts"></div>
+            <section class="dash-section">
+                <div class="dash-section__head"><div><h2 class="dash-section__title">Wallets</h2><p class="dash-section__sub" id="mWalletsSub"></p></div></div>
+                <table class="dash-table"><thead><tr><th>Chain</th><th>Address</th><th class="num">Balance</th><th class="num">Tokens</th><th class="num">Fee held</th><th>Read</th></tr></thead><tbody id="mWalletRows"></tbody></table>
+            </section>
+            <div class="own-grid">
+                <section class="dash-section">
+                    <div class="dash-section__head"><div><h2 class="dash-section__title">Payouts</h2><p class="dash-section__sub" id="mPayoutsSub"></p></div></div>
+                    <table class="dash-table"><thead><tr><th>When</th><th>To</th><th class="num">Gross</th><th class="num">Fee</th><th>Status</th></tr></thead><tbody id="mPayoutRows"></tbody></table>
+                </section>
+                <section class="dash-section">
+                    <div class="dash-section__head"><div><h2 class="dash-section__title">Payment links</h2><p class="dash-section__sub" id="mSessionsSub"></p></div></div>
+                    <table class="dash-table"><thead><tr><th>When</th><th>Chain</th><th class="num">Amount</th><th>Reference</th><th>Status</th></tr></thead><tbody id="mSessionRows"></tbody></table>
+                </section>
+            </div>
+            <section class="dash-section">
+                <div class="dash-section__head"><div><h2 class="dash-section__title">Transfers</h2><p class="dash-section__sub" id="mTxSub"></p></div></div>
+                <table class="dash-table"><thead><tr><th>When</th><th>Kind</th><th>Chain</th><th class="num">Amount</th><th>Hash</th><th>Status</th></tr></thead><tbody id="mTxRows"></tbody></table>
+            </section>
+        </div>
+
+        <!-- Payouts -->
+        <div id="payoutsPage" class="dashboard-page">
+            <header class="dash-head">
+                <div>
+                    <span class="dash-head__eyebrow">Payouts</span>
+                    <h1 class="dash-head__title">Withdrawals across the platform</h1>
+                    <p class="dash-head__lede" id="payoutsLede">Newest first.</p>
+                </div>
+                <div class="dash-head__actions">
+                    <div class="dash-chips" id="payoutChips">
+                        <button type="button" aria-pressed="true" data-on-click="filterPayouts" data-arg="">All</button>
+                        <button type="button" aria-pressed="false" data-on-click="filterPayouts" data-arg="PROCESSING">Processing</button>
+                        <button type="button" aria-pressed="false" data-on-click="filterPayouts" data-arg="COMPLETED">Completed</button>
+                        <button type="button" aria-pressed="false" data-on-click="filterPayouts" data-arg="PARTIAL">Partial</button>
+                        <button type="button" aria-pressed="false" data-on-click="filterPayouts" data-arg="FAILED">Failed</button>
+                    </div>
+                </div>
+            </header>
+            <table class="dash-table"><thead><tr><th>When</th><th>Merchant</th><th>To</th><th class="num">Gross</th><th class="num">Fee</th><th class="num">Net</th><th>Legs</th><th>Status</th></tr></thead><tbody id="payoutRows"></tbody></table>
+        </div>
+
+        <!-- In flight -->
+        <div id="inflightPage" class="dashboard-page">
+            <header class="dash-head">
+                <div>
+                    <span class="dash-head__eyebrow">In flight</span>
+                    <h1 class="dash-head__title">Transfers the chains have not settled</h1>
+                    <p class="dash-head__lede">Every PENDING or PROCESSING transfer, whoever sent it. The maintenance sweep re-checks each one every minute; a Bitcoin leg can sit here for an hour and be fine.</p>
+                </div>
+                <div class="dash-head__actions">
+                    <div class="dash-chips">
+                        <button type="button" aria-pressed="true" data-on-click="filterTransactions" data-arg="">In flight</button>
+                        <button type="button" aria-pressed="false" data-on-click="filterTransactions" data-arg="FAILED">Failed</button>
+                        <button type="button" aria-pressed="false" data-on-click="filterTransactions" data-arg="CONFIRMED">Confirmed</button>
+                    </div>
+                </div>
+            </header>
+            <table class="dash-table"><thead><tr><th>When</th><th>Merchant</th><th>Kind</th><th>Chain</th><th class="num">Amount</th><th>Hash</th><th>Last seen</th><th>Status</th></tr></thead><tbody id="txRows"></tbody></table>
+        </div>
+
+        <!-- Checkout -->
+        <div id="checkoutPage" class="dashboard-page">
+            <header class="dash-head">
+                <div>
+                    <span class="dash-head__eyebrow">Checkout</span>
+                    <h1 class="dash-head__title">Payment links across the platform</h1>
+                    <p class="dash-head__lede" id="checkoutLede">Newest first.</p>
+                </div>
+                <div class="dash-head__actions">
+                    <div class="dash-chips">
+                        <button type="button" aria-pressed="true" data-on-click="filterSessions" data-arg="">All</button>
+                        <button type="button" aria-pressed="false" data-on-click="filterSessions" data-arg="AWAITING_PAYMENT">Awaiting</button>
+                        <button type="button" aria-pressed="false" data-on-click="filterSessions" data-arg="PAID">Paid</button>
+                        <button type="button" aria-pressed="false" data-on-click="filterSessions" data-arg="EXPIRED">Expired</button>
+                    </div>
+                </div>
+            </header>
+            <table class="dash-table"><thead><tr><th>When</th><th>Merchant</th><th>Chain</th><th class="num">Amount</th><th>Reference</th><th>Paid</th><th>Status</th></tr></thead><tbody id="sessionRows"></tbody></table>
+        </div>
+
+        <!-- Fees -->
+        <div id="feesPage" class="dashboard-page">
+            <header class="dash-head">
+                <div>
+                    <span class="dash-head__eyebrow">Fees</span>
+                    <div class="dash-balance" id="feeHeld">$0.00</div>
+                    <div class="dash-balance__meta"><span>Held in merchants' wallets, waiting to be collected</span></div>
+                </div>
+                <div class="dash-head__actions">
+                    <button class="btn-small btn-secondary" type="button" data-on-click="feePlan">Dry run</button>
+                    <button class="btn-small btn-primary" type="button" data-on-click="feeCollect">Collect now</button>
+                </div>
+            </header>
+            <div class="dash-facts">
+                <div><b id="feeCollected">–</b><span>Collected, all time <em id="feeCollectedCount"></em></span></div>
+                <div><b id="feeHeldWallets">–</b><span>Wallets holding a fee</span></div>
+                <div><b id="feeThreshold">–</b><span>Swept when over this, and 20× the gas</span></div>
+                <div><b id="feeConfigured">–</b><span>Families with an address</span></div>
+            </div>
+
+            <div class="own-plan" id="feePlanOut" hidden></div>
+
+            <div class="own-grid">
+                <section class="dash-section">
+                    <div class="dash-section__head">
+                        <div><h2 class="dash-section__title">Held</h2><p class="dash-section__sub">Per wallet and asset, at today's rates</p></div>
+                        <div class="dash-section__actions"><button class="btn-small btn-secondary" type="button" data-on-click="feeReconcile" title="Cap every held figure at what its wallet holds">Reconcile</button></div>
+                    </div>
+                    <table class="dash-table"><thead><tr><th>Chain</th><th>Merchant</th><th>Wallet</th><th class="num">Held</th><th class="num">On chain</th><th class="num">USD</th></tr></thead><tbody id="feeHeldRows"></tbody></table>
+                </section>
+                <section class="dash-section">
+                    <div class="dash-section__head">
+                        <div><h2 class="dash-section__title">Addresses</h2><p class="dash-section__sub">One per family, from the environment</p></div>
+                    </div>
+                    <div class="own-addresses" id="feeAddresses"></div>
+                    <div class="dash-section__head" style="margin-top: 28px;">
+                        <div><h2 class="dash-section__title">Collected by chain</h2></div>
+                    </div>
+                    <table class="dash-table"><thead><tr><th>Chain</th><th class="num">Transactions</th><th class="num">USD</th></tr></thead><tbody id="feeByChainRows"></tbody></table>
+                </section>
+            </div>
+            <section class="dash-section">
+                <div class="dash-section__head"><div><h2 class="dash-section__title">Recent collections</h2><p class="dash-section__sub">In the withdrawal's own transaction, or swept</p></div></div>
+                <table class="dash-table"><thead><tr><th>When</th><th>Chain</th><th>Merchant</th><th class="num">Amount</th><th class="num">USD</th><th>How</th><th>Hash</th><th>Status</th></tr></thead><tbody id="feeRecentRows"></tbody></table>
+            </section>
+        </div>
+
+        <!-- Usage -->
+        <div id="usagePage" class="dashboard-page">
+            <header class="dash-head">
+                <div>
+                    <span class="dash-head__eyebrow">Usage</span>
+                    <div class="dash-balance" id="usageTotal">0</div>
+                    <div class="dash-balance__meta"><span id="usageLede">Authenticated requests, last 24 hours</span></div>
+                </div>
+                <div class="dash-head__actions">
+                    <div class="dash-chips">
+                        <button type="button" aria-pressed="true" data-on-click="setUsagePeriod" data-arg="day">24 hours</button>
+                        <button type="button" aria-pressed="false" data-on-click="setUsagePeriod" data-arg="week">7 days</button>
+                    </div>
+                </div>
+            </header>
+            <div class="dash-panel"><canvas id="usageChart" height="110"></canvas></div>
+            <div class="own-grid">
+                <section class="dash-section">
+                    <div class="dash-section__head"><div><h2 class="dash-section__title">Busiest merchants</h2></div></div>
+                    <table class="dash-table"><thead><tr><th>Merchant</th><th class="num">Requests</th></tr></thead><tbody id="usageMerchantRows"></tbody></table>
+                </section>
+                <section class="dash-section">
+                    <div class="dash-section__head"><div><h2 class="dash-section__title">Busiest endpoints</h2></div></div>
+                    <table class="dash-table"><thead><tr><th>Endpoint</th><th class="num">Requests</th></tr></thead><tbody id="usageEndpointRows"></tbody></table>
+                </section>
+            </div>
+        </div>
+
+        <!-- Chains -->
+        <div id="chainsPage" class="dashboard-page">
+            <header class="dash-head">
+                <div>
+                    <span class="dash-head__eyebrow">Chains</span>
+                    <h1 class="dash-head__title" id="chainsTitle">Every chain, as the monitor sees it</h1>
+                    <p class="dash-head__lede" id="chainsLede">Endpoints, the tip and the swap routes off each chain, probed every few minutes. Problems first.</p>
+                </div>
+                <div class="dash-head__actions"><a class="btn-small btn-secondary" href="/status" target="_blank" rel="noopener">Public status page</a></div>
+            </header>
+            <table class="dash-table"><thead><tr><th>Chain</th><th>Status</th><th>Endpoints</th><th>Tip</th><th>Routes</th><th>Since</th></tr></thead><tbody id="chainRows"></tbody></table>
+            <section class="dash-section" style="margin-top: 32px;">
+                <div class="dash-section__head"><div><h2 class="dash-section__title">Recent events</h2></div></div>
+                <div class="own-events" id="chainEventRows"></div>
+            </section>
+        </div>
+
+        <!-- Server -->
+        <div id="serverPage" class="dashboard-page">
+            <header class="dash-head">
+                <div>
+                    <span class="dash-head__eyebrow">Server</span>
+                    <h1 class="dash-head__title" id="serverTitle">The process</h1>
+                    <p class="dash-head__lede" id="serverLede"></p>
+                </div>
+            </header>
+            <div class="dash-facts" id="serverFacts"></div>
+            <div class="own-grid">
+                <section class="dash-section">
+                    <div class="dash-section__head"><div><h2 class="dash-section__title">Configuration</h2><p class="dash-section__sub">What is set - never what to</p></div></div>
+                    <div class="own-kv" id="serverConfig"></div>
+                </section>
+                <section class="dash-section">
+                    <div class="dash-section__head"><div><h2 class="dash-section__title">Gas float</h2><p class="dash-section__sub" id="serverFloatSub"></p></div></div>
+                    <div class="own-kv" id="serverFloat"></div>
+                </section>
+            </div>
+        </div>
+
+    </main>
+    </div>
+
+    <script src="/js/common/actions.js"></script>
+    <script src="/js/owner.js"></script>
+</body>
+</html>

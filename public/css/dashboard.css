@@ -3085,6 +3085,9 @@ textarea:user-invalid:focus {
 }
 
 .rail .nav-link::after { content: none; }
+/* A link the page has not earned yet (the owner panel's, for everyone who
+   is not the owner): the attribute must win over the flex above. */
+.rail .nav-link[hidden] { display: none; }
 
 .rail .nav-link:hover {
     color: var(--ink);
