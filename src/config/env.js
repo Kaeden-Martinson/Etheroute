@@ -69,6 +69,9 @@ const config = {
   nodeEnv: NODE_ENV,
   isProduction: IS_PRODUCTION,
   port: intFromEnv('PORT', 3000),
+  // Behind a reverse proxy on the same machine, 127.0.0.1: the app answers
+  // the proxy alone, and nothing reaches it over plain HTTP from outside.
+  host: process.env.HOST || '0.0.0.0',
 
   // Signs session tokens.
   jwtSecret: requireSecret('JWT_SECRET'),

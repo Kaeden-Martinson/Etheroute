@@ -295,12 +295,12 @@ app.use((err, req, res, _next) => {
 let server = null;
 
 function start() {
-  server = app.listen(config.port, () => {
-    logger.info(`Etheroute API listening on port ${config.port} (${config.nodeEnv})`);
+  server = app.listen(config.port, config.host, () => {
+    logger.info(`Etheroute API listening on ${config.host}:${config.port} (${config.nodeEnv})`);
     // The one alert that says the alerts work: a deploy shows up in the
     // channel with what is running.
     const chains = require('./config/chains');
-    AlertService.notify('Server started', `Listening on port ${config.port}.`, 'startup', {
+    AlertService.notify('Server started', `Listening on ${config.host}:${config.port}.`, 'startup', {
       level: 'info',
       fields: [
         { name: 'Version', value: require('../package.json').version },
