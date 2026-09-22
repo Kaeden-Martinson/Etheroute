@@ -8,8 +8,9 @@ const antibot = require('../lib/antibot');
 const roles = require('../lib/roles');
 const status = require('../lib/status');
 const tickets = require('../lib/tickets');
+const rules = require('../lib/rules');
 
-const ENV = { verify: 'DISCORD_VERIFY_CHANNEL', antibot: 'DISCORD_ANTIBOT_CHANNEL', roles: 'DISCORD_ROLES_CHANNEL', status: 'DISCORD_STATUS_CHANNEL', support: 'DISCORD_SUPPORT_CHANNEL' };
+const ENV = { verify: 'DISCORD_VERIFY_CHANNEL', antibot: 'DISCORD_ANTIBOT_CHANNEL', roles: 'DISCORD_ROLES_CHANNEL', status: 'DISCORD_STATUS_CHANNEL', support: 'DISCORD_SUPPORT_CHANNEL', rules: 'DISCORD_RULES_CHANNEL' };
 
 module.exports = {
   data: command('panel', 'Post one of the bot\'s panels again, or see what it found on the server', PermissionFlagsBits.ManageGuild)
@@ -18,6 +19,7 @@ module.exports = {
     .addSubcommand((s) => s.setName('roles').setDescription('A fresh role-picker in the roles channel'))
     .addSubcommand((s) => s.setName('status').setDescription('A fresh status embed in the status channel'))
     .addSubcommand((s) => s.setName('support').setDescription('A fresh ticket panel in the support channel'))
+    .addSubcommand((s) => s.setName('rules').setDescription('The server rules, as embeds, in the rules channel'))
     .addSubcommand((s) => s.setName('check').setDescription('Which channels and roles the bot found')),
   requires: PermissionFlagsBits.ManageGuild,
   async execute(interaction, ctx) {
@@ -41,6 +43,7 @@ module.exports = {
       roles: () => roles.ensurePanel(ctx, interaction.guild, { force: true }),
       status: () => status.ensureMessage(ctx, interaction.guild, { force: true }),
       support: () => tickets.ensurePanel(ctx, interaction.guild, { force: true }),
+      rules: () => rules.ensurePanel(ctx, interaction.guild, { force: true }),
     }[sub];
     const message = await post();
     if (!message) return interaction.editReply({ embeds: [fail(`I could not find the ${sub} channel. Set ${ENV[sub]} in .env and restart me.`)] });

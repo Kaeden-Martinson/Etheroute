@@ -99,7 +99,7 @@ Discord hides each command from people without its permission; the bot checks th
 | `/nick user [name]` | Manage Nicknames | sets or clears a nickname |
 | `/giveaway start duration prize [winners] [channel]` | Manage Server | a giveaway with an Enter button; `end`, `reroll` and `list` too |
 | `/announce title message [channel] [color] [ping]` | Manage Messages | an embed in the bot's voice; `ping` is nobody, the Announcements role, or @everyone |
-| `/panel verify\|antibot\|roles\|status\|check` | Manage Server | re-posts a panel, or shows what the bot found |
+| `/panel verify\|antibot\|roles\|status\|support\|rules\|check` | Manage Server | re-posts a panel (or posts the rules - those only on request), or shows what the bot found |
 | `/status` | anyone | the status embed, to you only, read fresh |
 | `/support [subject]` | anyone | opens a ticket; without a subject, asks in a form |
 | `/ticket close [reason]` | the opener or staff | closes the ticket; transcript to `#ticket-logs` and to the opener |
@@ -124,6 +124,7 @@ discord/
     status.js         the status embed, its refresh and the change note
     modlog.js         the mod-log cards for what happens by hand, with the audit log
     tickets.js        the ticket panel, form, channel, transcript and close
+    rules.js          the server rules and how they are enforced, for /panel rules
     giveaways.js      start, enter, end, reroll, resume
     moderation.js     who may act on whom; the mod-log card; the DM
     embeds.js         the palette and the embed helper

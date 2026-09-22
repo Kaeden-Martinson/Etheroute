@@ -28,6 +28,7 @@ const roles = require('../discord/lib/roles');
 const status = require('../discord/lib/status');
 const modlog = require('../discord/lib/modlog');
 const tickets = require('../discord/lib/tickets');
+const rules = require('../discord/lib/rules');
 const { Store } = require('../discord/lib/store');
 const { embed, COLORS } = require('../discord/lib/embeds');
 const { inviteUrl, permissions, NEEDED } = require('../discord/lib/invite');
@@ -1009,5 +1010,52 @@ describe('Tickets', () => {
     assert.strictEqual(tickets.isStaff({ permissions: new PermissionsBitField([]), roles: { cache: new Set(['sup']) } }, ctx), true, 'the Support role counts');
     assert.strictEqual(tickets.isStaff({ permissions: new PermissionsBitField([]), roles: { cache: new Set() } }, ctx), false);
     assert.strictEqual(tickets.slug('Alice O\'Brien!!'), 'alice-o-brien');
+  });
+});
+
+describe('The rules', () => {
+  const cfg = config.read({});
+  test('twelve, numbered, within Discord\'s limits, naming the channels they point at; keys and fake support near the top', () => {
+    const found = { channels: { support: channel('s', 'support'), antibot: channel('a', 'anti-bot'), verify: channel('v', 'verify') } };
+    const p = rules.panel(cfg, found);
+    assert.strictEqual(p.embeds.length, 2);
+    const main = p.embeds[0].toJSON();
+    assert.strictEqual(main.title, 'Etheroute server rules');
+    assert.strictEqual(main.fields.length, rules.RULES.length);
+    assert.strictEqual(rules.RULES.length, 12);
+    assert.strictEqual(main.fields[0].name, '1. Be decent');
+    assert.strictEqual(main.fields[1].name, '2. Never share keys or seed phrases');
+    assert.ok(main.fields[1].value.includes('Nobody from Etheroute will ever ask'));
+    assert.ok(main.fields[2].value.includes('<#s>'), 'support points at the channel');
+    for (const f of main.fields) {
+      assert.ok(f.name.length <= 256 && f.value.length <= 1024, f.name);
+      assert.ok(!f.value.includes('{'), `${f.name} has no unfilled placeholder`);
+    }
+    const total = JSON.stringify(main).length;
+    assert.ok(total < 6000, `one embed stays under Discord's 6000 characters (${total})`);
+    const how = p.embeds[1].toJSON();
+    assert.strictEqual(how.title, 'How this is enforced');
+    assert.ok(how.description.includes('<#a>') && how.description.includes('<#v>') && how.description.includes('Staff will never DM you first'));
+    const bare = rules.panel(cfg, { channels: {} }).embeds[1].toJSON();
+    assert.ok(bare.description.includes('#anti-bot') && bare.description.includes('#support'), 'plain names when the channels are not found');
+  });
+
+  test('posted only on request, into #rules, and remembered', async () => {
+    const sent = [];
+    const rulesCh = channel('r', 'rules');
+    rulesCh.send = async (p) => { sent.push(p); return { id: `rm${sent.length}` }; };
+    rulesCh.messages = { fetch: async (id) => (id === 'rm1' ? { id } : Promise.reject(new Error('gone'))) };
+    const store = new Store(path.join(tmp(), 'discord.json'));
+    const ctx = { config: cfg, store, log: quiet, found: { channels: { rules: rulesCh } } };
+    await rules.ensurePanel(ctx, {});
+    assert.strictEqual(sent.length, 1);
+    assert.strictEqual(store.data.panels.rules.messageId, 'rm1');
+    await rules.ensurePanel(ctx, {});
+    assert.strictEqual(sent.length, 1, 'still there');
+    await rules.ensurePanel(ctx, {}, { force: true });
+    assert.strictEqual(sent.length, 2);
+    assert.strictEqual(await rules.ensurePanel({ ...ctx, found: { channels: {} } }, {}), null);
+    const src = fs.readFileSync(path.join(__dirname, '../discord/bot.js'), 'utf-8');
+    assert.ok(!src.includes('rules.ensurePanel'), 'the bot never posts the rules on its own');
   });
 });
