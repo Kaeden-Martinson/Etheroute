@@ -53,7 +53,7 @@ describe('The config', () => {
     assert.strictEqual(c.channels.verify, 'verify,verification,verify-here');
     assert.strictEqual(c.channels.antibot, 'anti-bot,antibot,anti-spam,bot-trap');
     assert.strictEqual(c.roles.member, 'Member');
-    assert.deepStrictEqual([c.roles.merchant, c.roles.buyer, c.roles.updates, c.roles.status], ['Merchant', 'Buyer', 'Updates', 'Status']);
+    assert.deepStrictEqual([c.roles.merchant, c.roles.buyer, c.roles.announcements, c.roles.status], ['Merchant', 'Buyer', 'Announcements', 'Status Updates']);
     assert.strictEqual(c.channels.status, 'status,service-status,uptime');
     assert.ok(c.channels.roles.startsWith('roles,get-roles'));
     assert.strictEqual(c.status.apiUrl, 'http://127.0.0.1:3000', 'the API on the same box');
@@ -117,7 +117,7 @@ describe('Finding the furniture', () => {
     assert.strictEqual(found.channels.welcome.id, '1');
     assert.strictEqual(found.channels.antibot.id, '3');
     assert.strictEqual(found.channels.status, null);
-    assert.deepStrictEqual(Object.keys(found.roles), ['member', 'merchant', 'buyer', 'updates', 'status']);
+    assert.deepStrictEqual(Object.keys(found.roles), ['member', 'merchant', 'buyer', 'announcements', 'status']);
     assert.strictEqual(found.roles.member.id, 'r2');
     assert.strictEqual(found.roles.merchant, null);
   });
@@ -499,7 +499,7 @@ describe('The invite and the look', () => {
 
 describe('Roles people claim', () => {
   const cfg = config.read({});
-  const four = { merchant: role('m1', 'Merchant', 3), buyer: role('b1', 'Buyer', 3), updates: role('u1', 'Updates', 2), status: role('s1', 'Status', 2) };
+  const four = { merchant: role('m1', 'Merchant', 3), buyer: role('b1', 'Buyer', 3), announcements: role('u1', 'Announcements', 2), status: role('s1', 'Status Updates', 2) };
 
   test('the panel names each role with its blurb and has one button per role the server has', () => {
     const p = roles.panel(cfg, { roles: { member: role('x', 'Member', 4), ...four } });
@@ -507,8 +507,8 @@ describe('Roles people claim', () => {
     assert.strictEqual(e.title, 'Pick your roles');
     for (const id of ['m1', 'b1', 'u1', 's1']) assert.ok(e.description.includes(`<@&${id}>`));
     const buttons = p.components[0].toJSON().components;
-    assert.deepStrictEqual(buttons.map((b) => b.custom_id), ['role:merchant', 'role:buyer', 'role:updates', 'role:status']);
-    assert.deepStrictEqual(buttons.map((b) => b.label), ['Merchant', 'Buyer', 'Updates', 'Status']);
+    assert.deepStrictEqual(buttons.map((b) => b.custom_id), ['role:merchant', 'role:buyer', 'role:announcements', 'role:status']);
+    assert.deepStrictEqual(buttons.map((b) => b.label), ['Merchant', 'Buyer', 'Announcements', 'Status Updates']);
     const partial = roles.panel(cfg, { roles: { merchant: four.merchant } });
     assert.strictEqual(partial.components[0].toJSON().components.length, 1, 'a missing role has no button');
     assert.ok(partial.embeds[0].toJSON().description.includes('**Buyer**'), 'but is still named, in bold');
@@ -547,9 +547,9 @@ describe('Roles people claim', () => {
     rolesCh.send = async (payload) => { sent.push(payload); return { id: `rm${sent.length}` }; };
     rolesCh.messages = { fetch: async () => { throw new Error('gone'); } };
     const store = new Store(path.join(tmp(), 'discord.json'));
-    const ctx = { config: config.read({ DISCORD_UPDATES_ROLE: 'News' }), store, log: quiet, found: { channels: { roles: rolesCh }, roles: { merchant: role('m1', 'Merchant', 3), buyer: null, updates: null, status: null } } };
-    assert.deepStrictEqual(await roles.ensureClaimable(ctx, g), ['Buyer', 'News', 'Status']);
-    assert.strictEqual(ctx.found.roles.updates.name, 'News');
+    const ctx = { config: config.read({ DISCORD_ANNOUNCEMENTS_ROLE: 'News' }), store, log: quiet, found: { channels: { roles: rolesCh }, roles: { merchant: role('m1', 'Merchant', 3), buyer: null, announcements: null, status: null } } };
+    assert.deepStrictEqual(await roles.ensureClaimable(ctx, g), ['Buyer', 'News', 'Status Updates']);
+    assert.strictEqual(ctx.found.roles.announcements.name, 'News');
     assert.deepStrictEqual(await roles.ensureClaimable(ctx, g), [], 'nothing to make the second time');
     await roles.ensurePanel(ctx, g);
     assert.strictEqual(sent.length, 1);
@@ -667,7 +667,7 @@ describe('The status embed', () => {
     statusCh.send = async (payload) => { sent.push(payload); exists = true; return { id: 'sm1', channel: statusCh, edit: async (p) => edits.push(p) }; };
     statusCh.messages = { fetch: async () => { if (!exists) throw new Error('gone'); return { id: 'sm1', channel: statusCh, edit: async (p) => edits.push(p) }; } };
     const store = new Store(path.join(tmp(), 'discord.json'));
-    const ctx = { config: cfg, store, log: quiet, guild: {}, found: { channels: { status: statusCh }, roles: { status: role('s1', 'Status', 2) } } };
+    const ctx = { config: cfg, store, log: quiet, guild: {}, found: { channels: { status: statusCh }, roles: { status: role('s1', 'Status Updates', 2) } } };
     let bodies = { platform: platform(), chains: chains() };
     const opts = { fetchImpl: (url, o) => fakeFetch(bodies)(url, o) };
 

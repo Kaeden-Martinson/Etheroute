@@ -4,8 +4,8 @@ One process, next to the API, on the one server named in `.env`. It:
 
 - posts a **verification panel** in `#verify` - the button gives the **Member** role, and the rest of the server is gated on that role;
 - **welcomes** each new member in `#welcome`, with where to go next;
-- keeps a **status embed** in `#status` - the platform services, how many networks are up, which are degraded or down, the last few changes - edited every five minutes from the API on the same box, with a note and a ping to the **Status** role when something goes down or comes back;
-- lets people **claim roles** in `#roles` with buttons: **Merchant**, **Buyer**, **Updates** (what `/announce` can ping) and **Status**;
+- keeps a **status embed** in `#status` - the platform services, how many networks are up, which are degraded or down, the last few changes - edited every five minutes from the API on the same box, with a note and a ping to the **Status Updates** role when something goes down or comes back;
+- lets people **claim roles** in `#roles` with buttons: **Merchant**, **Buyer**, **Announcements** (what `/announce` can ping) and **Status Updates**;
 - keeps an **anti-bot** channel: a notice says not to post there, and anyone who does is kicked on the spot (or banned, if you prefer) - the spam bots that post in every channel they can see are gone before a person notices them;
 - answers the usual **slash commands**: `/kick`, `/ban`, `/unban`, `/timeout`, `/untimeout`, `/warn`, `/warnings`, `/purge`, `/slowmode`, `/lock`, `/unlock`, `/role`, `/nick`, `/giveaway`, `/announce`, `/panel`, `/status`, `/userinfo`, `/serverinfo`, `/avatar`, `/ping`, `/help`;
 - writes every action to a **mod-log** channel if the server has one.
@@ -36,7 +36,7 @@ One process, next to the API, on the one server named in `.env`. It:
    | status | `status`, `service-status`, `uptime` | `DISCORD_STATUS_CHANNEL` |
    | roles | `roles`, `get-roles`, `self-roles`, `role-select`, `pick-roles`, `claim-roles` | `DISCORD_ROLES_CHANNEL` |
 
-   An override takes a channel id or a name (or a comma list). The roles are named the same way - `DISCORD_MEMBER_ROLE` (default `Member`), and the four people claim for themselves: `DISCORD_MERCHANT_ROLE`, `DISCORD_BUYER_ROLE`, `DISCORD_UPDATES_ROLE`, `DISCORD_STATUS_ROLE` (defaults `Merchant`, `Buyer`, `Updates`, `Status`). Any of the five that does not exist is created.
+   An override takes a channel id or a name (or a comma list). The roles are named the same way - `DISCORD_MEMBER_ROLE` (default `Member`), and the four people claim for themselves: `DISCORD_MERCHANT_ROLE`, `DISCORD_BUYER_ROLE`, `DISCORD_ANNOUNCEMENTS_ROLE`, `DISCORD_STATUS_ROLE` (defaults `Merchant`, `Buyer`, `Announcements`, `Status Updates`). Any of the five that does not exist is created.
 
    Permissions that make the gate work:
    - `@everyone` sees **only** `#welcome`, `#verify`, `#rules` and `#anti-bot`; every other channel is visible to **Member**.
@@ -88,7 +88,7 @@ Discord hides each command from people without its permission; the bot checks th
 | `/role add\|remove user role` | Manage Roles | a role on or off |
 | `/nick user [name]` | Manage Nicknames | sets or clears a nickname |
 | `/giveaway start duration prize [winners] [channel]` | Manage Server | a giveaway with an Enter button; `end`, `reroll` and `list` too |
-| `/announce title message [channel] [color] [ping]` | Manage Messages | an embed in the bot's voice; `ping` is nobody, the Updates role, or @everyone |
+| `/announce title message [channel] [color] [ping]` | Manage Messages | an embed in the bot's voice; `ping` is nobody, the Announcements role, or @everyone |
 | `/panel verify\|antibot\|roles\|status\|check` | Manage Server | re-posts a panel, or shows what the bot found |
 | `/status` | anyone | the status embed, to you only, read fresh |
 | `/userinfo`, `/serverinfo`, `/avatar`, `/ping`, `/help` | anyone | the usual |

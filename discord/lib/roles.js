@@ -2,9 +2,9 @@
 
 /**
  * Roles people give themselves: one panel in #roles with a button per
- * role. Merchant and Buyer say what someone is here for; Updates is the
- * role /announce can ping; Status is pinged when a service or network
- * changes state. A button toggles: press it again and the role is gone.
+ * role. Merchant and Buyer say what someone is here for; Announcements
+ * is the role /announce can ping; Status Updates is pinged when a service
+ * or network changes state. A button toggles: press it again and the role is gone.
  * The panel is posted once and remembered; /panel roles posts a fresh one.
  */
 
@@ -17,7 +17,7 @@ const PREFIX = 'role:';
 const CLAIMABLE = [
   { key: 'merchant', emoji: '🏪', style: ButtonStyle.Primary, blurb: 'You accept payments with Etheroute, or mean to.' },
   { key: 'buyer', emoji: '🛒', style: ButtonStyle.Primary, blurb: 'You pay merchants in crypto and want the buyer side of things.' },
-  { key: 'updates', emoji: '📣', style: ButtonStyle.Secondary, blurb: 'Pinged for releases, new chains and product news.' },
+  { key: 'announcements', emoji: '📣', style: ButtonStyle.Secondary, blurb: 'Pinged for announcements: releases, new chains, product news.' },
   { key: 'status', emoji: '📡', style: ButtonStyle.Secondary, blurb: 'Pinged when a service or a network goes down or comes back.' },
 ];
 
@@ -95,7 +95,7 @@ async function handleButton(interaction, ctx) {
     return interaction.reply({ embeds: [fail(`I could not change that role. An admin needs to move my role above **${role.name}** in Server Settings → Roles.`)], flags: MessageFlags.Ephemeral });
   }
   ctx.log.info(`${interaction.user.tag} (${interaction.user.id}) ${has ? 'dropped' : 'took'} ${role.name}`);
-  return interaction.reply({ embeds: [ok(has ? `**${role.name}** removed.` : `You now have **${role.name}**.${key === 'status' ? ' You will be pinged when something goes down or comes back.' : key === 'updates' ? ' You will be pinged for announcements.' : ''}`)], flags: MessageFlags.Ephemeral });
+  return interaction.reply({ embeds: [ok(has ? `**${role.name}** removed.` : `You now have **${role.name}**.${key === 'status' ? ' You will be pinged when something goes down or comes back.' : key === 'announcements' ? ' You will be pinged for announcements.' : ''}`)], flags: MessageFlags.Ephemeral });
 }
 
 module.exports = { CLAIMABLE, PREFIX, buttonId, isRoleButton, panel, ensureClaimable, ensurePanel, handleButton };

@@ -43,8 +43,8 @@ function read(env = process.env) {
       // the four anyone may claim from the panel in #roles
       merchant: str('DISCORD_MERCHANT_ROLE', 'Merchant'),
       buyer: str('DISCORD_BUYER_ROLE', 'Buyer'),
-      updates: str('DISCORD_UPDATES_ROLE', 'Updates'),
-      status: str('DISCORD_STATUS_ROLE', 'Status'),
+      announcements: str('DISCORD_ANNOUNCEMENTS_ROLE', 'Announcements'),
+      status: str('DISCORD_STATUS_ROLE', 'Status Updates'),
     },
     status: {
       // the API the status embed reads; the bot runs on the same box as the API

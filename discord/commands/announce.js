@@ -14,7 +14,7 @@ module.exports = {
       { name: 'Brand blue', value: 'brand' }, { name: 'Green', value: 'ok' }, { name: 'Amber', value: 'warn' }, { name: 'Red', value: 'danger' },
     ))
     .addStringOption((o) => o.setName('ping').setDescription('Who to mention above it').addChoices(
-      { name: 'Nobody', value: 'none' }, { name: 'The Updates role', value: 'updates' }, { name: '@everyone', value: 'everyone' },
+      { name: 'Nobody', value: 'none' }, { name: 'The Announcements role', value: 'announcements' }, { name: '@everyone', value: 'everyone' },
     )),
   requires: PermissionFlagsBits.ManageMessages,
   async execute(interaction, ctx) {
@@ -25,13 +25,13 @@ module.exports = {
     const ping = interaction.options.getString('ping') || 'none';
     if (!botCan(channel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.EmbedLinks)) return sayFail(interaction, `I cannot post in ${channel.toString()}.`);
     if (ping === 'everyone' && !interaction.memberPermissions.has(PermissionFlagsBits.MentionEveryone)) return sayFail(interaction, 'You cannot mention @everyone here.');
-    const updates = ctx.found.roles.updates;
-    if (ping === 'updates' && !updates) return sayFail(interaction, 'There is no Updates role to ping - restart me, or set DISCORD_UPDATES_ROLE.');
+    const announcements = ctx.found.roles.announcements;
+    if (ping === 'announcements' && !announcements) return sayFail(interaction, 'There is no Announcements role to ping - restart me, or set DISCORD_ANNOUNCEMENTS_ROLE.');
 
     await channel.send({
-      content: ping === 'everyone' ? '@everyone' : ping === 'updates' ? updates.toString() : undefined,
+      content: ping === 'everyone' ? '@everyone' : ping === 'announcements' ? announcements.toString() : undefined,
       embeds: [embed({ title, description: body, color, footer: `${ctx.config.brand.name} · posted by ${interaction.user.tag}` })],
-      allowedMentions: { parse: ping === 'everyone' ? ['everyone'] : [], roles: ping === 'updates' ? [updates.id] : [] },
+      allowedMentions: { parse: ping === 'everyone' ? ['everyone'] : [], roles: ping === 'announcements' ? [announcements.id] : [] },
     });
     ctx.log.info(`announcement "${title}" posted in #${channel.name} by ${interaction.user.tag}${ping !== 'none' ? ` (pinging ${ping})` : ''}`);
     return sayOk(interaction, `Posted in ${channel.toString()}.`, { flags: MessageFlags.Ephemeral });
