@@ -34,6 +34,7 @@ const apiCallsRoutes = require('./routes/api-calls');
 const statusRoutes = require('./routes/status');
 const checkoutRoutes = require('./routes/checkout');
 const ownerRoutes = require('./routes/owner');
+const telegramRoutes = require('./routes/telegram');
 
 const app = express();
 const PUBLIC_DIR = path.join(__dirname, '../public');
@@ -261,6 +262,11 @@ app.use('/api/api-calls', requireAuth, clientLimiter, apiCallsRoutes);
 // The owner's view across every merchant. Guarded inside the router: a
 // signed-in session on an account flagged owner, never an API key.
 app.use('/api/owner', requireAuth, clientLimiter, ownerRoutes);
+
+// Telegram for merchants: the bot's side first (its own secret, no
+// credential), then the dashboard's under the usual one.
+app.use('/api/telegram/internal', telegramRoutes.internal);
+app.use('/api/telegram', requireAuth, clientLimiter, telegramRoutes.merchant);
 
 // ── 404 ──────────────────────────────────────────────────────────────────────
 

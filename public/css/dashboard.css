@@ -4388,6 +4388,20 @@ textarea:user-invalid:focus {
 }
 
 .acct-row .dot.dot--warn::before { background: var(--warn); box-shadow: 0 0 0 3px color-mix(in srgb, var(--warn) 20%, transparent); }
+.acct-row .dot.dot--off::before { background: var(--line-strong); box-shadow: 0 0 0 3px color-mix(in srgb, var(--line-strong) 25%, transparent); }
+
+/* Telegram: the two switches under the connection row. */
+.acct-row.hidden { display: none; }
+.tg-switch { display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--ink-2); cursor: pointer; user-select: none; }
+.tg-switch input { appearance: none; -webkit-appearance: none; width: 34px; height: 20px; margin: 0; border-radius: 999px; background: var(--line-strong); position: relative; transition: background-color var(--dur) var(--ease-out); cursor: pointer; }
+.tg-switch input::after { content: ""; position: absolute; top: 3px; left: 3px; width: 14px; height: 14px; border-radius: 50%; background: var(--surface); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2); transition: transform var(--dur) var(--ease-out); }
+.tg-switch input:checked { background: var(--ok); }
+.tg-switch input:checked::after { transform: translateX(14px); }
+.tg-switch input:focus-visible { outline: 2px solid var(--focus, var(--ink)); outline-offset: 2px; }
+.tg-switch input:disabled { opacity: 0.5; cursor: wait; }
+.tg-link { display: grid; gap: 10px; }
+.tg-link__code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 20px; letter-spacing: 0.12em; color: var(--ink); }
+.tg-link__row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 
 /* The password form opens in place under its row. */
 .acct-form { padding: 14px 0 4px; border-bottom: 1px solid var(--line); }

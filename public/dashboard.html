@@ -847,6 +847,31 @@ curl <b id="apiQuickStartUrl">/api/wallets/list</b> \
                         </button>
                     </span></div>
                 </div>
+
+                <!-- Telegram: the bot messages the merchant when a payment
+                     settles or a payout finishes; /stats there answers the
+                     rest. The link starts here with a code and ends in the
+                     bot; the row reads the state back from the API. -->
+                <div class="fgroup" data-reveal data-reveal-delay="340">
+                    <div class="fgroup__title">Notifications</div>
+                    <div class="acct-row"><span>Telegram</span><span class="v dot dot--off" id="telegramState">Checking&hellip;<small id="telegramHint">A message when a payment settles or a payout finishes, and /stats for your numbers.</small></span><span class="acts" id="telegramActions">
+                        <button type="button" class="btn-small btn-primary" id="telegramConnectBtn" data-on-click="connectTelegram" disabled>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+                            Connect
+                        </button>
+                        <button type="button" class="btn-small btn-primary" id="telegramDisconnectBtn" data-on-click="disconnectTelegram" hidden>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+                            Disconnect
+                        </button>
+                    </span></div>
+                    <div id="telegramLinkPanel" class="new-api-key hidden" role="status" aria-live="polite"></div>
+                    <div class="acct-row telegram-pref hidden" id="telegramPrefPaid"><span>Payments</span><span class="v">Message me when a payment settles<small>Amount, network, reference and the transaction, the moment it confirms.</small></span><span class="acts">
+                        <label class="tg-switch"><input type="checkbox" id="telegramPaidToggle" data-on-change="toggleTelegramPref" data-arg="paid" /><span>On</span></label>
+                    </span></div>
+                    <div class="acct-row telegram-pref hidden" id="telegramPrefPayouts"><span>Payouts</span><span class="v">Message me when a payout finishes<small>Completed, partly completed or failed, with the amount and where it went.</small></span><span class="acts">
+                        <label class="tg-switch"><input type="checkbox" id="telegramPayoutsToggle" data-on-change="toggleTelegramPref" data-arg="payouts" /><span>On</span></label>
+                    </span></div>
+                </div>
             </div>
         </div>
     </main>

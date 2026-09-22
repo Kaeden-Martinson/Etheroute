@@ -42,6 +42,8 @@ function read(env = process.env) {
       roles: str('DISCORD_ROLES_CHANNEL', 'roles,get-roles,self-roles,role-select,pick-roles,claim-roles'),
       support: str('DISCORD_SUPPORT_CHANNEL', 'support,tickets,help,open-a-ticket,create-a-ticket'),
       transcripts: str('DISCORD_TRANSCRIPTS_CHANNEL', 'ticket-logs,transcripts,ticket-transcripts'),
+      // where /announce posts by default, pinging the Announcements role
+      updates: str('DISCORD_UPDATES_CHANNEL', 'announcements,updates,news,changelog,releases'),
     },
     roles: {
       member: str('DISCORD_MEMBER_ROLE', 'Member'),
@@ -74,7 +76,7 @@ function read(env = process.env) {
     },
     brand: {
       name: str('DISCORD_BRAND_NAME', 'Etheroute'),
-      site: str('SITE_URL', 'https://etheroute.com'),
+      site: str('SITE_URL', 'https://etheroute.io'),
     },
     dataFile: str('DISCORD_DATA_FILE', path.join(dataDir, 'discord.json')),
     syncCommands: str('DISCORD_SYNC_COMMANDS', 'true') !== 'false',

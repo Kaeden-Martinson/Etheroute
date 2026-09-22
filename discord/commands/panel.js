@@ -29,7 +29,7 @@ module.exports = {
       const line = (label, thing) => `**${label}:** ${thing ? thing.toString() : '_not found_'}`;
       return sayOk(interaction, [
         line('Welcome', f.channels.welcome), line('Verify', f.channels.verify), line('Anti-bot', f.channels.antibot), line('Roles', f.channels.roles),
-        line('Status', f.channels.status), line('Support', f.channels.support), line('Transcripts', f.channels.transcripts), line('Mod-log', f.channels.log), line('Rules', f.channels.rules),
+        line('Status', f.channels.status), line('Updates', f.channels.updates), line('Support', f.channels.support), line('Transcripts', f.channels.transcripts), line('Mod-log', f.channels.log), line('Rules', f.channels.rules),
         line('Member role', f.roles.member), line('Support role', f.roles.support), ...roles.CLAIMABLE.map((c) => line(`${c.emoji} ${c.key}`, f.roles[c.key])),
         `**Tickets open:** ${tickets.open(ctx).length} of ${ctx.config.tickets.max}`,
         `**Anti-bot action:** ${ctx.config.antibot.action}`,

@@ -38,6 +38,7 @@ One process, next to the API, on the one server named in `.env`. It:
    | roles | `roles`, `get-roles`, `self-roles`, `role-select`, `pick-roles`, `claim-roles` | `DISCORD_ROLES_CHANNEL` |
    | support | `support`, `tickets`, `help`, `open-a-ticket`, `create-a-ticket` | `DISCORD_SUPPORT_CHANNEL` |
    | transcripts | `ticket-logs`, `transcripts`, `ticket-transcripts` (falls back to the mod-log) | `DISCORD_TRANSCRIPTS_CHANNEL` |
+   | updates | `announcements`, `updates`, `news`, `changelog`, `releases` | `DISCORD_UPDATES_CHANNEL` |
 
    An override takes a channel id or a name (or a comma list). The roles are named the same way - `DISCORD_MEMBER_ROLE` (default `Member`), and the four people claim for themselves: `DISCORD_MERCHANT_ROLE`, `DISCORD_BUYER_ROLE`, `DISCORD_ANNOUNCEMENTS_ROLE`, `DISCORD_STATUS_ROLE` (defaults `Merchant`, `Buyer`, `Announcements`, `Status Updates`). Any of the five that does not exist is created. `DISCORD_SUPPORT_ROLE` (default `Support`, `Staff`, `Moderator`, `Mod`, `Team`) is the staff role that sees every ticket; it is yours and is not created - without it, tickets are visible to their opener and admins only.
 
@@ -54,7 +55,7 @@ One process, next to the API, on the one server named in `.env`. It:
    ```
    On start it logs what it found, registers the slash commands on the server (they appear within a few seconds; there is no hour-long wait because they are per-server, not global), posts the verification panel, the anti-bot notice, the role-picker, the ticket panel and the status embed if they are not already there, and picks up any giveaway still running.
 
-   The status embed reads `GET /api/status` and `/api/status/chains` from `DISCORD_API_URL` - by default `http://127.0.0.1:<PORT>`, the API on the same machine. If the API answers on another host or the bot runs elsewhere, set it (`https://etheroute.com` works too; both endpoints are public).
+   The status embed reads `GET /api/status` and `/api/status/chains` from `DISCORD_API_URL` - by default `http://127.0.0.1:<PORT>`, the API on the same machine. If the API answers on another host or the bot runs elsewhere, set it (`https://etheroute.io` works too; both endpoints are public).
 
    In production, run it under the same process manager as the API (`pm2 start discord/index.js --name etheroute-bot`, or a second systemd unit). It reads `.env` from the project root.
 
@@ -75,7 +76,7 @@ One process, next to the API, on the one server named in `.env`. It:
 | `DISCORD_TICKET_CATEGORY` | `Tickets` | the category tickets open under (made if missing) |
 | `DISCORD_TICKET_MAX` | `45` | how many tickets may be open at once (a category holds 50 channels) |
 | `DISCORD_BRAND_NAME` | `Etheroute` | the name on panels and footers |
-| `SITE_URL` | `https://etheroute.com` | the site in footers (the API's own key) |
+| `SITE_URL` | `https://etheroute.io` | the site in footers (the API's own key) |
 | `DISCORD_DATA_FILE` | `data/discord.json` | where panel ids, giveaways and warnings are kept |
 | `DISCORD_SYNC_COMMANDS` | `true` | `false` to skip re-registering the commands on start |
 
@@ -98,7 +99,7 @@ Discord hides each command from people without its permission; the bot checks th
 | `/role add\|remove user role` | Manage Roles | a role on or off |
 | `/nick user [name]` | Manage Nicknames | sets or clears a nickname |
 | `/giveaway start duration prize [winners] [channel]` | Manage Server | a giveaway with an Enter button; `end`, `reroll` and `list` too |
-| `/announce title message [channel] [color] [ping]` | Manage Messages | an embed in the bot's voice; `ping` is nobody, the Announcements role, or @everyone |
+| `/announce title message [channel] [color] [ping]` | Manage Messages | an embed in the updates channel (or where you are, if there is none), pinging the Announcements role unless `ping` says nobody or @everyone |
 | `/panel verify\|antibot\|roles\|status\|support\|rules\|check` | Manage Server | re-posts a panel (or posts the rules - those only on request), or shows what the bot found |
 | `/status` | anyone | the status embed, to you only, read fresh |
 | `/support [subject]` | anyone | opens a ticket; without a subject, asks in a form |

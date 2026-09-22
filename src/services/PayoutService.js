@@ -823,7 +823,9 @@ class PayoutService {
     }
 
     console.log(`[PayoutService] All transactions completed for payout ${payoutId} - Status: ${finalStatus}`);
-    this.updatePayoutStatus(payoutId, finalStatus);
+    const payout = this.updatePayoutStatus(payoutId, finalStatus);
+    // the merchant, on Telegram, if they linked it; off the path
+    require('./TelegramNotifyService').notifyPayout(payout);
     return finalStatus;
   }
 

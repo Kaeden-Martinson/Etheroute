@@ -400,6 +400,43 @@ function verify(secret, header, rawBody, toleranceSeconds = 300) {
     },
 
     {
+      id: 'telegram',
+      title: 'Telegram',
+      icon: 'responses',
+      intro: [
+        'Hear about your money where you already are. Link your account to the Etheroute Telegram bot and it messages you when a payment settles and when a payout finishes; <code>/stats</code> and <code>/recent</code> in that chat answer the rest. The link starts here with a short code and ends in the bot: open the URL this API returns (or send the bot <code>/start link_&lt;code&gt;</code>) within ten minutes.',
+        'These endpoints back the dashboard\'s Account → Notifications card; an integration may call them the same way. The bot\'s own endpoints under <code>/telegram/internal</code> are not for integrators.',
+      ],
+      endpoints: [
+        {
+          id: 'telegram-get', method: 'GET', path: '/telegram', auth: 'key',
+          summary: 'The Telegram link',
+          description: 'Whether this account is linked to a Telegram chat, to whom, since when, and which messages are on.',
+          response: { success: true, enabled: true, botUsername: 'etheroute_bot', clientId: '3446068b-…', username: 'acme-shop', linked: true, chatId: 7959617162, telegramUsername: 'acme', linkedAt: '2026-09-21T21:00:00.000Z', prefs: { paid: true, payouts: true } },
+        },
+        {
+          id: 'telegram-link-code', method: 'POST', path: '/telegram/link-code', auth: 'key',
+          summary: 'Start a link',
+          description: 'Mints a code good for ten minutes and the deep link that carries it to the bot. A newer code replaces an older one. <code>503</code> when the server has no bot configured.',
+          response: { success: true, code: 'K7PMQ2VX', expiresAt: '2026-09-21T21:10:00.000Z', botUsername: 'etheroute_bot', url: 'https://t.me/etheroute_bot?start=link_K7PMQ2VX' },
+        },
+        {
+          id: 'telegram-preferences', method: 'PUT', path: '/telegram/preferences', auth: 'key',
+          summary: 'What the bot messages you about',
+          description: 'Booleans for <code>paid</code> (a payment settled) and <code>payouts</code> (a payout finished). <code>409</code> until the account is linked.',
+          body: { paid: true, payouts: false },
+          response: { success: true, clientId: '3446068b-…', username: 'acme-shop', linked: true, chatId: 7959617162, telegramUsername: 'acme', linkedAt: '2026-09-21T21:00:00.000Z', prefs: { paid: true, payouts: false } },
+        },
+        {
+          id: 'telegram-unlink', method: 'DELETE', path: '/telegram/link', auth: 'key',
+          summary: 'Drop the link',
+          description: 'The bot stops messaging this account. <code>unlinked</code> is false when there was no link.',
+          response: { success: true, unlinked: true },
+        },
+      ],
+    },
+
+    {
       id: 'withdrawal',
       title: 'Withdrawals',
       icon: 'withdraw',

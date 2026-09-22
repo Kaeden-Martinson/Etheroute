@@ -4,6 +4,7 @@
   "description": "Cryptocurrency SaaS platform for accepting invoices and processing payouts",
   "main": "src/app.js",
   "scripts": {
+    "all": "node main.js",
     "start": "node src/app.js",
     "dev": "node --watch src/app.js",
     "build": "node scripts/build.js",
@@ -19,7 +20,9 @@
     "fees:collect": "node scripts/collect-fees.js",
     "owner": "node scripts/owner.js",
     "discord": "node discord/index.js",
-    "discord:channels": "node discord/scripts/channels.js"
+    "discord:channels": "node discord/scripts/channels.js",
+    "telegram": "node telegram/index.js",
+    "telegram:whoami": "node telegram/scripts/whoami.js"
   },
   "keywords": [
     "crypto",

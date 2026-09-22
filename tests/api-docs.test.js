@@ -104,8 +104,9 @@ describe('The API reference matches the mounted routes', () => {
 
     // Status write endpoints are developer-only and intentionally undocumented
     // for now; note them rather than fail.
-    // The owner panel's API is the operator's own, not an integrator's.
-    const undocumented = apiRoutes.filter((r) => !documentedKeys.has(r) && !exclude.has(r) && !r.includes('/api/status/incidents') && !r.includes('/api/owner'));
+    // The owner panel's API is the operator's own, not an integrator's; the
+    // Telegram bot's internal endpoints are the bot's, behind its own secret.
+    const undocumented = apiRoutes.filter((r) => !documentedKeys.has(r) && !exclude.has(r) && !r.includes('/api/status/incidents') && !r.includes('/api/owner') && !r.includes('/api/telegram/internal'));
 
     assert.deepStrictEqual(undocumented, [], `these mounted API routes have no docs entry: ${undocumented.join(', ')}`);
   });

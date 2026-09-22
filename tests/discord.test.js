@@ -62,7 +62,7 @@ describe('The config', () => {
     assert.strictEqual(c.status.apiUrl, 'http://127.0.0.1:3000', 'the API on the same box');
     assert.strictEqual(c.status.intervalMs, 300000);
     assert.strictEqual(config.read({ PORT: '80' }).status.apiUrl, 'http://127.0.0.1:80');
-    assert.strictEqual(config.read({ DISCORD_API_URL: 'https://etheroute.com/' }).status.apiUrl, 'https://etheroute.com');
+    assert.strictEqual(config.read({ DISCORD_API_URL: 'https://etheroute.io/' }).status.apiUrl, 'https://etheroute.io');
     assert.strictEqual(config.read({ DISCORD_STATUS_INTERVAL_MS: '5' }).status.intervalMs, 60000, 'never faster than a minute');
     assert.deepStrictEqual(c.status.mainChains.slice(0, 4), ['ETH', 'BTC', 'SOL', 'LTC']);
     assert.deepStrictEqual(config.read({ DISCORD_MAIN_CHAINS: 'btc, eth' }).status.mainChains, ['BTC', 'ETH']);
@@ -123,7 +123,7 @@ describe('Finding the furniture', () => {
 
   test('resolveAll names every purpose, found or not', () => {
     const found = guildLib.resolveAll(g, config.read({}));
-    assert.deepStrictEqual(Object.keys(found.channels), ['welcome', 'verify', 'antibot', 'log', 'rules', 'status', 'roles', 'support', 'transcripts']);
+    assert.deepStrictEqual(Object.keys(found.channels), ['welcome', 'verify', 'antibot', 'log', 'rules', 'status', 'roles', 'support', 'transcripts', 'updates']);
     assert.strictEqual(found.channels.welcome.id, '1');
     assert.strictEqual(found.channels.antibot.id, '3');
     assert.strictEqual(found.channels.status, null);
@@ -634,7 +634,7 @@ describe('The status embed', () => {
     const e = status.statusEmbed(fine, cfg).toJSON();
     assert.strictEqual(e.title, '🟢 Etheroute status - Fully operational');
     assert.strictEqual(e.color, COLORS.ok);
-    assert.ok(e.description.includes('[Status page](https://etheroute.com/status)') && e.description.includes('**99.98%**'));
+    assert.ok(e.description.includes('[Status page](https://etheroute.io/status)') && e.description.includes('**99.98%**'));
     assert.deepStrictEqual(e.fields.map((f) => f.name), ['API', 'Wallet Sync', 'Checkouts', 'Payout Engine', 'Networks (4)', 'Degraded (some endpoints not answering)', 'Recent changes']);
     assert.strictEqual(e.fields[0].value, '✅ Operational');
     assert.strictEqual(e.fields[4].value, '🟢 63 up · 🟠 2 degraded · 🔴 0 down');
@@ -1057,5 +1057,40 @@ describe('The rules', () => {
     assert.strictEqual(await rules.ensurePanel({ ...ctx, found: { channels: {} } }, {}), null);
     const src = fs.readFileSync(path.join(__dirname, '../discord/bot.js'), 'utf-8');
     assert.ok(!src.includes('rules.ensurePanel'), 'the bot never posts the rules on its own');
+  });
+});
+
+describe('Announcements', () => {
+  test('go to the updates channel the bot found and ping the Announcements role, unless told otherwise', async () => {
+    const loaded = commands.load();
+    const sent = [];
+    const mk = (id, name) => { const ch = channel(id, name); ch.guild = { members: { me: { id: 'bot' } } }; ch.permissionsFor = () => ({ has: () => true }); ch.send = async (p) => sent.push({ id, ...p }); return ch; };
+    const updates = mk('u', 'announcements');
+    const here = mk('h', 'general');
+    const ann = role('a1', 'Announcements', 2);
+    const replies = [];
+    const run = (opts) => loaded.byName.get('announce').execute({
+      channel: here, guild: updates.guild, user: { tag: 'mod#1' }, memberPermissions: new PermissionsBitField([PermissionFlagsBits.ManageMessages]),
+      options: { getString: (k) => opts[k] || null, getChannel: () => opts.channel || null },
+      reply: async (p) => replies.push(p.embeds[0].toJSON().description),
+    }, { config: config.read({}), log: quiet, found: { channels: { updates: opts.noUpdates ? null : updates }, roles: { announcements: opts.noRole ? null : ann } } });
+
+    await run({ title: 'New network', message: 'Core is live.\\nEnjoy.' });
+    assert.strictEqual(sent[0].id, 'u', 'the updates channel, not where the command was typed');
+    assert.strictEqual(sent[0].content, '<@&a1>', 'the Announcements role is pinged');
+    assert.deepStrictEqual(sent[0].allowedMentions, { parse: [], roles: ['a1'] });
+    assert.strictEqual(sent[0].embeds[0].toJSON().description, 'Core is live.\nEnjoy.');
+    assert.ok(replies[0].includes('Posted in <#u>, pinging <@&a1>'));
+
+    await run({ title: 'Quiet one', message: 'x', ping: 'none' });
+    assert.strictEqual(sent[1].content, undefined);
+    await run({ title: 'Here', message: 'x', channel: here });
+    assert.strictEqual(sent[2].id, 'h', 'a channel named wins');
+    await run({ title: 'No updates channel', message: 'x', noUpdates: true });
+    assert.strictEqual(sent[3].id, 'h', 'without one, where the command was typed');
+    await run({ title: 'No role', message: 'x', noRole: true });
+    assert.strictEqual(sent[4].content, undefined, 'no role to ping: nobody is');
+    await run({ title: 'Everyone', message: 'x', ping: 'everyone' });
+    assert.ok(replies.at(-1).includes('cannot mention @everyone'), 'without Mention Everyone');
   });
 });

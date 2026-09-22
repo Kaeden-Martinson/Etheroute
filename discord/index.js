@@ -27,36 +27,49 @@ const log = require('./lib/log');
 const { createBot } = require('./bot');
 const { inviteUrl, INTENTS } = require('./lib/invite');
 
-const settings = config.read();
-const wrong = config.problems(settings);
-if (wrong.length) {
-  for (const line of wrong) log.error(line);
-  log.error('See discord/README.md for setup.');
-  process.exit(1);
+// Run on its own (npm run discord) this process is the bot and exits when it
+// cannot be one; required from a runner alongside the API, it only says so
+// and leaves the rest standing.
+const standalone = require.main === module;
+
+function main() {
+  const settings = config.read();
+  const wrong = config.problems(settings);
+  if (wrong.length) {
+    for (const line of wrong) log.error(line);
+    log.error(`See discord/README.md for setup.${standalone ? '' : ' The Discord bot is not running.'}`);
+    if (standalone) process.exit(1);
+    return null;
+  }
+
+  const bot = createBot(settings, { log });
+
+  log.info(`starting; intents ${INTENTS.join(', ')} (Server Members must be enabled in the portal)`);
+  if (settings.clientId) log.info(`invite link: ${inviteUrl(settings.clientId)}`);
+
+  bot.start().catch((err) => {
+    const text = String(err && err.message || err);
+    if (/disallowed intents/i.test(text)) log.error(`Discord refused a privileged intent. Developer Portal → your app → Bot → Privileged Gateway Intents → turn on "Server Members Intent"${settings.log.messageContent ? ' and "Message Content Intent" (or set DISCORD_MESSAGE_CONTENT=false)' : ''}.`);
+    else if (/token/i.test(text)) log.error('Discord rejected the token. Reset it in the portal (Bot → Reset Token) and put the new one in .env as DISCORD_BOT_TOKEN.');
+    else log.error('could not sign in:', err);
+    if (standalone) process.exit(1);
+  });
+
+  let closing = false;
+  async function shutdown(signal) {
+    if (closing) return;
+    closing = true;
+    log.info(`${signal}: signing out`);
+    try { await bot.stop(); } catch { /* already gone */ }
+    if (standalone) process.exit(0);
+  }
+  process.on('SIGINT', () => shutdown('SIGINT'));
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
+  if (standalone) {
+    process.on('unhandledRejection', (err) => log.error('unhandled rejection:', err));
+    process.on('uncaughtException', (err) => { log.error('uncaught exception:', err); shutdown('crash'); });
+  }
+  return bot;
 }
 
-const bot = createBot(settings, { log });
-
-log.info(`starting; intents ${INTENTS.join(', ')} (Server Members must be enabled in the portal)`);
-if (settings.clientId) log.info(`invite link: ${inviteUrl(settings.clientId)}`);
-
-bot.start().catch((err) => {
-  const text = String(err && err.message || err);
-  if (/disallowed intents/i.test(text)) log.error(`Discord refused a privileged intent. Developer Portal → your app → Bot → Privileged Gateway Intents → turn on "Server Members Intent"${settings.log.messageContent ? ' and "Message Content Intent" (or set DISCORD_MESSAGE_CONTENT=false)' : ''}.`);
-  else if (/token/i.test(text)) log.error('Discord rejected the token. Reset it in the portal (Bot → Reset Token) and put the new one in .env as DISCORD_BOT_TOKEN.');
-  else log.error('could not sign in:', err);
-  process.exit(1);
-});
-
-let closing = false;
-async function shutdown(signal) {
-  if (closing) return;
-  closing = true;
-  log.info(`${signal}: signing out`);
-  try { await bot.stop(); } catch { /* already gone */ }
-  process.exit(0);
-}
-process.on('SIGINT', () => shutdown('SIGINT'));
-process.on('SIGTERM', () => shutdown('SIGTERM'));
-process.on('unhandledRejection', (err) => log.error('unhandled rejection:', err));
-process.on('uncaughtException', (err) => { log.error('uncaught exception:', err); shutdown('crash'); });
+module.exports = main();

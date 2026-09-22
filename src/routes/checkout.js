@@ -900,6 +900,16 @@ async function settleNow(session) {
   // The receiving wallet's stored figure is behind the chain now.
   require('../services/BalanceWatcher').nudge([session.walletId]);
   notify(updated, paidEnough ? 'checkout.session.completed' : 'checkout.session.underpaid');
+  // ...and the merchant, on Telegram, if they linked it. Off the path.
+  require('../services/TelegramNotifyService').notifyPayment(updated, {
+    asset,
+    amount: payment.amount,
+    txHash: payment.txHash,
+    usdAmount: asset === (chains.has(session.chain) ? chains.get(session.chain).symbol : asset)
+      ? (Number.isFinite(session.usdAmount) && session.nativeAmount > 0 ? payment.amount * (session.usdAmount / session.nativeAmount) : null)
+      : payment.amount,
+    underpaid: !paidEnough,
+  });
 
   return updated;
 }

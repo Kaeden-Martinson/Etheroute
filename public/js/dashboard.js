@@ -1388,6 +1388,7 @@ async function confirmGenerateAPIKey() {
  */
 async function loadAccountPage() {
     const username = localStorage.getItem('username') || '—';
+    loadTelegramLink();
     const set = (id, value) => { const el = document.getElementById(id); if (el) el.textContent = value; };
     const when = (iso) => {
         if (!iso) return '—';
@@ -3017,3 +3018,164 @@ function syncThemeButton() {
 
 window.addEventListener('load', syncThemeButton);
 window.addEventListener('themechange', syncThemeButton);
+
+// ── Telegram notifications ───────────────────────────────────────────────
+// The link is made in two steps: this page mints a code and hands the
+// merchant a t.me link that opens the bot with it; the bot returns the code
+// to the API, which binds the chat to the account. Until it does, this page
+// asks the API every few seconds whether the link has landed.
+
+let telegramPoll = null;
+
+function telegramEls() {
+    return {
+        state: document.getElementById('telegramState'),
+        hint: document.getElementById('telegramHint'),
+        connect: document.getElementById('telegramConnectBtn'),
+        disconnect: document.getElementById('telegramDisconnectBtn'),
+        panel: document.getElementById('telegramLinkPanel'),
+        prefs: Array.from(document.querySelectorAll('.telegram-pref')),
+        paid: document.getElementById('telegramPaidToggle'),
+        payouts: document.getElementById('telegramPayoutsToggle'),
+    };
+}
+
+function stopTelegramPoll() {
+    if (telegramPoll) clearInterval(telegramPoll);
+    telegramPoll = null;
+}
+
+function paintTelegram(info) {
+    const el = telegramEls();
+    if (!el.state) return;
+    const label = el.state.firstChild;
+    if (!info || info.enabled === false) {
+        label.textContent = 'Not available on this server';
+        el.state.className = 'v dot dot--off';
+        el.hint.textContent = 'The server has no Telegram bot configured.';
+        el.connect.disabled = true;
+        el.connect.hidden = false;
+        el.disconnect.hidden = true;
+        el.prefs.forEach((p) => p.classList.add('hidden'));
+        return;
+    }
+    if (info.linked) {
+        label.textContent = info.telegramUsername ? `Connected to @${info.telegramUsername}` : 'Connected';
+        el.state.className = 'v dot';
+        el.hint.textContent = `Since ${new Date(info.linkedAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}. Write /stats to the bot for your numbers.`;
+        el.connect.hidden = true;
+        el.disconnect.hidden = false;
+        el.prefs.forEach((p) => p.classList.remove('hidden'));
+        el.paid.checked = Boolean(info.prefs && info.prefs.paid);
+        el.payouts.checked = Boolean(info.prefs && info.prefs.payouts);
+        el.paid.disabled = false;
+        el.payouts.disabled = false;
+        el.panel.classList.add('hidden');
+        el.panel.innerHTML = '';
+        stopTelegramPoll();
+    } else {
+        label.textContent = 'Not connected';
+        el.state.className = 'v dot dot--off';
+        el.hint.textContent = 'A message when a payment settles or a payout finishes, and /stats for your numbers.';
+        el.connect.disabled = false;
+        el.connect.hidden = false;
+        el.disconnect.hidden = true;
+        el.prefs.forEach((p) => p.classList.add('hidden'));
+    }
+}
+
+async function fetchTelegramLink() {
+    const res = await apiFetch(`${API_URL}/telegram`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('authToken')}` } });
+    if (!res.ok) throw new Error(await errorMessageFrom(res, 'Could not read the Telegram link.'));
+    return res.json();
+}
+
+async function loadTelegramLink() {
+    try {
+        paintTelegram(await fetchTelegramLink());
+    } catch (e) {
+        if (e.message === 'Session expired') return;
+        paintTelegram(null);
+    }
+}
+
+async function connectTelegram() {
+    const el = telegramEls();
+    el.connect.disabled = true;
+    try {
+        const res = await apiFetch(`${API_URL}/telegram/link-code`, { method: 'POST', headers: { 'Authorization': `Bearer ${localStorage.getItem('authToken')}` } });
+        if (!res.ok) throw new Error(await errorMessageFrom(res, 'Could not start the link.'));
+        const data = await res.json();
+        const minutes = Math.max(1, Math.round((new Date(data.expiresAt).getTime() - Date.now()) / 60000));
+        el.panel.innerHTML = `
+            <div class="tg-link">
+                <div><b>Open the bot and press Start.</b> It will link this account to your Telegram. The code is good for ${minutes} minutes.</div>
+                <div class="tg-link__row">
+                    ${data.url ? `<a class="btn-small btn-primary" href="${escapeHtml(data.url)}" target="_blank" rel="noopener">Open in Telegram</a>` : ''}
+                    <span>or send the bot${data.botUsername ? ` <b>@${escapeHtml(data.botUsername)}</b>` : ''}: <code>/start link_${escapeHtml(data.code)}</code></span>
+                </div>
+                <div class="tg-link__code" aria-label="Link code">${escapeHtml(data.code)}</div>
+                <div id="telegramWaiting">Waiting for Telegram&hellip;</div>
+            </div>`;
+        el.panel.classList.remove('hidden');
+        // ask every three seconds, for as long as the code lives
+        stopTelegramPoll();
+        const until = new Date(data.expiresAt).getTime();
+        telegramPoll = setInterval(async () => {
+            if (Date.now() > until) {
+                stopTelegramPoll();
+                const w = document.getElementById('telegramWaiting');
+                if (w) w.textContent = 'That code expired. Press Connect for a new one.';
+                el.connect.disabled = false;
+                return;
+            }
+            try {
+                const info = await fetchTelegramLink();
+                if (info.linked) { paintTelegram(info); showToast(`Telegram connected${info.telegramUsername ? ` to @${info.telegramUsername}` : ''}.`); }
+            } catch { /* try again next tick */ }
+        }, 3000);
+    } catch (e) {
+        if (e.message === 'Session expired') return;
+        showToast(e.message, 'error');
+        el.connect.disabled = false;
+    }
+}
+
+async function disconnectTelegram() {
+    const sure = await confirmDialog({ title: 'Disconnect Telegram?', message: 'The bot will stop messaging you about payments and payouts. You can connect again any time.', confirmText: 'Disconnect', danger: true });
+    if (!sure) return;
+    try {
+        const res = await apiFetch(`${API_URL}/telegram/link`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${localStorage.getItem('authToken')}` } });
+        if (!res.ok) throw new Error(await errorMessageFrom(res, 'Could not disconnect.'));
+        stopTelegramPoll();
+        paintTelegram(await fetchTelegramLink());
+        showToast('Telegram disconnected.');
+    } catch (e) {
+        if (e.message === 'Session expired') return;
+        showToast(e.message, 'error');
+    }
+}
+
+async function toggleTelegramPref(key, event) {
+    const el = telegramEls();
+    const input = key === 'paid' ? el.paid : el.payouts;
+    if (!input) return;
+    input.disabled = true;
+    try {
+        const res = await apiFetch(`${API_URL}/telegram/preferences`, {
+            method: 'PUT',
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('authToken')}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ [key]: input.checked }),
+        });
+        if (!res.ok) throw new Error(await errorMessageFrom(res, 'Could not save that.'));
+        const info = await res.json();
+        input.checked = Boolean(info.prefs && info.prefs[key]);
+    } catch (e) {
+        if (e.message === 'Session expired') return;
+        input.checked = !input.checked;
+        showToast(e.message, 'error');
+    } finally {
+        input.disabled = false;
+    }
+}
+
