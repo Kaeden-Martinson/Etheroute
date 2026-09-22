@@ -68,15 +68,7 @@ function label(action) {
 
 /** A copy of the card to the mod-log channel, if the server has one. Never throws. */
 async function modLog(ctx, guild, card) {
-  const channel = ctx.found && ctx.found.channels && ctx.found.channels.log;
-  if (!channel) return false;
-  try {
-    await channel.send({ embeds: [card] });
-    return true;
-  } catch (err) {
-    ctx.log.warn('mod-log post failed:', err.message);
-    return false;
-  }
+  return Boolean(await require('./modlog').post(ctx, card));
 }
 
 /** A DM to the person acted on. Closed DMs are common; failure is fine. */

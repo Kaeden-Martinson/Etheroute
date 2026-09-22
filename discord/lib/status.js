@@ -7,9 +7,12 @@
  * read from the API on the same box (GET /api/status and
  * /api/status/chains, both public). When the picture changes - a service
  * degrades, a network goes down or comes back, the API stops answering -
- * a short note is posted under it and the Status role is pinged. Networks
- * merely degraded (some endpoints not answering) are listed but do not
- * count as a change, or the pings would never stop.
+ * a short note is posted under it. The Status Updates role is pinged for
+ * the changes that matter: a platform service, the API itself, or one of
+ * the main networks (DISCORD_MAIN_CHAINS - Bitcoin, Ethereum, Solana and
+ * the like) going down or coming back. One of the sixty other networks
+ * going down is noted without a ping; networks merely degraded (some
+ * endpoints not answering) are listed and are not a change at all.
  */
 
 const { embed, COLORS } = require('./embeds');
@@ -78,7 +81,30 @@ function signature(summary) {
 }
 
 const ts = (iso, style = 'R') => (iso ? `<t:${Math.floor(new Date(iso).getTime() / 1000)}:${style}>` : 'unknown');
-const chainList = (arr) => arr.map((c) => `${c.name} (${c.code})`).join(', ');
+const isMain = (config, code) => config.status.mainChains.includes(String(code || '').toUpperCase());
+/** Main networks first and in bold, the rest after. */
+const chainList = (arr, config) => arr
+  .slice()
+  .sort((a, b) => Number(isMain(config, b.code)) - Number(isMain(config, a.code)))
+  .map((c) => (config && isMain(config, c.code) ? `**${c.name} (${c.code})**` : `${c.name} (${c.code})`))
+  .join(', ');
+
+/** What changed between two pictures, and whether it deserves a ping. */
+function diff(prev, next, config) {
+  const was = new Set((prev && prev.down || []).map((c) => c.code));
+  const now = new Set(next.down.map((c) => c.code));
+  const wentDown = next.down.filter((c) => !was.has(c.code));
+  const cameBack = (prev && prev.down || []).filter((c) => !now.has(c.code));
+  const prevOff = new Set((prev && prev.platform || []).filter((s) => s.status !== 'operational').map((s) => s.key));
+  const nowOff = new Set(next.platform.filter((s) => s.status !== 'operational').map((s) => s.key));
+  const servicesOff = next.platform.filter((s) => nowOff.has(s.key) && !prevOff.has(s.key)).map((s) => s.label);
+  const servicesOn = (prev && prev.platform || []).filter((s) => prevOff.has(s.key) && !nowOff.has(s.key)).map((s) => s.label);
+  const apiFlipped = Boolean(prev) && Boolean(prev.ok) !== Boolean(next.ok);
+  const mainDown = wentDown.filter((c) => isMain(config, c.code));
+  const mainBack = cameBack.filter((c) => isMain(config, c.code));
+  const ping = apiFlipped || servicesOff.length > 0 || servicesOn.length > 0 || mainDown.length > 0 || mainBack.length > 0;
+  return { wentDown, cameBack, servicesOff, servicesOn, apiFlipped, mainDown, mainBack, ping };
+}
 
 function statusEmbed(summary, config) {
   const look = LOOK[summary.overall] || LOOK.degraded;
@@ -91,8 +117,8 @@ function statusEmbed(summary, config) {
     } else {
       fields.push({ name: 'Networks', value: `⚠️ not reported${summary.chainsError ? ` (${summary.chainsError})` : ''}`, inline: false });
     }
-    if (summary.down.length) fields.push({ name: 'Down', value: chainList(summary.down), inline: false });
-    if (summary.degraded.length) fields.push({ name: 'Degraded (some endpoints not answering)', value: chainList(summary.degraded), inline: false });
+    if (summary.down.length) fields.push({ name: 'Down', value: chainList(summary.down, config), inline: false });
+    if (summary.degraded.length) fields.push({ name: 'Degraded (some endpoints not answering)', value: chainList(summary.degraded, config), inline: false });
     if (summary.events.length) {
       fields.push({ name: 'Recent changes', value: summary.events.map((e) => `${e.name || e.chain}: ${e.component} ${e.from} → ${e.to} ${ts(e.at)}`).join('\n'), inline: false });
     }
@@ -113,17 +139,14 @@ function statusEmbed(summary, config) {
 /** The note under the embed when the picture changes. */
 function changeEmbed(prev, next, config) {
   const look = LOOK[next.overall] || LOOK.degraded;
-  const was = new Set((prev && prev.down || []).map((c) => c.code));
-  const now = new Set(next.down.map((c) => c.code));
-  const wentDown = next.down.filter((c) => !was.has(c.code));
-  const cameBack = (prev && prev.down || []).filter((c) => !now.has(c.code));
-  const prevOff = new Set((prev && prev.platform || []).filter((s) => s.status !== 'operational').map((s) => s.key));
-  const nowOff = new Set(next.platform.filter((s) => s.status !== 'operational').map((s) => s.key));
-  const servicesOff = next.platform.filter((s) => nowOff.has(s.key) && !prevOff.has(s.key)).map((s) => s.label);
-  const servicesOn = (prev && prev.platform || []).filter((s) => prevOff.has(s.key) && !nowOff.has(s.key)).map((s) => s.label);
+  const { wentDown, cameBack, servicesOff, servicesOn, mainDown, mainBack } = diff(prev, next, config);
+  const headline = [
+    ...mainDown.map((c) => `🔴 **${c.name} (${c.code}) is down.**`),
+    ...mainBack.map((c) => `🟢 **${c.name} (${c.code}) is back up.**`),
+  ].join('\n');
   const fields = [
-    wentDown.length ? { name: 'Went down', value: chainList(wentDown), inline: false } : null,
-    cameBack.length ? { name: 'Back up', value: chainList(cameBack), inline: false } : null,
+    wentDown.length ? { name: 'Went down', value: chainList(wentDown, config), inline: false } : null,
+    cameBack.length ? { name: 'Back up', value: chainList(cameBack, config), inline: false } : null,
     servicesOff.length ? { name: 'Degraded', value: servicesOff.join(', '), inline: false } : null,
     servicesOn.length ? { name: 'Recovered', value: servicesOn.join(', '), inline: false } : null,
     !next.ok ? { name: 'Problem', value: next.error || 'no answer', inline: false } : null,
@@ -131,6 +154,7 @@ function changeEmbed(prev, next, config) {
   ].filter(Boolean);
   return embed({
     title: `${look.glyph} ${prev ? `${prev.label} → ` : ''}${next.label}`,
+    description: headline || undefined,
     color: look.color,
     fields,
     footer: `${config.brand.name} status`,
@@ -173,17 +197,20 @@ async function refresh(ctx, opts = {}) {
   if (changed || !before.signature) {
     ctx.store.update('status', (s) => { s.signature = sig; s.changedAt = new Date().toISOString(); s.summary = { overall: summary.overall, label: summary.label, ok: summary.ok, error: summary.error, down: summary.down, platform: summary.platform }; });
   }
+  let pinged = false;
   if (changed) {
     const role = ctx.found.roles.status;
     const channel = ctx.found.channels.status;
+    const what = diff(before.summary, summary, ctx.config);
+    pinged = Boolean(role && what.ping);
     await channel.send({
-      content: role ? role.toString() : undefined,
+      content: pinged ? role.toString() : undefined,
       embeds: [changeEmbed(before.summary, summary, ctx.config)],
-      allowedMentions: { roles: role ? [role.id] : [] },
+      allowedMentions: { roles: pinged ? [role.id] : [] },
     }).catch((err) => ctx.log.warn('status change post failed:', err.message));
-    ctx.log.warn(`status changed: ${before.summary ? before.summary.label : '?'} → ${summary.label}`);
+    ctx.log.warn(`status changed: ${before.summary ? before.summary.label : '?'} → ${summary.label}${pinged ? ' (pinged)' : ''}`);
   }
-  return { summary, changed };
+  return { summary, changed, pinged };
 }
 
 let timer = null;
@@ -198,4 +225,4 @@ function stop() {
   timer = null;
 }
 
-module.exports = { LOOK, gather, summarise, signature, statusEmbed, changeEmbed, ensureMessage, refresh, start, stop };
+module.exports = { LOOK, gather, summarise, signature, diff, isMain, statusEmbed, changeEmbed, ensureMessage, refresh, start, stop };

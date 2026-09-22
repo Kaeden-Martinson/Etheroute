@@ -14,7 +14,7 @@ const assert = require('node:assert');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { PermissionFlagsBits, PermissionsBitField, ChannelType } = require('discord.js');
+const { PermissionFlagsBits, PermissionsBitField, ChannelType, AuditLogEvent } = require('discord.js');
 
 const config = require('../discord/config');
 const guildLib = require('../discord/lib/guild');
@@ -26,6 +26,8 @@ const welcome = require('../discord/lib/welcome');
 const giveaways = require('../discord/lib/giveaways');
 const roles = require('../discord/lib/roles');
 const status = require('../discord/lib/status');
+const modlog = require('../discord/lib/modlog');
+const tickets = require('../discord/lib/tickets');
 const { Store } = require('../discord/lib/store');
 const { embed, COLORS } = require('../discord/lib/embeds');
 const { inviteUrl, permissions, NEEDED } = require('../discord/lib/invite');
@@ -61,6 +63,13 @@ describe('The config', () => {
     assert.strictEqual(config.read({ PORT: '80' }).status.apiUrl, 'http://127.0.0.1:80');
     assert.strictEqual(config.read({ DISCORD_API_URL: 'https://etheroute.com/' }).status.apiUrl, 'https://etheroute.com');
     assert.strictEqual(config.read({ DISCORD_STATUS_INTERVAL_MS: '5' }).status.intervalMs, 60000, 'never faster than a minute');
+    assert.deepStrictEqual(c.status.mainChains.slice(0, 4), ['ETH', 'BTC', 'SOL', 'LTC']);
+    assert.deepStrictEqual(config.read({ DISCORD_MAIN_CHAINS: 'btc, eth' }).status.mainChains, ['BTC', 'ETH']);
+    assert.strictEqual(c.log.messageContent, false);
+    assert.strictEqual(config.read({ DISCORD_MESSAGE_CONTENT: 'yes' }).log.messageContent, true);
+    assert.strictEqual(c.roles.support, 'Support,Staff,Moderator,Mod,Team');
+    assert.deepStrictEqual(c.tickets, { category: 'Tickets', max: 45 });
+    assert.strictEqual(config.read({ DISCORD_TICKET_MAX: '900' }).tickets.max, 50, 'a category holds fifty channels');
     assert.strictEqual(c.antibot.action, 'kick');
     assert.ok(c.dataFile.endsWith(path.join('data', 'discord.json')));
     const custom = config.read({ DISCORD_BOT_TOKEN: ' t ', DISCORD_GUILD_ID: '1551674888060936323', DISCORD_ANTIBOT_ACTION: 'BAN', DISCORD_VERIFY_CHANNEL: '123456789012345678', DATA_DIR: '/x' });
@@ -113,11 +122,11 @@ describe('Finding the furniture', () => {
 
   test('resolveAll names every purpose, found or not', () => {
     const found = guildLib.resolveAll(g, config.read({}));
-    assert.deepStrictEqual(Object.keys(found.channels), ['welcome', 'verify', 'antibot', 'log', 'rules', 'status', 'roles']);
+    assert.deepStrictEqual(Object.keys(found.channels), ['welcome', 'verify', 'antibot', 'log', 'rules', 'status', 'roles', 'support', 'transcripts']);
     assert.strictEqual(found.channels.welcome.id, '1');
     assert.strictEqual(found.channels.antibot.id, '3');
     assert.strictEqual(found.channels.status, null);
-    assert.deepStrictEqual(Object.keys(found.roles), ['member', 'merchant', 'buyer', 'announcements', 'status']);
+    assert.deepStrictEqual(Object.keys(found.roles), ['member', 'merchant', 'buyer', 'announcements', 'status', 'support']);
     assert.strictEqual(found.roles.member.id, 'r2');
     assert.strictEqual(found.roles.merchant, null);
   });
@@ -417,7 +426,7 @@ describe('The commands', () => {
 
   test('all of the usual ones are there, each once, each with a handler', () => {
     const names = loaded.list.map((c) => c.name);
-    for (const want of ['kick', 'ban', 'unban', 'timeout', 'untimeout', 'purge', 'warn', 'warnings', 'slowmode', 'lock', 'unlock', 'role', 'nick', 'giveaway', 'panel', 'announce', 'status', 'userinfo', 'serverinfo', 'avatar', 'ping', 'help']) {
+    for (const want of ['kick', 'ban', 'unban', 'timeout', 'untimeout', 'purge', 'warn', 'warnings', 'slowmode', 'lock', 'unlock', 'role', 'nick', 'giveaway', 'panel', 'announce', 'status', 'support', 'ticket', 'userinfo', 'serverinfo', 'avatar', 'ping', 'help']) {
       assert.ok(names.includes(want), `/${want}`);
     }
     assert.strictEqual(new Set(names).size, names.length);
@@ -448,7 +457,7 @@ describe('The commands', () => {
       assert.strictEqual(c.requires, perm, `/${name} requires`);
       assert.strictEqual(c.data.toJSON().default_member_permissions, perm.toString(), `/${name} default`);
     }
-    for (const name of ['ping', 'help', 'userinfo', 'serverinfo', 'avatar', 'status']) {
+    for (const name of ['ping', 'help', 'userinfo', 'serverinfo', 'avatar', 'status', 'support', 'ticket']) {
       assert.strictEqual(loaded.byName.get(name).requires, undefined, `/${name} is for everyone`);
     }
   });
@@ -628,14 +637,14 @@ describe('The status embed', () => {
     assert.deepStrictEqual(e.fields.map((f) => f.name), ['API', 'Wallet Sync', 'Checkouts', 'Payout Engine', 'Networks (4)', 'Degraded (some endpoints not answering)', 'Recent changes']);
     assert.strictEqual(e.fields[0].value, '✅ Operational');
     assert.strictEqual(e.fields[4].value, '🟢 63 up · 🟠 2 degraded · 🔴 0 down');
-    assert.strictEqual(e.fields[5].value, 'Solana (SOL), Core (CORE)');
+    assert.strictEqual(e.fields[5].value, '**Solana (SOL)**, Core (CORE)', 'a main network in bold, first');
     assert.ok(e.fields[6].value.startsWith('Base: endpoints 3/3 → 2/3 <t:'));
     assert.strictEqual(e.footer.text, 'Updates every 5 min');
 
     const down = status.statusEmbed(status.summarise({ platform: platform(), chains: chains({ chains: [{ code: 'SOL', name: 'Solana', status: 'down' }], counts: { up: 64, degraded: 0, down: 1, unknown: 0 }, events: [] }) }), cfg).toJSON();
     assert.strictEqual(down.title, '🟠 Etheroute status - Partial outage');
     assert.strictEqual(down.color, COLORS.warn);
-    assert.ok(down.fields.some((f) => f.name === 'Down' && f.value === 'Solana (SOL)'));
+    assert.ok(down.fields.some((f) => f.name === 'Down' && f.value === '**Solana (SOL)**'));
 
     const gone = status.statusEmbed(status.summarise({ platform: null, chains: null, error: 'ECONNREFUSED' }), cfg).toJSON();
     assert.strictEqual(gone.title, '🔴 Etheroute status - API unreachable');
@@ -648,10 +657,15 @@ describe('The status embed', () => {
     const after = status.summarise({ platform: platform({ overallStatus: 'degraded', overallStatusLabel: 'Partial outage', services: [{ key: 'API', label: 'API', status: 'operational', statusLabel: 'Operational' }, { key: 'PAYOUTS', label: 'Payout Engine', status: 'degraded', statusLabel: 'Degraded' }] }), chains: chains({ chains: [{ code: 'SOL', name: 'Solana', status: 'down' }] }) });
     const e = status.changeEmbed(before, after, cfg).toJSON();
     assert.strictEqual(e.title, '🟠 Fully operational → Partial outage');
-    assert.deepStrictEqual(e.fields.map((f) => [f.name, f.value]), [['Went down', 'Solana (SOL)'], ['Degraded', 'Payout Engine']]);
+    assert.strictEqual(e.description, '🔴 **Solana (SOL) is down.**', 'a main network gets the headline');
+    assert.deepStrictEqual(e.fields.map((f) => [f.name, f.value]), [['Went down', '**Solana (SOL)**'], ['Degraded', 'Payout Engine']]);
     const back = status.changeEmbed(after, before, cfg).toJSON();
     assert.strictEqual(back.title, '🟢 Partial outage → Fully operational');
-    assert.deepStrictEqual(back.fields.map((f) => [f.name, f.value]), [['Back up', 'Solana (SOL)'], ['Recovered', 'Payout Engine']]);
+    assert.strictEqual(back.description, '🟢 **Solana (SOL) is back up.**');
+    assert.deepStrictEqual(back.fields.map((f) => [f.name, f.value]), [['Back up', '**Solana (SOL)**'], ['Recovered', 'Payout Engine']]);
+    const minor = status.changeEmbed(before, status.summarise({ platform: platform(), chains: chains({ chains: [{ code: 'CORE', name: 'Core', status: 'down' }] }) }), cfg).toJSON();
+    assert.strictEqual(minor.description, undefined, 'a minor network gets no headline');
+    assert.deepStrictEqual(minor.fields.map((f) => [f.name, f.value]), [['Went down', 'Core (CORE)']]);
     const gone = status.changeEmbed(before, status.summarise({ platform: null, error: 'timeout' }), cfg).toJSON();
     assert.strictEqual(gone.fields[0].name, 'Problem');
     const answering = status.changeEmbed(status.summarise({ platform: null, error: 'timeout' }), before, cfg).toJSON();
@@ -686,6 +700,7 @@ describe('The status embed', () => {
     bodies = { platform: platform(), chains: chains({ chains: [{ code: 'SOL', name: 'Solana', status: 'down' }], counts: { up: 64, degraded: 0, down: 1, unknown: 0 } }) };
     r = await status.refresh(ctx, opts);
     assert.strictEqual(r.changed, true);
+    assert.strictEqual(r.pinged, true, 'Solana is a main network');
     assert.strictEqual(sent.length, 2, 'a note under the embed');
     assert.strictEqual(sent[1].content, '<@&s1>');
     assert.deepStrictEqual(sent[1].allowedMentions, { roles: ['s1'] });
@@ -695,11 +710,304 @@ describe('The status embed', () => {
     bodies = { platform: platform(), chains: chains({ chains: [{ code: 'SOL', name: 'Solana', status: 'degraded' }] }) };
     r = await status.refresh(ctx, opts);
     assert.strictEqual(r.changed, true, 'down → degraded is a recovery');
+    assert.strictEqual(r.pinged, true);
     assert.strictEqual(sent[2].embeds[0].toJSON().fields[0].name, 'Back up');
     r = await status.refresh(ctx, opts);
     assert.strictEqual(r.changed, false, 'degraded staying degraded is not news');
     assert.strictEqual(sent.length, 3);
 
+    bodies = { platform: platform(), chains: chains({ chains: [{ code: 'CORE', name: 'Core', status: 'down' }] }) };
+    r = await status.refresh(ctx, opts);
+    assert.strictEqual(r.changed, true, 'a minor network down is noted');
+    assert.strictEqual(r.pinged, false, 'but nobody is pinged for it');
+    assert.strictEqual(sent[3].content, undefined);
+    assert.deepStrictEqual(sent[3].allowedMentions, { roles: [] });
+
+    bodies = { platform: platform({ overallStatus: 'degraded', overallStatusLabel: 'Partial outage', services: [{ key: 'API', label: 'API', status: 'degraded', statusLabel: 'Degraded' }] }), chains: chains({ chains: [{ code: 'CORE', name: 'Core', status: 'down' }] }) };
+    r = await status.refresh(ctx, opts);
+    assert.strictEqual(r.pinged, true, 'a platform service always is');
+
+    bodies = { platform: new Error('ECONNREFUSED'), chains: new Error('ECONNREFUSED') };
+    r = await status.refresh(ctx, opts);
+    assert.strictEqual(r.pinged, true, 'as is the API going away');
+    assert.strictEqual(sent.at(-1).embeds[0].toJSON().title, '🔴 Partial outage → API unreachable');
+
     assert.deepStrictEqual(await status.refresh({ ...ctx, found: { channels: {}, roles: {} } }, opts).then((x) => x.changed), false, 'no channel: nothing to edit');
+  });
+});
+
+describe('What decides a ping', () => {
+  const cfg = config.read({});
+  const pic = (down = [], services = []) => ({ ok: true, down: down.map((code) => ({ code, name: code })), platform: services.map((key) => ({ key, label: key, status: 'degraded' })) });
+  test('a main network, a platform service or the API; not one of the sixty others', () => {
+    assert.strictEqual(status.diff(pic(), pic(['BTC']), cfg).ping, true);
+    assert.strictEqual(status.diff(pic(['BTC']), pic(), cfg).ping, true);
+    assert.strictEqual(status.diff(pic(), pic(['CORE']), cfg).ping, false);
+    assert.strictEqual(status.diff(pic(['CORE']), pic(['CORE', 'HEMI']), cfg).ping, false);
+    assert.strictEqual(status.diff(pic(), pic([], ['PAYOUTS']), cfg).ping, true);
+    assert.strictEqual(status.diff(pic([], ['PAYOUTS']), pic(), cfg).ping, true);
+    assert.strictEqual(status.diff(pic(), { ok: false, down: [], platform: [] }, cfg).ping, true);
+    assert.strictEqual(status.diff(null, pic(['CORE']), cfg).ping, false, 'the first picture pings for nothing');
+    assert.deepStrictEqual(status.diff(pic(), pic(['BTC', 'CORE']), cfg).mainDown.map((c) => c.code), ['BTC']);
+    assert.strictEqual(status.isMain(config.read({ DISCORD_MAIN_CHAINS: 'CORE' }), 'core'), true, 'the list is the operator\'s');
+  });
+});
+
+describe('The mod-log', () => {
+  modlog.AUDIT.delayMs = 0;
+  const log = () => { const ch = channel('log', 'mod-log'); ch.sent = []; ch.send = async (p) => { ch.sent.push(p); return { id: 'x' }; }; return ch; };
+  const audit = (entries) => async ({ type }) => ({ entries: new Map(entries.filter((e) => e.type === type).map((e, i) => [String(i), { ...e, createdTimestamp: e.createdTimestamp || Date.now() }])) });
+  const user = (id, tag, bot = false) => ({ id, tag, username: tag.split('#')[0], bot, toString: () => `<@${id}>`, displayAvatarURL: () => `https://cdn/${id}.png`, createdTimestamp: Date.now() - 400 * 86400000 });
+  const guildWith = (entries = []) => ({ id: 'guild', memberCount: 41, members: { me: { permissions: new PermissionsBitField([PermissionFlagsBits.ViewAuditLog]) } }, fetchAuditLogs: audit(entries) });
+  const ctxWith = (g, over = {}) => ({ config: config.read({ DISCORD_GUILD_ID: 'guild', ...over }), client: { user: { id: 'bot' } }, log: quiet, found: { channels: { log: log() }, roles: {} } });
+
+  test('who did it, from the audit log: the newest matching entry within a few seconds, none when the bot may not look', async () => {
+    const g = guildWith([
+      { type: AuditLogEvent.MessageDelete, targetId: 'u', executor: user('mod', 'mod#1'), createdTimestamp: Date.now() - 2000, extra: { channel: { id: 'c1' } } },
+      { type: AuditLogEvent.MemberKick, targetId: 'u', executor: user('mod', 'mod#1'), reason: 'spam', createdTimestamp: Date.now() - 60000 },
+    ]);
+    const found = await modlog.executorFor(g, AuditLogEvent.MessageDelete, { targetId: 'u' });
+    assert.strictEqual(found.executor.id, 'mod');
+    assert.strictEqual(await modlog.executorFor(g, AuditLogEvent.MessageDelete, { targetId: 'someone-else' }), null);
+    assert.strictEqual(await modlog.executorFor(g, AuditLogEvent.MemberKick, { targetId: 'u' }), null, 'a minute old is not this kick');
+    assert.strictEqual(await modlog.executorFor(g, AuditLogEvent.MessageDelete, { targetId: 'u', match: (e) => e.extra.channel.id === 'c2' }), null);
+    const blind = guildWith([]);
+    blind.members.me.permissions = new PermissionsBitField([]);
+    assert.strictEqual(await modlog.executorFor(blind, AuditLogEvent.MessageDelete, {}), null);
+
+    // Discord folds a moderator's repeated deletions into one ageing entry whose count grows
+    const folded = { id: 'e1', type: AuditLogEvent.MessageDelete, targetId: 'u', executor: user('mod', 'mod#1'), createdTimestamp: Date.now() - 2000, extra: { channel: { id: 'c1' }, count: 1 } };
+    const g2 = guildWith([folded]);
+    assert.ok(await modlog.executorFor(g2, AuditLogEvent.MessageDelete, { targetId: 'u' }), 'fresh: matched');
+    folded.createdTimestamp = Date.now() - 120000;
+    assert.strictEqual(await modlog.executorFor(g2, AuditLogEvent.MessageDelete, { targetId: 'u' }), null, 'two minutes old with the same count: not this one');
+    folded.extra.count = 2;
+    assert.ok(await modlog.executorFor(g2, AuditLogEvent.MessageDelete, { targetId: 'u' }), 'the count grew: it is');
+    assert.strictEqual(await modlog.executorFor(g2, AuditLogEvent.MessageDelete, { targetId: 'u' }), null, 'and once it has been read, not again');
+  });
+
+  test('a deleted message: author, channel, who deleted it, and the content when the intent allows', async () => {
+    const g = guildWith([{ type: AuditLogEvent.MessageDelete, targetId: 'u', executor: user('mod', 'mod#1'), extra: { channel: { id: 'c1' } } }]);
+    const ctx = ctxWith(g);
+    const msg = { guild: g, channelId: 'c1', author: user('u', 'them#1'), content: 'hello there', partial: false, attachments: new Map() };
+    assert.strictEqual(await modlog.onMessageDelete(msg, ctx), true);
+    const card = ctx.found.channels.log.sent[0].embeds[0].toJSON();
+    assert.strictEqual(card.title, '🗑️ Message deleted');
+    assert.deepStrictEqual(card.fields.map((f) => f.name), ['Author', 'Channel', 'Deleted by', 'Content']);
+    assert.strictEqual(card.fields[2].value, 'mod#1 (mod)');
+    assert.strictEqual(card.fields[3].value, 'hello there');
+
+    const g2 = guildWith([]);
+    const quietCtx = ctxWith(g2);
+    await modlog.onMessageDelete({ ...msg, guild: g2, content: '' }, quietCtx);
+    const noContent = quietCtx.found.channels.log.sent[0].embeds[0].toJSON();
+    assert.strictEqual(noContent.fields[2].value, 'the author, or unknown');
+    assert.ok(noContent.fields[3].value.includes('Message Content intent'));
+
+    const g3 = guildWith([]);
+    const partialCtx = ctxWith(g3);
+    await modlog.onMessageDelete({ ...msg, guild: g3, partial: true, content: null }, partialCtx);
+    assert.ok(partialCtx.found.channels.log.sent[0].embeds[0].toJSON().fields[3].value.includes('not cached'));
+  });
+
+  test('what the bot did itself, bots\' messages, the log channel and other servers are let go', async () => {
+    const byBot = guildWith([{ type: AuditLogEvent.MessageDelete, targetId: 'u', executor: user('bot', 'bot#0', true), extra: { channel: { id: 'c1' } } }]);
+    const ctx = ctxWith(byBot);
+    const msg = { guild: byBot, channelId: 'c1', author: user('u', 'them#1'), content: 'x', attachments: new Map() };
+    assert.strictEqual(await modlog.onMessageDelete(msg, ctx), false, 'the anti-bot trap or /purge already said so');
+    assert.strictEqual(await modlog.onMessageDelete({ ...msg, author: user('b', 'other#0', true) }, ctx), false);
+    assert.strictEqual(await modlog.onMessageDelete({ ...msg, channelId: 'log' }, ctx), false);
+    assert.strictEqual(await modlog.onMessageDelete({ ...msg, guild: { id: 'elsewhere' } }, ctx), false);
+    assert.strictEqual(ctx.found.channels.log.sent.length, 0);
+    assert.strictEqual(await modlog.onMessageUpdate({ content: 'same', partial: false }, { guild: byBot, author: user('u', 'a#1'), content: 'same', partial: false }, ctx), false, 'an unfurl is not an edit');
+  });
+
+  test('joins flag a young account; a leave and a kick are told apart; a hand ban names the moderator', async () => {
+    const g = guildWith([
+      { type: AuditLogEvent.MemberKick, targetId: 'k', executor: user('mod', 'mod#1'), reason: 'rude' },
+      { type: AuditLogEvent.MemberBanAdd, targetId: 'b', executor: user('mod', 'mod#1'), reason: 'raid' },
+    ]);
+    const ctx = ctxWith(g);
+    const sent = ctx.found.channels.log.sent;
+    const fresh = user('n', 'new#1'); fresh.createdTimestamp = Date.now() - 86400000;
+    await modlog.onMemberAdd({ guild: g, user: fresh, toString: () => '<@n>' }, ctx);
+    assert.strictEqual(sent[0].embeds[0].toJSON().title, '📥 Member joined');
+    assert.ok(sent[0].embeds[0].toJSON().fields[1].value.includes('under a week old'));
+    assert.strictEqual(sent[0].embeds[0].toJSON().color, COLORS.warn);
+
+    await modlog.onMemberRemove({ guild: g, user: user('l', 'left#1'), roles: { cache: new Map() }, joinedTimestamp: Date.now() - 86400000 }, ctx);
+    assert.strictEqual(sent[1].embeds[0].toJSON().title, '📤 Member left');
+    await modlog.onMemberRemove({ guild: g, user: user('k', 'kicked#1'), roles: { cache: new Map() } }, ctx);
+    const kick = sent[2].embeds[0].toJSON();
+    assert.strictEqual(kick.title, '👢 Member kicked');
+    assert.strictEqual(kick.fields[1].value, 'mod#1 (mod)');
+    assert.strictEqual(kick.fields[2].value, 'rude');
+    await modlog.onBanAdd({ guild: g, user: user('b', 'banned#1') }, ctx);
+    const ban = sent[3].embeds[0].toJSON();
+    assert.strictEqual(ban.title, '🔨 Member banned');
+    assert.strictEqual(ban.fields[2].value, 'raid');
+    assert.strictEqual(await modlog.onMemberRemove({ guild: g, user: user('b', 'banned#1'), roles: { cache: new Map() } }, ctx), false, 'a ban is not also a leave');
+  });
+
+  test('roles, nickname and timeout changes by hand are cards; the roles panel\'s own changes are not', async () => {
+    const r1 = role('r1', 'Helper', 2);
+    const g = guildWith([
+      { type: AuditLogEvent.MemberRoleUpdate, targetId: 'u', executor: user('mod', 'mod#1') },
+      { type: AuditLogEvent.MemberUpdate, targetId: 'u', executor: user('mod', 'mod#1'), reason: 'cool off', changes: [{ key: 'communication_disabled_until' }] },
+    ]);
+    const ctx = ctxWith(g);
+    const sent = ctx.found.channels.log.sent;
+    const m = (over) => ({ id: 'u', guild: g, user: user('u', 'them#1'), toString: () => '<@u>', roles: { cache: new Map() }, nickname: null, communicationDisabledUntilTimestamp: null, ...over });
+    await modlog.onMemberUpdate(m({}), m({ roles: { cache: new Map([['r1', r1]]) }, nickname: 'Neo', communicationDisabledUntilTimestamp: Date.now() + 600000 }), ctx);
+    assert.deepStrictEqual(sent.map((p) => p.embeds[0].toJSON().title), ['🏷️ Roles changed', '✏️ Nickname changed', '⏳ Member timed out']);
+    assert.strictEqual(sent[0].embeds[0].toJSON().fields[2].value, '<@&r1>');
+    assert.strictEqual(sent[1].embeds[0].toJSON().fields[2].value, 'them → Neo');
+    assert.strictEqual(sent[2].embeds[0].toJSON().fields[3].value, 'cool off');
+
+    const panel = guildWith([{ type: AuditLogEvent.MemberRoleUpdate, targetId: 'u', executor: user('bot', 'bot#0', true) }]);
+    const quietCtx = ctxWith(panel);
+    await modlog.onMemberUpdate(m({ guild: panel }), m({ guild: panel, roles: { cache: new Map([['r1', r1]]) } }), quietCtx);
+    assert.strictEqual(quietCtx.found.channels.log.sent.length, 0);
+  });
+
+  test('channels and roles made, removed or renamed', async () => {
+    const g = guildWith([{ type: AuditLogEvent.ChannelDelete, targetId: 'c9', executor: user('mod', 'mod#1') }]);
+    const ctx = ctxWith(g);
+    const sent = ctx.found.channels.log.sent;
+    await modlog.onChannelDelete({ guild: g, id: 'c9', name: 'general', type: ChannelType.GuildText }, ctx);
+    assert.strictEqual(sent[0].embeds[0].toJSON().title, '➖ text channel deleted');
+    assert.strictEqual(sent[0].embeds[0].toJSON().fields[1].value, 'mod#1 (mod)');
+    await modlog.onChannelUpdate({ name: 'a' }, { guild: g, id: 'c1', name: 'a', toString: () => '<#c1>' }, ctx);
+    assert.strictEqual(sent.length, 1, 'a permission change is not a rename');
+    await modlog.onRoleCreate({ guild: g, id: 'r9', name: 'VIP', toString: () => '<@&r9>' }, ctx);
+    assert.strictEqual(sent[1].embeds[0].toJSON().title, '➕ Role created');
+  });
+});
+
+describe('Tickets', () => {
+  const cfg = config.read({ DISCORD_GUILD_ID: 'guild' });
+  const support = role('sup', 'Support', 5);
+  const user = (id, tag) => ({ id, tag, username: tag.split('#')[0], toString: () => `<@${id}>`, send: async () => ({}) });
+
+  function world({ withSupport = true, category = true } = {}) {
+    const created = [];
+    const cats = category ? [{ id: 'cat', name: 'Tickets', type: ChannelType.GuildCategory }] : [];
+    const g = {
+      id: 'guild', ownerId: 'owner',
+      members: { me: { id: 'bot' } },
+      channels: {
+        cache: new Map(cats.map((c) => [c.id, c])),
+        create: async (opts) => {
+          const ch = { id: `ch${created.length + 1}`, name: opts.name, type: opts.type, parentId: opts.parent, topic: opts.topic, overwrites: opts.permissionOverwrites, sent: [], toString() { return `<#${this.id}>`; } };
+          ch.send = async (p) => { ch.sent.push(p); return { id: 'm' }; };
+          ch.messages = { fetch: async () => new Map() };
+          ch.delete = async () => { ch.deleted = true; };
+          ch.permissionOverwrites = { edit: async (u, perms) => { ch.overwrites.push({ id: u.id, allow: Object.keys(perms) }); }, delete: async (u) => { ch.overwrites = ch.overwrites.filter((o) => o.id !== u.id); } };
+          created.push(ch);
+          g.channels.cache.set(ch.id, ch);
+          return ch;
+        },
+      },
+    };
+    const logCh = channel('log', 'mod-log'); logCh.sent = []; logCh.send = async (p) => { logCh.sent.push(p); return {}; };
+    const store = new Store(path.join(tmp(), 'discord.json'));
+    const users = { opener: user('u1', 'alice#1') };
+    const ctx = { config: cfg, store, log: quiet, client: { user: { id: 'bot' }, users: { fetch: async (id) => users.opener.id === id ? users.opener : null } }, found: { channels: { log: logCh, support: null, transcripts: null }, roles: { support: withSupport ? support : null } } };
+    return { g, ctx, created, logCh, users };
+  }
+
+  test('the panel and the form', () => {
+    const p = tickets.panel(cfg, { roles: { support } });
+    assert.strictEqual(p.embeds[0].toJSON().title, '🎫 Need a hand?');
+    assert.ok(p.embeds[0].toJSON().description.includes('<@&sup>'));
+    assert.strictEqual(p.components[0].toJSON().components[0].custom_id, 'ticket:open');
+    const m = tickets.modal().toJSON();
+    assert.strictEqual(m.custom_id, 'ticket:new');
+    assert.strictEqual(m.components[0].components[0].custom_id, 'subject');
+    assert.strictEqual(m.components[0].components[0].min_length, 10);
+  });
+
+  test('opening: a numbered private channel under Tickets that only the opener, the bot and Support can see; one per person; a cap', async () => {
+    const { g, ctx, created, logCh, users } = world();
+    const r = await tickets.openTicket(ctx, g, users.opener, 'My payout has been pending for two hours');
+    assert.ok(r.channel);
+    assert.strictEqual(r.ticket.number, 1);
+    assert.strictEqual(created[0].name, 'ticket-0001-alice');
+    assert.strictEqual(created[0].parentId, 'cat', 'the existing category is used');
+    const ids = created[0].overwrites.map((o) => o.id);
+    assert.deepStrictEqual(ids, ['guild', 'u1', 'bot', 'sup']);
+    assert.ok(created[0].overwrites[0].deny.includes(PermissionFlagsBits.ViewChannel));
+    const intro = created[0].sent[0];
+    assert.strictEqual(intro.content, '<@u1> <@&sup>');
+    assert.strictEqual(intro.components[0].toJSON().components[0].custom_id, 'ticket:close');
+    assert.ok(intro.embeds[0].toJSON().description.includes('My payout has been pending'));
+    assert.strictEqual(logCh.sent[0].embeds[0].toJSON().title, '🎫 Ticket #1 opened');
+    assert.strictEqual(ctx.store.data.ticketCounter, 1);
+    assert.strictEqual(tickets.ticketOf(ctx, 'ch1').status, 'open');
+
+    const again = await tickets.openTicket(ctx, g, users.opener, 'Another thing entirely here');
+    assert.ok(again.error.includes('already have a ticket open: <#ch1>'));
+
+    ctx.config = config.read({ DISCORD_GUILD_ID: 'guild', DISCORD_TICKET_MAX: '1' });
+    const full = await tickets.openTicket(ctx, g, user('u2', 'bob#2'), 'Something else that needs help');
+    assert.ok(full.error.includes('Every ticket slot is taken'));
+  });
+
+  test('without a Support role the channel is the opener\'s and the bot\'s; the category is made when missing', async () => {
+    const { g, ctx, created, users } = world({ withSupport: false, category: false });
+    const r = await tickets.openTicket(ctx, g, users.opener, 'Where is my refund, please?');
+    assert.ok(r.channel);
+    assert.strictEqual(created[0].type, ChannelType.GuildCategory, 'the category first');
+    assert.strictEqual(created[0].name, 'Tickets');
+    assert.deepStrictEqual(created[1].overwrites.map((o) => o.id), ['guild', 'u1', 'bot']);
+    assert.strictEqual(created[1].sent[0].content, '<@u1>');
+  });
+
+  test('closing: a transcript to the log and to the opener, then the channel goes; only once', async () => {
+    const { g, ctx, created, logCh, users } = world();
+    const dms = [];
+    users.opener.send = async (p) => { dms.push(p); return {}; };
+    await tickets.openTicket(ctx, g, users.opener, 'My payout has been pending for two hours');
+    const ch = created[0];
+    const now = Date.now();
+    ch.messages.fetch = async () => new Map([
+      ['2', { id: '2', createdTimestamp: now + 1000, author: { tag: 'staff#1' }, content: 'Looking now.', attachments: new Map(), embeds: [] }],
+      ['1', { id: '1', createdTimestamp: now, author: { tag: 'alice#1' }, content: 'It is 0.5 ETH', attachments: new Map([['a', { url: 'https://cdn/x.png' }]]), embeds: [] }],
+    ]);
+    const r = await tickets.closeTicket(ctx, ch, { by: user('s1', 'staff#1'), reason: 'Paid out' });
+    assert.strictEqual(r.told, true);
+    assert.strictEqual(tickets.ticketOf(ctx, 'ch1').status, 'closed');
+    const logged = logCh.sent[1];
+    assert.strictEqual(logged.embeds[0].toJSON().title, '🔒 Ticket #1 closed');
+    assert.strictEqual(logged.files[0].name, 'ticket-0001.txt');
+    const text = logged.files[0].attachment.toString('utf8');
+    assert.ok(text.startsWith('Ticket #1 · alice#1 (u1)'));
+    assert.ok(text.indexOf('alice#1: It is 0.5 ETH [https://cdn/x.png]') < text.indexOf('staff#1: Looking now.'), 'oldest first');
+    assert.strictEqual(dms[0].files[0].name, 'ticket-0001.txt');
+    assert.ok(dms[0].embeds[0].toJSON().title.includes('#1 was closed'));
+    assert.ok(ch.sent.at(-1).embeds[0].toJSON().description.includes('Closing this ticket: Paid out'));
+    assert.ok((await tickets.closeTicket(ctx, ch, { by: user('s1', 'staff#1') })).error.includes('already closing'));
+    assert.ok((await tickets.closeTicket(ctx, channel('nope', 'general'), {})).error.includes('not a ticket'));
+    assert.strictEqual(tickets.open(ctx).length, 0, 'so the person may open another');
+    await new Promise((resolve) => setTimeout(resolve, 5100));
+    assert.strictEqual(ch.deleted, true);
+  });
+
+  test('letting people in and out; who counts as staff', async () => {
+    const { g, ctx, created, users } = world();
+    await tickets.openTicket(ctx, g, users.opener, 'My payout has been pending for two hours');
+    const ch = created[0];
+    const friend = user('u3', 'carol#3');
+    assert.ok((await tickets.setAccess(ctx, ch, friend, true)).ticket);
+    assert.ok(ch.overwrites.some((o) => o.id === 'u3' && o.allow.includes('ViewChannel')));
+    assert.deepStrictEqual(tickets.ticketOf(ctx, 'ch1').added, ['u3']);
+    assert.ok((await tickets.setAccess(ctx, ch, friend, false)).ticket);
+    assert.ok(!ch.overwrites.some((o) => o.id === 'u3'));
+    assert.ok((await tickets.setAccess(ctx, ch, users.opener, false)).error.includes('stays in it'));
+
+    assert.strictEqual(tickets.isStaff({ permissions: new PermissionsBitField([PermissionFlagsBits.ManageMessages]), roles: { cache: new Set() } }, ctx), true);
+    assert.strictEqual(tickets.isStaff({ permissions: new PermissionsBitField([]), roles: { cache: new Set(['sup']) } }, ctx), true, 'the Support role counts');
+    assert.strictEqual(tickets.isStaff({ permissions: new PermissionsBitField([]), roles: { cache: new Set() } }, ctx), false);
+    assert.strictEqual(tickets.slug('Alice O\'Brien!!'), 'alice-o-brien');
   });
 });

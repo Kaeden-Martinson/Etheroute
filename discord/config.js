@@ -6,8 +6,9 @@
  * The secrets - the bot token - never pass through code or chat: they are
  * typed into .env by the person who holds them. Everything else has a
  * default that fits a server laid out the usual way: a #welcome, a
- * #verify, an #anti-bot, a #status, a #roles, and a Member role plus the
- * four people claim for themselves. A channel or role can be named
+ * #verify, an #anti-bot, a #status, a #roles, a #support, a #mod-log, and
+ * a Member role plus the four people claim for themselves. A channel or
+ * role can be named
  * by its id or by its name; a name is matched loosely (emoji, dashes and
  * case do not matter, and "verify" finds "✅︱verification"), and a
  * comma-separated list tries each in turn.
@@ -24,6 +25,8 @@ const ANTIBOT_ACTIONS = ['kick', 'ban'];
 
 function read(env = process.env) {
   const str = (key, fallback = '') => (env[key] === undefined || String(env[key]).trim() === '' ? fallback : String(env[key]).trim());
+  const flag = (key, fallback) => (str(key) === '' ? fallback : ['1', 'true', 'yes', 'on'].includes(str(key).toLowerCase()));
+  const list = (key, fallback) => str(key, fallback).split(',').map((x) => x.trim().toUpperCase()).filter(Boolean);
   const dataDir = str('DATA_DIR', path.join(ROOT, 'data'));
   return {
     token: str('DISCORD_BOT_TOKEN'),
@@ -37,6 +40,8 @@ function read(env = process.env) {
       rules: str('DISCORD_RULES_CHANNEL', 'rules,info'),
       status: str('DISCORD_STATUS_CHANNEL', 'status,service-status,uptime'),
       roles: str('DISCORD_ROLES_CHANNEL', 'roles,get-roles,self-roles,role-select,pick-roles,claim-roles'),
+      support: str('DISCORD_SUPPORT_CHANNEL', 'support,tickets,help,open-a-ticket,create-a-ticket'),
+      transcripts: str('DISCORD_TRANSCRIPTS_CHANNEL', 'ticket-logs,transcripts,ticket-transcripts'),
     },
     roles: {
       member: str('DISCORD_MEMBER_ROLE', 'Member'),
@@ -45,11 +50,24 @@ function read(env = process.env) {
       buyer: str('DISCORD_BUYER_ROLE', 'Buyer'),
       announcements: str('DISCORD_ANNOUNCEMENTS_ROLE', 'Announcements'),
       status: str('DISCORD_STATUS_ROLE', 'Status Updates'),
+      // the staff role that sees every ticket; not created if missing
+      support: str('DISCORD_SUPPORT_ROLE', 'Support,Staff,Moderator,Mod,Team'),
     },
     status: {
       // the API the status embed reads; the bot runs on the same box as the API
       apiUrl: str('DISCORD_API_URL', `http://127.0.0.1:${str('PORT', '3000')}`).replace(/\/+$/, ''),
       intervalMs: Math.max(60000, Number(str('DISCORD_STATUS_INTERVAL_MS', '300000')) || 300000),
+      // the networks whose going down pings the Status Updates role; the rest are only listed
+      mainChains: list('DISCORD_MAIN_CHAINS', 'ETH,BTC,SOL,LTC,BCH,DOGE,XRP,POL,BASE,ARB,OP,BNB,AVAX'),
+    },
+    log: {
+      // the Message Content intent (privileged, a switch in the portal) lets the
+      // mod-log show what a deleted or edited message said
+      messageContent: flag('DISCORD_MESSAGE_CONTENT', false),
+    },
+    tickets: {
+      category: str('DISCORD_TICKET_CATEGORY', 'Tickets'),
+      max: Math.min(50, Math.max(1, Number(str('DISCORD_TICKET_MAX', '45')) || 45)),
     },
     antibot: {
       action: str('DISCORD_ANTIBOT_ACTION', 'kick').toLowerCase(),

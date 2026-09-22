@@ -10,8 +10,12 @@
  *   - posts a verification panel in #verify; the button gives the Member role
  *   - welcomes each new member in #welcome
  *   - removes anyone who posts in #anti-bot (kick, or ban if configured)
+ *   - keeps a status embed in #status and pings Status Updates when a main
+ *     network or a service goes down or comes back
+ *   - lets people claim roles in #roles, and opens support tickets from #support
+ *   - logs everything done by hand to #mod-log, with who did it
  *   - answers the slash commands under discord/commands: kick, ban, timeout,
- *     purge, warn, giveaway, lock, slowmode, role, announce and the rest
+ *     purge, warn, giveaway, lock, slowmode, role, announce, ticket and the rest
  *
  * Setup is in discord/README.md. The token is read from .env and only
  * from there.
@@ -38,7 +42,7 @@ if (settings.clientId) log.info(`invite link: ${inviteUrl(settings.clientId)}`);
 
 bot.start().catch((err) => {
   const text = String(err && err.message || err);
-  if (/disallowed intents/i.test(text)) log.error('Discord refused the Server Members intent. Developer Portal → your app → Bot → Privileged Gateway Intents → turn on "Server Members Intent".');
+  if (/disallowed intents/i.test(text)) log.error(`Discord refused a privileged intent. Developer Portal → your app → Bot → Privileged Gateway Intents → turn on "Server Members Intent"${settings.log.messageContent ? ' and "Message Content Intent" (or set DISCORD_MESSAGE_CONTENT=false)' : ''}.`);
   else if (/token/i.test(text)) log.error('Discord rejected the token. Reset it in the portal (Bot → Reset Token) and put the new one in .env as DISCORD_BOT_TOKEN.');
   else log.error('could not sign in:', err);
   process.exit(1);

@@ -4,11 +4,12 @@ One process, next to the API, on the one server named in `.env`. It:
 
 - posts a **verification panel** in `#verify` - the button gives the **Member** role, and the rest of the server is gated on that role;
 - **welcomes** each new member in `#welcome`, with where to go next;
-- keeps a **status embed** in `#status` - the platform services, how many networks are up, which are degraded or down, the last few changes - edited every five minutes from the API on the same box, with a note and a ping to the **Status Updates** role when something goes down or comes back;
+- keeps a **status embed** in `#status` - the platform services, how many networks are up, which are degraded or down, the last few changes - edited every five minutes from the API on the same box. When the picture changes a note goes under it, and the **Status Updates** role is pinged when it matters: a platform service, the API itself, or one of the **main networks** (Bitcoin, Ethereum, Solana, Litecoin, Bitcoin Cash, Dogecoin, XRP, Polygon, Base, Arbitrum, Optimism, BNB, Avalanche - `DISCORD_MAIN_CHAINS`) going down or coming back. One of the sixty smaller networks going down is noted without a ping;
+- runs **support tickets**: a panel in `#support` (and `/support`) opens a private channel under a *Tickets* category that only the person, the Support role and admins can see; `/ticket` closes it or lets people in and out; on close the transcript goes to `#ticket-logs` (or the mod-log) and to the person by DM;
 - lets people **claim roles** in `#roles` with buttons: **Merchant**, **Buyer**, **Announcements** (what `/announce` can ping) and **Status Updates**;
 - keeps an **anti-bot** channel: a notice says not to post there, and anyone who does is kicked on the spot (or banned, if you prefer) - the spam bots that post in every channel they can see are gone before a person notices them;
-- answers the usual **slash commands**: `/kick`, `/ban`, `/unban`, `/timeout`, `/untimeout`, `/warn`, `/warnings`, `/purge`, `/slowmode`, `/lock`, `/unlock`, `/role`, `/nick`, `/giveaway`, `/announce`, `/panel`, `/status`, `/userinfo`, `/serverinfo`, `/avatar`, `/ping`, `/help`;
-- writes every action to a **mod-log** channel if the server has one.
+- answers the usual **slash commands**: `/kick`, `/ban`, `/unban`, `/timeout`, `/untimeout`, `/warn`, `/warnings`, `/purge`, `/slowmode`, `/lock`, `/unlock`, `/role`, `/nick`, `/giveaway`, `/announce`, `/panel`, `/status`, `/support`, `/ticket`, `/userinfo`, `/serverinfo`, `/avatar`, `/ping`, `/help`;
+- keeps a **mod-log** in `#mod-log`: a card for every command it runs, and for everything done by hand as well - messages deleted or edited, members joining and leaving, kicks, bans and timeouts from the Discord client, roles and nicknames changing, channels and roles made, renamed or removed - with who did it, read from the audit log.
 
 ## Setup, once
 
@@ -35,19 +36,23 @@ One process, next to the API, on the one server named in `.env`. It:
    | rules | `rules`, `info` | `DISCORD_RULES_CHANNEL` |
    | status | `status`, `service-status`, `uptime` | `DISCORD_STATUS_CHANNEL` |
    | roles | `roles`, `get-roles`, `self-roles`, `role-select`, `pick-roles`, `claim-roles` | `DISCORD_ROLES_CHANNEL` |
+   | support | `support`, `tickets`, `help`, `open-a-ticket`, `create-a-ticket` | `DISCORD_SUPPORT_CHANNEL` |
+   | transcripts | `ticket-logs`, `transcripts`, `ticket-transcripts` (falls back to the mod-log) | `DISCORD_TRANSCRIPTS_CHANNEL` |
 
-   An override takes a channel id or a name (or a comma list). The roles are named the same way - `DISCORD_MEMBER_ROLE` (default `Member`), and the four people claim for themselves: `DISCORD_MERCHANT_ROLE`, `DISCORD_BUYER_ROLE`, `DISCORD_ANNOUNCEMENTS_ROLE`, `DISCORD_STATUS_ROLE` (defaults `Merchant`, `Buyer`, `Announcements`, `Status Updates`). Any of the five that does not exist is created.
+   An override takes a channel id or a name (or a comma list). The roles are named the same way - `DISCORD_MEMBER_ROLE` (default `Member`), and the four people claim for themselves: `DISCORD_MERCHANT_ROLE`, `DISCORD_BUYER_ROLE`, `DISCORD_ANNOUNCEMENTS_ROLE`, `DISCORD_STATUS_ROLE` (defaults `Merchant`, `Buyer`, `Announcements`, `Status Updates`). Any of the five that does not exist is created. `DISCORD_SUPPORT_ROLE` (default `Support`, `Staff`, `Moderator`, `Mod`, `Team`) is the staff role that sees every ticket; it is yours and is not created - without it, tickets are visible to their opener and admins only.
 
    Permissions that make the gate work:
    - `@everyone` sees **only** `#welcome`, `#verify`, `#rules` and `#anti-bot`; every other channel is visible to **Member**.
    - In `#verify`, `#welcome`, `#roles` and `#status`, `@everyone` cannot send messages. In `#anti-bot`, `@everyone` **can** - that is the trap - and the bot has *Manage Messages* there.
-   - `#status` and `#roles` are best made visible to **Member** only, so the buttons and the pings reach verified people.
+   - `#status`, `#roles` and `#support` are best made visible to **Member** only, so the buttons and the pings reach verified people.
+   - `#mod-log` and `#ticket-logs` are for staff: nobody else should see them.
+   - The bot needs **View Audit Log** (in the invite) for the mod-log to say who deleted, kicked or banned. To see *what* a deleted or edited message said, turn on the **Message Content** intent in the portal and set `DISCORD_MESSAGE_CONTENT=true`; without it the card names the author and channel and says the text is not available.
 6. **Run it.**
    ```
    npm run discord:channels    # read-only: lists channels and roles, and which the bot would use
    npm run discord             # starts the bot
    ```
-   On start it logs what it found, registers the slash commands on the server (they appear within a few seconds; there is no hour-long wait because they are per-server, not global), posts the verification panel, the anti-bot notice, the role-picker and the status embed if they are not already there, and picks up any giveaway still running.
+   On start it logs what it found, registers the slash commands on the server (they appear within a few seconds; there is no hour-long wait because they are per-server, not global), posts the verification panel, the anti-bot notice, the role-picker, the ticket panel and the status embed if they are not already there, and picks up any giveaway still running.
 
    The status embed reads `GET /api/status` and `/api/status/chains` from `DISCORD_API_URL` - by default `http://127.0.0.1:<PORT>`, the API on the same machine. If the API answers on another host or the bot runs elsewhere, set it (`https://etheroute.com` works too; both endpoints are public).
 
@@ -64,6 +69,11 @@ One process, next to the API, on the one server named in `.env`. It:
 | `DISCORD_ANTIBOT_ACTION` | `kick` | `kick` or `ban` for whoever posts in the anti-bot channel |
 | `DISCORD_API_URL` | `http://127.0.0.1:<PORT>` | where the status embed reads `/api/status` from |
 | `DISCORD_STATUS_INTERVAL_MS` | `300000` | how often the status embed is refreshed (never under a minute) |
+| `DISCORD_MAIN_CHAINS` | `ETH,BTC,SOL,LTC,BCH,DOGE,XRP,POL,BASE,ARB,OP,BNB,AVAX` | the networks whose going down pings Status Updates |
+| `DISCORD_MESSAGE_CONTENT` | `false` | ask for the Message Content intent so the mod-log can show deleted and edited text |
+| `DISCORD_SUPPORT_ROLE` | `Support,Staff,Moderator,Mod,Team` | the staff role that sees tickets |
+| `DISCORD_TICKET_CATEGORY` | `Tickets` | the category tickets open under (made if missing) |
+| `DISCORD_TICKET_MAX` | `45` | how many tickets may be open at once (a category holds 50 channels) |
 | `DISCORD_BRAND_NAME` | `Etheroute` | the name on panels and footers |
 | `SITE_URL` | `https://etheroute.com` | the site in footers (the API's own key) |
 | `DISCORD_DATA_FILE` | `data/discord.json` | where panel ids, giveaways and warnings are kept |
@@ -91,6 +101,10 @@ Discord hides each command from people without its permission; the bot checks th
 | `/announce title message [channel] [color] [ping]` | Manage Messages | an embed in the bot's voice; `ping` is nobody, the Announcements role, or @everyone |
 | `/panel verify\|antibot\|roles\|status\|check` | Manage Server | re-posts a panel, or shows what the bot found |
 | `/status` | anyone | the status embed, to you only, read fresh |
+| `/support [subject]` | anyone | opens a ticket; without a subject, asks in a form |
+| `/ticket close [reason]` | the opener or staff | closes the ticket; transcript to `#ticket-logs` and to the opener |
+| `/ticket add\|remove user` | staff | lets someone into the ticket, or out |
+| `/ticket list` | staff | the tickets open right now |
 | `/userinfo`, `/serverinfo`, `/avatar`, `/ping`, `/help` | anyone | the usual |
 
 ## Where things live
@@ -108,6 +122,8 @@ discord/
     welcome.js        the welcome card
     roles.js          the role-picker and its buttons
     status.js         the status embed, its refresh and the change note
+    modlog.js         the mod-log cards for what happens by hand, with the audit log
+    tickets.js        the ticket panel, form, channel, transcript and close
     giveaways.js      start, enter, end, reroll, resume
     moderation.js     who may act on whom; the mod-log card; the DM
     embeds.js         the palette and the embed helper

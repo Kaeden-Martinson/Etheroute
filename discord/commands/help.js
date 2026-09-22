@@ -9,6 +9,7 @@ const GROUPS = [
   { name: 'Moderation', names: ['kick', 'ban', 'unban', 'timeout', 'untimeout', 'warn', 'warnings', 'purge'] },
   { name: 'Channels', names: ['slowmode', 'lock', 'unlock', 'announce'] },
   { name: 'Members', names: ['role', 'nick', 'userinfo', 'avatar'] },
+  { name: 'Support', names: ['support', 'ticket'] },
   { name: 'Server', names: ['status', 'giveaway', 'panel', 'serverinfo', 'ping', 'help'] },
 ];
 

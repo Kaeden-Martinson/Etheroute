@@ -9,7 +9,7 @@
  * without logging in.
  */
 
-const { Client, GatewayIntentBits, Events, MessageFlags } = require('discord.js');
+const { Client, GatewayIntentBits, Partials, Events, MessageFlags } = require('discord.js');
 const { Store } = require('./lib/store');
 const commands = require('./commands');
 const guildLib = require('./lib/guild');
@@ -18,13 +18,21 @@ const antibot = require('./lib/antibot');
 const welcome = require('./lib/welcome');
 const roles = require('./lib/roles');
 const status = require('./lib/status');
+const modlog = require('./lib/modlog');
+const tickets = require('./lib/tickets');
 const giveaways = require('./lib/giveaways');
 const { fail } = require('./lib/embeds');
 const { inviteUrl } = require('./lib/invite');
 
 function createBot(config, { log = require('./lib/log'), store = new Store(config.dataFile) } = {}) {
   const client = new Client({
-    intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildMessages, GatewayIntentBits.GuildModeration],
+    intents: [
+      GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildMessages, GatewayIntentBits.GuildModeration,
+      // privileged: only asked for when switched on, or Discord refuses the login
+      ...(config.log.messageContent ? [GatewayIntentBits.MessageContent] : []),
+    ],
+    // so a message deleted before it was cached still raises an event with what is known
+    partials: [Partials.Message, Partials.Channel, Partials.GuildMember, Partials.User],
   });
   const ctx = {
     client,
@@ -55,11 +63,16 @@ function createBot(config, { log = require('./lib/log'), store = new Store(confi
     if (made.length) log.warn(`made the claimable role(s) ${made.map((n) => `@${n}`).join(', ')}; put my role above them`);
     const me = guild.members.me;
     for (const [purpose, role] of Object.entries(ctx.found.roles)) {
+      if (!role) {
+        log.warn(`${purpose.padEnd(8)} → no role found (looked for ${config.roles[purpose]})${purpose === 'support' ? '; tickets will be visible to their opener and admins only' : ''}`);
+        continue;
+      }
       log.info(`${purpose.padEnd(8)} → @${role.name} (${role.id})`);
-      if (me && role.position >= me.roles.highest.position) {
+      if (purpose !== 'support' && me && role.position >= me.roles.highest.position) {
         log.warn(`my highest role is not above @${role.name}; I will not be able to give it. Move my role up in Server Settings → Roles.`);
       }
     }
+    if (me && me.permissions && !me.permissions.has('ViewAuditLog')) log.warn('I cannot read the audit log, so the mod-log will not say who deleted, kicked or banned; give me View Audit Log');
     return ctx.found;
   }
 
@@ -84,6 +97,7 @@ function createBot(config, { log = require('./lib/log'), store = new Store(confi
       await verify.ensurePanel(ctx, guild);
       await antibot.ensureNotice(ctx, guild);
       await roles.ensurePanel(ctx, guild);
+      await tickets.ensurePanel(ctx, guild);
       giveaways.resume(ctx);
       await status.start(ctx);
       log.info(`ready on ${guild.name} (${guild.memberCount} members)`);
@@ -109,6 +123,12 @@ function createBot(config, { log = require('./lib/log'), store = new Store(confi
         if (interaction.customId === verify.BUTTON_ID) return await verify.handleButton(interaction, ctx);
         if (interaction.customId === giveaways.BUTTON_ID) return await giveaways.enter(interaction, ctx);
         if (roles.isRoleButton(interaction.customId)) return await roles.handleButton(interaction, ctx);
+        if (interaction.customId === tickets.OPEN_BUTTON) return await tickets.handleOpenButton(interaction, ctx);
+        if (interaction.customId === tickets.CLOSE_BUTTON) return await tickets.handleCloseButton(interaction, ctx);
+        return;
+      }
+      if (interaction.isModalSubmit()) {
+        if (interaction.customId === tickets.MODAL) return await tickets.handleModal(interaction, ctx);
         return;
       }
       if (!interaction.isChatInputCommand()) return;
@@ -126,6 +146,8 @@ function createBot(config, { log = require('./lib/log'), store = new Store(confi
       else await interaction.reply({ embeds: [text], flags: MessageFlags.Ephemeral }).catch(() => {});
     }
   });
+
+  modlog.attach(client, ctx);
 
   client.on(Events.Error, (err) => log.error('client error:', err));
   client.on(Events.Warn, (msg) => log.warn(msg));

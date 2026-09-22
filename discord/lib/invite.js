@@ -3,7 +3,8 @@
 /**
  * The link that adds the bot to a server, with the permissions it needs
  * and no more: to kick, ban and time out; to delete messages and lock
- * channels; to give the Member role and change nicknames; and to speak.
+ * channels; to give the Member role and change nicknames; to read the
+ * audit log so the mod-log can say who did what; and to speak.
  * Administrator is not among them.
  */
 
@@ -11,10 +12,10 @@ const { PermissionsBitField, PermissionFlagsBits: P } = require('discord.js');
 
 const NEEDED = [
   P.ViewChannel, P.SendMessages, P.SendMessagesInThreads, P.EmbedLinks, P.AttachFiles, P.ReadMessageHistory, P.AddReactions, P.UseExternalEmojis,
-  P.KickMembers, P.BanMembers, P.ModerateMembers, P.ManageMessages, P.ManageRoles, P.ManageChannels, P.ManageNicknames, P.MentionEveryone,
+  P.KickMembers, P.BanMembers, P.ModerateMembers, P.ManageMessages, P.ManageRoles, P.ManageChannels, P.ManageNicknames, P.MentionEveryone, P.ViewAuditLog,
 ];
 
-/** The gateway intents the bot asks for; "Server Members" is privileged and must be switched on in the portal. */
+/** The gateway intents the bot asks for; "Server Members" is privileged and must be switched on in the portal, as is "Message Content" when DISCORD_MESSAGE_CONTENT is on. */
 const INTENTS = ['Guilds', 'GuildMembers', 'GuildMessages', 'GuildModeration'];
 
 function permissions() {
