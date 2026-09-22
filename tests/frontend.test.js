@@ -1970,7 +1970,7 @@ describe('About and FAQ end on the Help Center contact block', () => {
     for (const page of ['about.html', 'faq.html']) {
       const html = fs.readFileSync(path.join(PUBLIC_DIR, page), 'utf-8');
       assert.ok(!/href="https:\/\/discord\.gg"/.test(html), `${page} has a bare discord.gg link`);
-      assert.ok(html.includes('https://discord.gg/etheroute'), `${page} links the server`);
+      assert.ok(html.includes('https://discord.gg/JEEwnex6af'), `${page} links the server`);
     }
   });
 });
@@ -1998,12 +1998,12 @@ describe('Compliance, Privacy and Terms share one treatment', () => {
     // Sentences from each document, chosen from different sections. The
     // transform only rewrapped: it must not have reworded anything.
     const spot = {
-      compliance: ['highest standards of regulatory compliance',
-                   'Transaction monitoring systems',
-                   'we maintain the ability to implement KYC procedures when required'],
+      compliance: ['a statement of practice, not legal advice',
+                   'does not operate a bank-style transaction monitoring programme',
+                   'maintain the ability to implement KYC procedures when required by law'],
       privacy: ['Etheroute does not collect personally identifiable information',
                 'Username (your chosen identifier)',
-                'Password (hashed and encrypted)'],
+                'Password (stored as a salted hash, never in plain text)'],
       terms: ['Acceptance of Terms', 'Risk Disclaimer', 'Limitation of Liability'],
     };
     for (const [page, phrases] of Object.entries(spot)) {

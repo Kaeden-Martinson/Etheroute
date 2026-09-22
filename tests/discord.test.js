@@ -733,6 +733,19 @@ describe('The status embed', () => {
     assert.strictEqual(r.pinged, true, 'as is the API going away');
     assert.strictEqual(sent.at(-1).embeds[0].toJSON().title, '🔴 Partial outage → API unreachable');
 
+    // with an updates channel, the note goes where people read news; the embed stays in #status
+    const updates = channel('up', 'updates');
+    const news = [];
+    updates.send = async (payload) => { news.push(payload); return { id: 'n1' }; };
+    ctx.found.channels.updates = updates;
+    bodies = { platform: platform(), chains: chains() };
+    r = await status.refresh(ctx, opts);
+    assert.strictEqual(r.pinged, true, 'back from unreachable');
+    assert.strictEqual(news.length, 1);
+    assert.strictEqual(news[0].content, '<@&s1>');
+    assert.ok(news[0].embeds[0].toJSON().title.startsWith('🟢 API unreachable → Fully operational'));
+    assert.strictEqual(edits.at(-1).embeds[0].toJSON().title, '🟢 Etheroute status - Fully operational', 'the embed in #status was edited, not reposted');
+
     assert.deepStrictEqual(await status.refresh({ ...ctx, found: { channels: {}, roles: {} } }, opts).then((x) => x.changed), false, 'no channel: nothing to edit');
   });
 });

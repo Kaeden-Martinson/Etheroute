@@ -7,7 +7,8 @@
  * the picture src/utils/statusPicture reads from the API on the same box
  * (shared with the Telegram bot). When the picture changes - a service
  * degrades, a network goes down or comes back, the API stops answering -
- * a short note is posted under it. The Status Updates role is pinged for
+ * a short note is posted - in the updates channel when the server has one,
+ * else under the embed. The Status Updates role is pinged for
  * the changes that matter: a platform service, the API itself, or one of
  * the main networks (DISCORD_MAIN_CHAINS - Bitcoin, Ethereum, Solana and
  * the like) going down or coming back. One of the sixty other networks
@@ -127,7 +128,8 @@ async function refresh(ctx, opts = {}) {
   let pinged = false;
   if (changed) {
     const role = ctx.found.roles.status;
-    const channel = ctx.found.channels.updates;
+    // the note goes where people read news - the updates channel - or under the embed when there is none
+    const channel = ctx.found.channels.updates || ctx.found.channels.status;
     const what = diff(before.summary, summary, ctx.config);
     pinged = Boolean(role && what.ping);
     await channel.send({

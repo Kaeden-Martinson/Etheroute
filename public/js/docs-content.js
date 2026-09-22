@@ -12,7 +12,7 @@ window.DOCS_CONTENT = {
     {
       id: 'introduction', title: 'Introduction', icon: 'overview', group: 'Getting Started',
       blocks: [
-        { type: 'lead', html: 'Etheroute is a multi-chain crypto payments platform. Accept payments across 65 chains, hold the funds in wallets you control, and cash out in whichever chain you like — through the dashboard or the API.' },
+        { type: 'lead', html: 'Etheroute is a multi-chain crypto payments platform. Accept payments across 65 chains, hold the funds in your account\'s wallets, and withdraw in the chain and asset you choose — through the dashboard or the API.' },
         { type: 'p', html: 'This guide covers the whole flow: creating an account, generating and naming wallets, taking payments with checkout links, and withdrawing. For the endpoint-by-endpoint reference, see the <a href="/api-reference">API Reference</a>.' },
         { type: 'callout', tone: 'info', title: 'No KYC for a basic account', body: 'Sign up with a username and password. Accepting funds on behalf of others and paying them out may be regulated where you operate — see <a href="/compliance">Compliance</a>.' },
       ],

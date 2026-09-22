@@ -20,7 +20,7 @@ window.API_SPEC = {
       title: 'Overview',
       icon: 'overview',
       intro: [
-        'Etheroute lets you accept payments in 65 chains, hold the funds in wallets you control through the API, and cash out in whichever chain you like. Everything the dashboard does is available here.',
+        'Etheroute lets you accept payments in 65 chains, hold the funds in your account\'s wallets, and withdraw in the chain and asset you choose. Everything the dashboard does is available here.',
         'All requests and responses are JSON over HTTPS. The base URL is the host you are talking to plus <code>/api</code>. Timestamps are ISO 8601 in UTC. Amounts in a chain\'s own units are decimals (<code>0.0021</code>); USD amounts are decimals too.',
       ],
       facts: [

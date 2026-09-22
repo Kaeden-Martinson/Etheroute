@@ -36,7 +36,7 @@
     <div class="hero">
         <span class="hero-pill">Legal</span>
         <h1>Privacy Policy</h1>
-        <p>How we handle — and deliberately avoid collecting — your data.</p>
+        <p>What we hold about you, what we do not collect, and why.</p>
     </div>
 
     <div class="legal">
@@ -46,26 +46,26 @@
         </nav>
 
         <article class="legal-doc" id="legalDoc">
-            <time class="last-updated" datetime="2026-05-22">Last updated 22 May 2026</time>
+            <time class="last-updated" datetime="2026-09-21">Last updated 21 September 2026</time>
 
 
         <h2 id="introduction" data-reveal>1. Introduction</h2>
         <p>Etheroute ("we," "us," "our," or "Company") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and protect your information when you use our Service.</p>
 
-        <div class="note"><p><strong>NO KYC POLICY:</strong> Etheroute does not collect personally identifiable information like names, email addresses, or other identifying data. We only collect the minimum information necessary to provide our cryptocurrency withdrawal service.</p></div>
+        <div class="note"><p><strong>NO KYC POLICY:</strong> Etheroute does not collect personally identifiable information like names, email addresses, or other identifying data. We collect only what is needed to run the payments service.</p></div>
 
         <h2 id="information-we-collect" data-reveal>2. Information We Collect</h2>
         <h3>2.1 Account Information</h3>
         <p>When you create an account, we collect:</p>
         <ul>
             <li>Username (your chosen identifier)</li>
-            <li>Password (hashed and encrypted)</li>
+            <li>Password (stored as a salted hash, never in plain text)</li>
         </ul>
 
         <h3>2.2 Transaction Information</h3>
         <p>To process withdrawals, we collect and store:</p>
         <ul>
-            <li>Cryptocurrency wallet addresses (provided by you)</li>
+            <li>Cryptocurrency wallet addresses: the receiving wallets we generate for your account, and the addresses you withdraw to</li>
             <li>Transaction amounts and dates</li>
             <li>Transaction status and blockchain confirmations</li>
             <li>Chain/network information (the blockchain a wallet or payment is on)</li>
@@ -90,13 +90,13 @@
 
         <h2 id="data-security" data-reveal>4. Data Security</h2>
         <h3>4.1 Encryption</h3>
-        <p>All sensitive information, including passwords and wallet addresses, are encrypted both in transit and at rest using industry-standard encryption protocols.</p>
+        <p>All traffic is carried over TLS. Wallet private keys are encrypted with AES-256 before they are stored, and passwords are kept as salted hashes rather than in plain text.</p>
 
         <h3>4.2 Access Control</h3>
-        <p>Access to user data is restricted to authorized personnel and systems necessary to provide the Service. We implement multiple security layers including firewalls and access controls.</p>
+        <p>Access to production data is limited to the systems that run the Service and to the operators who maintain it.</p>
 
         <h3>4.3 Security Limitations</h3>
-        <p>While we implement comprehensive security measures, no system is 100% secure. We cannot guarantee absolute security of your information.</p>
+        <p>No system is entirely secure, and we cannot guarantee the absolute security of your information.</p>
 
         <h2 id="data-retention" data-reveal>5. Data Retention</h2>
         <p>We retain user data for as long as necessary to provide our Service and maintain transaction records. Transaction history may be retained for compliance and dispute resolution purposes.</p>
@@ -134,7 +134,7 @@
         <p>We comply with applicable data protection laws and regulations. We may disclose information when required by law, such as in response to subpoenas, court orders, or government requests.</p>
 
         <h2 id="data-breach-notification" data-reveal>13. Data Breach Notification</h2>
-        <p>In the event of a data breach involving your information, we will notify you as soon as possible via email or account notification.</p>
+        <p>In the event of a data breach involving your information, we will notify you as soon as possible through a notice in your dashboard and on the status page, since we hold no email address for you.</p>
 
         <h2 id="contact-information" data-reveal>14. Contact Information</h2>
         <p>If you have questions or concerns about this Privacy Policy or our privacy practices, please contact us at support@etheroute.io</p>
@@ -142,7 +142,7 @@
         <h2 id="your-california-privacy-rights" data-reveal>15. Your California Privacy Rights</h2>
         <p>If you are a California resident, you have the right to request information about the categories of personal information we collect and the purposes for which we use it.</p>
 
-        <div class="note"><p><strong>COMMITMENT TO PRIVACY:</strong> We are committed to maintaining your privacy while providing the best possible cryptocurrency withdrawal service. Your data is valuable and we treat it with utmost care.</p></div>
+        <div class="note"><p><strong>IN SHORT:</strong> we hold what the Service needs to run &mdash; a username, a password hash, your wallets and your transactions &mdash; and nothing about who you are.</p></div>
         </article>
     </div>
 
@@ -159,7 +159,7 @@
                 <div class="footer-section" data-reveal data-reveal-delay="80">
                     <h4>Company</h4>
                     <a href="/about" class="footer-link">About Us</a>
-                    <a href="https://discord.gg/etheroute" class="footer-link" target="_blank" rel="noopener">Discord</a>
+                    <a href="https://discord.gg/JEEwnex6af" class="footer-link" target="_blank" rel="noopener">Discord</a>
                     <a href="https://t.me/etheroute" class="footer-link" target="_blank">Telegram</a>
                 </div>
                 <div class="footer-section" data-reveal data-reveal-delay="160">
@@ -170,7 +170,7 @@
                 </div>
             </div>
             <div class="footer-bottom" data-reveal data-reveal-delay="240">
-                <p>&copy; 2026 Etheroute. All rights reserved. | Secure Multi-Chain Withdrawal Platform</p>
+                <p>&copy; 2026 Etheroute. All rights reserved.</p>
             </div>
         </div>
     </div>

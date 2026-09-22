@@ -36,7 +36,7 @@
     <div class="hero">
         <span class="hero-pill">Legal</span>
         <h1>Compliance</h1>
-        <p>Our regulatory framework and operational commitments.</p>
+        <p>How Etheroute approaches the rules that apply to a payments service.</p>
     </div>
 
     <div class="legal">
@@ -46,50 +46,51 @@
         </nav>
 
         <article class="legal-doc" id="legalDoc">
-            <time class="last-updated" datetime="2026-05-23">Last updated 23 May 2026</time>
+            <time class="last-updated" datetime="2026-09-21">Last updated 21 September 2026</time>
 
 
         <h2 id="overview" data-reveal>1. Overview</h2>
-        <p>Etheroute is committed to maintaining the highest standards of regulatory compliance and operational transparency. This document outlines our compliance framework and commitments.</p>
+        <p>This page describes how Etheroute approaches the rules that apply to a payments service: what the platform does and does not do, and what that means for you as a merchant. It is a statement of practice, not legal advice. Etheroute meets the obligations that apply to a service of its kind, and says plainly where the responsibility is the merchant&rsquo;s.</p>
 
-        <h2 id="regulatory-compliance" data-reveal>2. Regulatory Compliance</h2>
-        <h3>2.1 Anti-Money Laundering (AML)</h3>
-        <p>We implement comprehensive AML procedures to prevent financial crimes and detect suspicious activities. Our platform includes:</p>
+        <h2 id="regulatory-compliance" data-reveal>2. Regulatory Position</h2>
+        <h3>2.1 Accounts and identity</h3>
+        <p>A basic Etheroute account is opened with a username and a password. We do not collect names, identity documents or addresses, and we do not verify identity for basic accounts. We maintain the ability to implement KYC procedures when required by law, and will ask for what the law requires before continuing to serve an account that falls under it.</p>
+
+        <h3>2.2 Anti-Money Laundering (AML)</h3>
+        <p>Etheroute does not operate a bank-style transaction monitoring programme and does not screen individual payments. What it does do:</p>
         <ul>
-            <li>Transaction monitoring systems</li>
-            <li>Suspicious activity reporting protocols</li>
-            <li>Compliance with global AML standards</li>
+            <li>Keeps a record of every wallet, payment and withdrawal, with the on-chain transaction it corresponds to</li>
+            <li>Refuses service where the <a href="/terms">Terms of Service</a> are breached, and may suspend an account or decline a withdrawal where there is reason to believe the platform is being used unlawfully</li>
+            <li>Responds to lawful requests from authorities, as set out in the <a href="/privacy">Privacy Policy</a></li>
+        </ul>
+        <p>Merchants remain responsible for the obligations that apply to their own business in their own jurisdiction, including any registration, reporting or customer-verification duties that come with what they sell.</p>
+
+        <h3>2.3 Prohibited use</h3>
+        <p>The platform may not be used for any unlawful purpose, to move the proceeds of crime, or to evade sanctions. The <a href="/terms">Terms of Service</a> list the prohibited activities in full.</p>
+
+        <h2 id="data-security-standards" data-reveal>3. Security Practices</h2>
+        <p>The measures below are the ones in place today; each can be checked against the product.</p>
+        <ul>
+            <li>All traffic to the dashboard and the API is over TLS</li>
+            <li>Wallet private keys are encrypted with AES-256-GCM before they are stored, under a key that is not kept with the data</li>
+            <li>Passwords are stored as salted scrypt hashes; API keys are shown once and stored only as hashes</li>
+            <li>Webhook deliveries are signed with HMAC-SHA256 so a receiver can verify they came from Etheroute</li>
+            <li>Requests are rate limited per account and per address; withdrawals are limited more tightly than reads</li>
+            <li>Password recovery uses one-time recovery codes issued at sign-up; there is no email reset</li>
         </ul>
 
-        <h3>2.2 Know Your Customer (KYC)</h3>
-        <p>While Etheroute operates with minimal user data collection, we maintain the ability to implement KYC procedures when required by applicable law.</p>
+        <h2 id="blockchain-network-compliance" data-reveal>4. Funds and Keys</h2>
+        <p>Etheroute generates the receiving wallets for your account and holds their private keys, encrypted, so that it can sign withdrawals on your behalf. Balances are yours to withdraw at any time to an address you control. A flat 5% platform fee and the network&rsquo;s own fee are shown on the review screen before a withdrawal is confirmed; nothing else is deducted. When a wallet is closed, any amount below the withdrawal minimum that remains at its address is retained, as described in the <a href="/terms">Terms of Service</a>.</p>
+        <p>Transactions on a public blockchain are visible to anyone and cannot be reversed once confirmed. The platform confirms a payment only after the number of blocks set for that network.</p>
 
-        <h2 id="data-security-standards" data-reveal>3. Data Security Standards</h2>
-        <p>We maintain compliance with industry-leading security standards including:</p>
-        <ul>
-            <li>Encryption of sensitive data in transit and at rest</li>
-            <li>Regular security audits and penetration testing</li>
-            <li>Secure API endpoints with authentication protocols</li>
-            <li>Rate limiting and DDoS protection measures</li>
-        </ul>
-
-        <h2 id="blockchain-network-compliance" data-reveal>4. Blockchain Network Compliance</h2>
-        <p>Our platform operates in compliance with blockchain network protocols and rules:</p>
-        <ul>
-            <li>Ethereum network standards</li>
-            <li>Bitcoin network standards</li>
-            <li>Solana network standards</li>
-            <li>Litecoin network standards</li>
-        </ul>
-
-        <h2 id="user-privacy-and-data-protection" data-reveal>5. User Privacy and Data Protection</h2>
-        <p>We adhere to strict data protection principles as outlined in our Privacy Policy. We do not share user data with third parties without explicit consent.</p>
+        <h2 id="user-privacy-and-data-protection" data-reveal>5. Privacy and Data Protection</h2>
+        <p>We collect what the service needs to run and nothing about who you are. The <a href="/privacy">Privacy Policy</a> lists every category of data held, how long it is kept, and when it may be disclosed. We do not sell user data and do not share it with third parties except as that policy describes.</p>
 
         <h2 id="contact-support" data-reveal>6. Contact & Support</h2>
-        <p>For compliance-related inquiries, please reach out to our team through our support channels.</p>
+        <p>For questions about anything on this page, please reach out to our team through our support channels. For a lawful request from an authority, use the email address below.</p>
 
         <div class="channels-grid">
-            <a class="channel" href="https://discord.gg/etheroute" target="_blank" rel="noopener">
+            <a class="channel" href="https://discord.gg/JEEwnex6af" target="_blank" rel="noopener">
                 <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.317 4.369a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.211.375-.445.865-.607 1.25a18.27 18.27 0 0 0-5.487 0c-.162-.385-.395-.875-.607-1.25a.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.056 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.873-1.295 1.226-1.994a.076.076 0 0 0-.042-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.294.075.075 0 0 1 .078-.01c3.928 1.793 8.18 1.793 12.062 0a.075.075 0 0 1 .079.009c.12.098.246.198.373.295a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.076.076 0 0 0-.041.107c.352.699.764 1.365 1.225 1.994a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-4.786-.838-8.95-3.549-12.617a.06.06 0 0 0-.031-.03zM8.02 15.331c-1.183 0-2.157-.965-2.157-2.156 0-1.193.948-2.157 2.157-2.157 1.211 0 2.176.964 2.157 2.157 0 1.19-.946 2.156-2.157 2.156zm7.975 0c-1.183 0-2.157-.965-2.157-2.156 0-1.193.948-2.157 2.157-2.157 1.211 0 2.176.964 2.157 2.157 0 1.19-.946 2.156-2.157 2.156z"/></svg>
                 Discord Community
             </a>
@@ -118,7 +119,7 @@
                 <div class="footer-section" data-reveal data-reveal-delay="80">
                     <h4>Company</h4>
                     <a href="/about" class="footer-link">About Us</a>
-                    <a href="https://discord.gg/etheroute" class="footer-link" target="_blank" rel="noopener">Discord</a>
+                    <a href="https://discord.gg/JEEwnex6af" class="footer-link" target="_blank" rel="noopener">Discord</a>
                     <a href="https://t.me/etheroute" class="footer-link" target="_blank">Telegram</a>
                 </div>
                 <div class="footer-section" data-reveal data-reveal-delay="160">
@@ -129,7 +130,7 @@
                 </div>
             </div>
             <div class="footer-bottom" data-reveal data-reveal-delay="240">
-                <p>&copy; 2026 Etheroute. All rights reserved. | Secure Multi-Chain Withdrawal Platform</p>
+                <p>&copy; 2026 Etheroute. All rights reserved.</p>
             </div>
         </div>
     </div>
