@@ -2,10 +2,11 @@
 
 /**
  * The bot, assembled: a client with the intents it needs, the store, the
- * commands, and the four things it does on its own - finds the server's
- * channels and role when it connects, welcomes whoever joins, removes
- * whoever posts in the anti-bot channel, and answers the buttons and
- * slash commands. index.js starts it; the tests build it without logging in.
+ * commands, and what it does on its own - finds the server's channels and
+ * roles when it connects, welcomes whoever joins, removes whoever posts in
+ * the anti-bot channel, keeps the status embed current, and answers the
+ * buttons and slash commands. index.js starts it; the tests build it
+ * without logging in.
  */
 
 const { Client, GatewayIntentBits, Events, MessageFlags } = require('discord.js');
@@ -15,6 +16,8 @@ const guildLib = require('./lib/guild');
 const verify = require('./lib/verify');
 const antibot = require('./lib/antibot');
 const welcome = require('./lib/welcome');
+const roles = require('./lib/roles');
+const status = require('./lib/status');
 const giveaways = require('./lib/giveaways');
 const { fail } = require('./lib/embeds');
 const { inviteUrl } = require('./lib/invite');
@@ -44,14 +47,18 @@ function createBot(config, { log = require('./lib/log'), store = new Store(confi
       log.info(`${purpose.padEnd(8)} → ${channel ? `#${channel.name} (${channel.id})` : 'not found'}`);
     }
     if (!ctx.found.roles.member) {
-      const { role, created } = await guildLib.ensureRole(guild, config.roles.member);
+      const { role, created } = await guildLib.ensureRole(guild, config.roles.member, { reason: 'Etheroute bot: the role verified members receive' });
       ctx.found.roles.member = role;
       if (created) log.warn(`no "${config.roles.member}" role existed; made one. Give it the channels members should see, and put my role above it.`);
     }
-    log.info(`member   → @${ctx.found.roles.member.name} (${ctx.found.roles.member.id})`);
+    const made = await roles.ensureClaimable(ctx, guild);
+    if (made.length) log.warn(`made the claimable role(s) ${made.map((n) => `@${n}`).join(', ')}; put my role above them`);
     const me = guild.members.me;
-    if (me && ctx.found.roles.member.position >= me.roles.highest.position) {
-      log.warn(`my highest role is not above @${ctx.found.roles.member.name}; I will not be able to give it. Move my role up in Server Settings → Roles.`);
+    for (const [purpose, role] of Object.entries(ctx.found.roles)) {
+      log.info(`${purpose.padEnd(8)} → @${role.name} (${role.id})`);
+      if (me && role.position >= me.roles.highest.position) {
+        log.warn(`my highest role is not above @${role.name}; I will not be able to give it. Move my role up in Server Settings → Roles.`);
+      }
     }
     return ctx.found;
   }
@@ -76,7 +83,9 @@ function createBot(config, { log = require('./lib/log'), store = new Store(confi
       await sync(guild);
       await verify.ensurePanel(ctx, guild);
       await antibot.ensureNotice(ctx, guild);
+      await roles.ensurePanel(ctx, guild);
       giveaways.resume(ctx);
+      await status.start(ctx);
       log.info(`ready on ${guild.name} (${guild.memberCount} members)`);
     } catch (err) {
       log.error('setup on ready failed:', err);
@@ -99,6 +108,7 @@ function createBot(config, { log = require('./lib/log'), store = new Store(confi
       if (interaction.isButton()) {
         if (interaction.customId === verify.BUTTON_ID) return await verify.handleButton(interaction, ctx);
         if (interaction.customId === giveaways.BUTTON_ID) return await giveaways.enter(interaction, ctx);
+        if (roles.isRoleButton(interaction.customId)) return await roles.handleButton(interaction, ctx);
         return;
       }
       if (!interaction.isChatInputCommand()) return;
@@ -126,7 +136,7 @@ function createBot(config, { log = require('./lib/log'), store = new Store(confi
     settle,
     sync,
     start: () => client.login(config.token),
-    stop: () => client.destroy(),
+    stop: () => { status.stop(); return client.destroy(); },
   };
 }
 

@@ -12,8 +12,10 @@ function welcomeEmbed(member, ctx) {
   const guild = member.guild;
   const verify = ctx.found.channels.verify;
   const rules = ctx.found.channels.rules;
+  const rolesChannel = ctx.found.channels.roles;
   const steps = [
     verify ? `Head to ${verify.toString()} and press **Verify** to unlock the server.` : null,
+    rolesChannel ? `Then pick your roles in ${rolesChannel.toString()} - merchant or buyer, and whether you want updates and status pings.` : null,
     rules ? `Have a look at ${rules.toString()} while you are at it.` : null,
   ].filter(Boolean).join('\n');
   const user = member.user;

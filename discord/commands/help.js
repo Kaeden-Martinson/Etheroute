@@ -9,7 +9,7 @@ const GROUPS = [
   { name: 'Moderation', names: ['kick', 'ban', 'unban', 'timeout', 'untimeout', 'warn', 'warnings', 'purge'] },
   { name: 'Channels', names: ['slowmode', 'lock', 'unlock', 'announce'] },
   { name: 'Members', names: ['role', 'nick', 'userinfo', 'avatar'] },
-  { name: 'Server', names: ['giveaway', 'panel', 'serverinfo', 'ping', 'help'] },
+  { name: 'Server', names: ['status', 'giveaway', 'panel', 'serverinfo', 'ping', 'help'] },
 ];
 
 module.exports = {
@@ -30,7 +30,7 @@ module.exports = {
     if (rest.length) fields.push({ name: 'More', value: rest.map((c) => `**/${c.data.name}** - ${c.data.description}`).join('\n'), inline: false });
     return interaction.reply({ embeds: [embed({
       title: `${ctx.config.brand.name} bot`,
-      description: `${mine.length} of ${all.length} commands are yours to use. Verification is the button in ${ctx.found.channels.verify ? ctx.found.channels.verify.toString() : '#verify'}; the anti-bot channel removes anyone who posts in it.`,
+      description: `${mine.length} of ${all.length} commands are yours to use. Verification is the button in ${ctx.found.channels.verify ? ctx.found.channels.verify.toString() : '#verify'}; roles are the buttons in ${ctx.found.channels.roles ? ctx.found.channels.roles.toString() : '#roles'}; the anti-bot channel removes anyone who posts in it.`,
       color: COLORS.brand,
       fields,
       footer: ctx.config.brand.site.replace(/^https?:\/\//, ''),

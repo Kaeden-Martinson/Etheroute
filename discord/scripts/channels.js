@@ -57,13 +57,19 @@ client.once('clientReady', async (c) => {
     for (const [purpose, ch] of Object.entries(found.channels)) {
       say(`    ${purpose.padEnd(8)} ${ch ? `#${ch.name} (${ch.id})` : `not found - set DISCORD_${purpose.toUpperCase()}_CHANNEL`}   [${settings.channels[purpose]}]`);
     }
-    say(`    member   ${found.roles.member ? `@${found.roles.member.name} (${found.roles.member.id})` : `not found - the bot will create "${settings.roles.member}"`}`);
+    for (const [purpose, r] of Object.entries(found.roles)) {
+      say(`    ${purpose.padEnd(8)} ${r ? `@${r.name} (${r.id})` : `not found - the bot will create "${settings.roles[purpose]}"`}`);
+    }
     const me = guild.members.me;
     if (me) {
       say();
       say(`My highest role: @${me.roles.highest.name} (position ${me.roles.highest.position})`);
-      if (found.roles.member && found.roles.member.position >= me.roles.highest.position) say('  ✗ it must sit above the Member role for verification to work');
+      for (const r of Object.values(found.roles)) {
+        if (r && r.position >= me.roles.highest.position) say(`  ✗ it must sit above @${r.name} for me to hand that role out`);
+      }
     }
+    say();
+    say(`Status embed reads ${settings.status.apiUrl}/api/status every ${Math.round(settings.status.intervalMs / 60000)} min`);
     say();
     say(`Invite link: ${inviteUrl(settings.clientId || c.user.id)}`);
   } catch (err) {

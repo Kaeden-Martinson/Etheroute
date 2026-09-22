@@ -6,7 +6,8 @@
  * The secrets - the bot token - never pass through code or chat: they are
  * typed into .env by the person who holds them. Everything else has a
  * default that fits a server laid out the usual way: a #welcome, a
- * #verify, an #anti-bot and a Member role. A channel or role can be named
+ * #verify, an #anti-bot, a #status, a #roles, and a Member role plus the
+ * four people claim for themselves. A channel or role can be named
  * by its id or by its name; a name is matched loosely (emoji, dashes and
  * case do not matter, and "verify" finds "✅︱verification"), and a
  * comma-separated list tries each in turn.
@@ -34,9 +35,21 @@ function read(env = process.env) {
       antibot: str('DISCORD_ANTIBOT_CHANNEL', 'anti-bot,antibot,anti-spam,bot-trap'),
       log: str('DISCORD_LOG_CHANNEL', 'mod-log,mod-logs,modlog,logs,audit-log'),
       rules: str('DISCORD_RULES_CHANNEL', 'rules,info'),
+      status: str('DISCORD_STATUS_CHANNEL', 'status,service-status,uptime'),
+      roles: str('DISCORD_ROLES_CHANNEL', 'roles,get-roles,self-roles,role-select,pick-roles,claim-roles'),
     },
     roles: {
       member: str('DISCORD_MEMBER_ROLE', 'Member'),
+      // the four anyone may claim from the panel in #roles
+      merchant: str('DISCORD_MERCHANT_ROLE', 'Merchant'),
+      buyer: str('DISCORD_BUYER_ROLE', 'Buyer'),
+      updates: str('DISCORD_UPDATES_ROLE', 'Updates'),
+      status: str('DISCORD_STATUS_ROLE', 'Status'),
+    },
+    status: {
+      // the API the status embed reads; the bot runs on the same box as the API
+      apiUrl: str('DISCORD_API_URL', `http://127.0.0.1:${str('PORT', '3000')}`).replace(/\/+$/, ''),
+      intervalMs: Math.max(60000, Number(str('DISCORD_STATUS_INTERVAL_MS', '300000')) || 300000),
     },
     antibot: {
       action: str('DISCORD_ANTIBOT_ACTION', 'kick').toLowerCase(),

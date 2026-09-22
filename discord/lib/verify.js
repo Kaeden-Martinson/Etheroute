@@ -64,7 +64,8 @@ async function handleButton(interaction, ctx) {
     return interaction.reply({ embeds: [fail('I could not give you the role. An admin needs to move my role above **' + role.name + '** in Server Settings → Roles.')], flags: MessageFlags.Ephemeral });
   }
   ctx.log.info(`verified ${interaction.user.tag} (${interaction.user.id})`);
-  return interaction.reply({ embeds: [ok(`You are verified - welcome to **${interaction.guild.name}**.`)], flags: MessageFlags.Ephemeral });
+  const rolesChannel = ctx.found.channels.roles;
+  return interaction.reply({ embeds: [ok(`You are verified - welcome to **${interaction.guild.name}**.${rolesChannel ? ` Pick your roles in ${rolesChannel.toString()}.` : ''}`)], flags: MessageFlags.Ephemeral });
 }
 
 module.exports = { BUTTON_ID, panel, ensurePanel, handleButton };

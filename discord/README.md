@@ -4,8 +4,10 @@ One process, next to the API, on the one server named in `.env`. It:
 
 - posts a **verification panel** in `#verify` - the button gives the **Member** role, and the rest of the server is gated on that role;
 - **welcomes** each new member in `#welcome`, with where to go next;
+- keeps a **status embed** in `#status` - the platform services, how many networks are up, which are degraded or down, the last few changes - edited every five minutes from the API on the same box, with a note and a ping to the **Status** role when something goes down or comes back;
+- lets people **claim roles** in `#roles` with buttons: **Merchant**, **Buyer**, **Updates** (what `/announce` can ping) and **Status**;
 - keeps an **anti-bot** channel: a notice says not to post there, and anyone who does is kicked on the spot (or banned, if you prefer) - the spam bots that post in every channel they can see are gone before a person notices them;
-- answers the usual **slash commands**: `/kick`, `/ban`, `/unban`, `/timeout`, `/untimeout`, `/warn`, `/warnings`, `/purge`, `/slowmode`, `/lock`, `/unlock`, `/role`, `/nick`, `/giveaway`, `/announce`, `/panel`, `/userinfo`, `/serverinfo`, `/avatar`, `/ping`, `/help`;
+- answers the usual **slash commands**: `/kick`, `/ban`, `/unban`, `/timeout`, `/untimeout`, `/warn`, `/warnings`, `/purge`, `/slowmode`, `/lock`, `/unlock`, `/role`, `/nick`, `/giveaway`, `/announce`, `/panel`, `/status`, `/userinfo`, `/serverinfo`, `/avatar`, `/ping`, `/help`;
 - writes every action to a **mod-log** channel if the server has one.
 
 ## Setup, once
@@ -31,18 +33,23 @@ One process, next to the API, on the one server named in `.env`. It:
    | anti-bot | `anti-bot`, `antibot`, `anti-spam`, `bot-trap` | `DISCORD_ANTIBOT_CHANNEL` |
    | mod-log | `mod-log`, `mod-logs`, `modlog`, `logs`, `audit-log` | `DISCORD_LOG_CHANNEL` |
    | rules | `rules`, `info` | `DISCORD_RULES_CHANNEL` |
+   | status | `status`, `service-status`, `uptime` | `DISCORD_STATUS_CHANNEL` |
+   | roles | `roles`, `get-roles`, `self-roles`, `role-select`, `pick-roles`, `claim-roles` | `DISCORD_ROLES_CHANNEL` |
 
-   An override takes a channel id or a name (or a comma list). `DISCORD_MEMBER_ROLE` names the role the same way; if no such role exists the bot creates it.
+   An override takes a channel id or a name (or a comma list). The roles are named the same way - `DISCORD_MEMBER_ROLE` (default `Member`), and the four people claim for themselves: `DISCORD_MERCHANT_ROLE`, `DISCORD_BUYER_ROLE`, `DISCORD_UPDATES_ROLE`, `DISCORD_STATUS_ROLE` (defaults `Merchant`, `Buyer`, `Updates`, `Status`). Any of the five that does not exist is created.
 
    Permissions that make the gate work:
    - `@everyone` sees **only** `#welcome`, `#verify`, `#rules` and `#anti-bot`; every other channel is visible to **Member**.
-   - In `#verify` and `#welcome`, `@everyone` cannot send messages. In `#anti-bot`, `@everyone` **can** - that is the trap - and the bot has *Manage Messages* there.
+   - In `#verify`, `#welcome`, `#roles` and `#status`, `@everyone` cannot send messages. In `#anti-bot`, `@everyone` **can** - that is the trap - and the bot has *Manage Messages* there.
+   - `#status` and `#roles` are best made visible to **Member** only, so the buttons and the pings reach verified people.
 6. **Run it.**
    ```
    npm run discord:channels    # read-only: lists channels and roles, and which the bot would use
    npm run discord             # starts the bot
    ```
-   On start it logs what it found, registers the slash commands on the server (they appear within a few seconds; there is no hour-long wait because they are per-server, not global), posts the verification panel and the anti-bot notice if they are not already there, and picks up any giveaway still running.
+   On start it logs what it found, registers the slash commands on the server (they appear within a few seconds; there is no hour-long wait because they are per-server, not global), posts the verification panel, the anti-bot notice, the role-picker and the status embed if they are not already there, and picks up any giveaway still running.
+
+   The status embed reads `GET /api/status` and `/api/status/chains` from `DISCORD_API_URL` - by default `http://127.0.0.1:<PORT>`, the API on the same machine. If the API answers on another host or the bot runs elsewhere, set it (`https://etheroute.com` works too; both endpoints are public).
 
    In production, run it under the same process manager as the API (`pm2 start discord/index.js --name etheroute-bot`, or a second systemd unit). It reads `.env` from the project root.
 
@@ -55,6 +62,8 @@ One process, next to the API, on the one server named in `.env`. It:
 | `DISCORD_CLIENT_ID` | - | for the invite link |
 | `DISCORD_*_CHANNEL`, `DISCORD_MEMBER_ROLE` | see above | where things are |
 | `DISCORD_ANTIBOT_ACTION` | `kick` | `kick` or `ban` for whoever posts in the anti-bot channel |
+| `DISCORD_API_URL` | `http://127.0.0.1:<PORT>` | where the status embed reads `/api/status` from |
+| `DISCORD_STATUS_INTERVAL_MS` | `300000` | how often the status embed is refreshed (never under a minute) |
 | `DISCORD_BRAND_NAME` | `Etheroute` | the name on panels and footers |
 | `SITE_URL` | `https://etheroute.com` | the site in footers (the API's own key) |
 | `DISCORD_DATA_FILE` | `data/discord.json` | where panel ids, giveaways and warnings are kept |
@@ -79,8 +88,9 @@ Discord hides each command from people without its permission; the bot checks th
 | `/role add\|remove user role` | Manage Roles | a role on or off |
 | `/nick user [name]` | Manage Nicknames | sets or clears a nickname |
 | `/giveaway start duration prize [winners] [channel]` | Manage Server | a giveaway with an Enter button; `end`, `reroll` and `list` too |
-| `/announce title message [channel] [color] [ping_everyone]` | Manage Messages | an embed in the bot's voice |
-| `/panel verify\|antibot\|status` | Manage Server | re-posts a panel, or shows what the bot found |
+| `/announce title message [channel] [color] [ping]` | Manage Messages | an embed in the bot's voice; `ping` is nobody, the Updates role, or @everyone |
+| `/panel verify\|antibot\|roles\|status\|check` | Manage Server | re-posts a panel, or shows what the bot found |
+| `/status` | anyone | the status embed, to you only, read fresh |
 | `/userinfo`, `/serverinfo`, `/avatar`, `/ping`, `/help` | anyone | the usual |
 
 ## Where things live
@@ -96,6 +106,8 @@ discord/
     verify.js         the panel and its button
     antibot.js        the notice and the trap
     welcome.js        the welcome card
+    roles.js          the role-picker and its buttons
+    status.js         the status embed, its refresh and the change note
     giveaways.js      start, enter, end, reroll, resume
     moderation.js     who may act on whom; the mod-log card; the DM
     embeds.js         the palette and the embed helper

@@ -24,6 +24,8 @@ const antibot = require('../discord/lib/antibot');
 const verify = require('../discord/lib/verify');
 const welcome = require('../discord/lib/welcome');
 const giveaways = require('../discord/lib/giveaways');
+const roles = require('../discord/lib/roles');
+const status = require('../discord/lib/status');
 const { Store } = require('../discord/lib/store');
 const { embed, COLORS } = require('../discord/lib/embeds');
 const { inviteUrl, permissions, NEEDED } = require('../discord/lib/invite');
@@ -51,6 +53,14 @@ describe('The config', () => {
     assert.strictEqual(c.channels.verify, 'verify,verification,verify-here');
     assert.strictEqual(c.channels.antibot, 'anti-bot,antibot,anti-spam,bot-trap');
     assert.strictEqual(c.roles.member, 'Member');
+    assert.deepStrictEqual([c.roles.merchant, c.roles.buyer, c.roles.updates, c.roles.status], ['Merchant', 'Buyer', 'Updates', 'Status']);
+    assert.strictEqual(c.channels.status, 'status,service-status,uptime');
+    assert.ok(c.channels.roles.startsWith('roles,get-roles'));
+    assert.strictEqual(c.status.apiUrl, 'http://127.0.0.1:3000', 'the API on the same box');
+    assert.strictEqual(c.status.intervalMs, 300000);
+    assert.strictEqual(config.read({ PORT: '80' }).status.apiUrl, 'http://127.0.0.1:80');
+    assert.strictEqual(config.read({ DISCORD_API_URL: 'https://etheroute.com/' }).status.apiUrl, 'https://etheroute.com');
+    assert.strictEqual(config.read({ DISCORD_STATUS_INTERVAL_MS: '5' }).status.intervalMs, 60000, 'never faster than a minute');
     assert.strictEqual(c.antibot.action, 'kick');
     assert.ok(c.dataFile.endsWith(path.join('data', 'discord.json')));
     const custom = config.read({ DISCORD_BOT_TOKEN: ' t ', DISCORD_GUILD_ID: '1551674888060936323', DISCORD_ANTIBOT_ACTION: 'BAN', DISCORD_VERIFY_CHANNEL: '123456789012345678', DATA_DIR: '/x' });
@@ -103,10 +113,13 @@ describe('Finding the furniture', () => {
 
   test('resolveAll names every purpose, found or not', () => {
     const found = guildLib.resolveAll(g, config.read({}));
-    assert.deepStrictEqual(Object.keys(found.channels), ['welcome', 'verify', 'antibot', 'log', 'rules']);
+    assert.deepStrictEqual(Object.keys(found.channels), ['welcome', 'verify', 'antibot', 'log', 'rules', 'status', 'roles']);
     assert.strictEqual(found.channels.welcome.id, '1');
     assert.strictEqual(found.channels.antibot.id, '3');
+    assert.strictEqual(found.channels.status, null);
+    assert.deepStrictEqual(Object.keys(found.roles), ['member', 'merchant', 'buyer', 'updates', 'status']);
     assert.strictEqual(found.roles.member.id, 'r2');
+    assert.strictEqual(found.roles.merchant, null);
   });
 
   test('ensureRole makes the role when none matches, named as the first plain name in the spec', async () => {
@@ -260,7 +273,7 @@ describe('Verification and welcome', () => {
     const added = [];
     const replies = [];
     const roleM = role('m', 'Member', 2);
-    const ctx = { found: { roles: { member: roleM } }, log: quiet };
+    const ctx = { found: { roles: { member: roleM }, channels: { roles: channel('p', 'roles') } }, log: quiet };
     const mk = (has) => ({
       user: { tag: 'new#1', id: 'n' }, guild: { name: 'Etheroute' },
       member: { roles: { cache: new Set(has ? ['m'] : []), add: async (r, why) => added.push([r.id, why]) } },
@@ -269,11 +282,12 @@ describe('Verification and welcome', () => {
     await verify.handleButton(mk(false), ctx);
     assert.deepStrictEqual(added, [['m', 'Verified through the panel']]);
     assert.ok(replies[0].embeds[0].toJSON().description.includes('You are verified'));
+    assert.ok(replies[0].embeds[0].toJSON().description.includes('Pick your roles in <#p>'));
     assert.strictEqual(replies[0].flags, 64, 'ephemeral');
     await verify.handleButton(mk(true), ctx);
     assert.strictEqual(added.length, 1);
     assert.ok(replies[1].embeds[0].toJSON().description.includes('already verified'));
-    await verify.handleButton(mk(false), { found: { roles: {} }, log: quiet });
+    await verify.handleButton(mk(false), { found: { roles: {}, channels: {} }, log: quiet });
     assert.ok(replies[2].embeds[0].toJSON().description.includes('no Member role'));
   });
 
@@ -303,12 +317,13 @@ describe('Verification and welcome', () => {
     const sent = [];
     const welcomeCh = channel('w', 'welcome');
     welcomeCh.send = async (payload) => sent.push(payload);
-    const ctx = { config: cfg, log: quiet, found: { channels: { welcome: welcomeCh, verify: channel('v', 'verify'), rules: null } } };
+    const ctx = { config: cfg, log: quiet, found: { channels: { welcome: welcomeCh, verify: channel('v', 'verify'), rules: null, roles: channel('p', 'roles') } } };
     const m = { id: 'n', displayName: 'Newcomer', toString: () => '<@n>', guild: { name: 'Etheroute', memberCount: 42 }, user: { username: 'newcomer', tag: 'newcomer#0', createdAt: new Date('2024-01-01'), displayAvatarURL: () => 'https://cdn/a.png' } };
     assert.strictEqual(await welcome.onMemberAdd(m, ctx), true);
     const e = sent[0].embeds[0].toJSON();
     assert.strictEqual(e.title, 'Welcome, Newcomer!');
     assert.ok(e.description.includes('<@n>') && e.description.includes('<#v>'));
+    assert.ok(e.description.includes('pick your roles in <#p>'));
     assert.strictEqual(e.fields[0].value, '#42');
     assert.strictEqual(e.thumbnail.url, 'https://cdn/a.png');
     assert.deepStrictEqual(sent[0].allowedMentions, { users: ['n'] });
@@ -402,7 +417,7 @@ describe('The commands', () => {
 
   test('all of the usual ones are there, each once, each with a handler', () => {
     const names = loaded.list.map((c) => c.name);
-    for (const want of ['kick', 'ban', 'unban', 'timeout', 'untimeout', 'purge', 'warn', 'warnings', 'slowmode', 'lock', 'unlock', 'role', 'nick', 'giveaway', 'panel', 'announce', 'userinfo', 'serverinfo', 'avatar', 'ping', 'help']) {
+    for (const want of ['kick', 'ban', 'unban', 'timeout', 'untimeout', 'purge', 'warn', 'warnings', 'slowmode', 'lock', 'unlock', 'role', 'nick', 'giveaway', 'panel', 'announce', 'status', 'userinfo', 'serverinfo', 'avatar', 'ping', 'help']) {
       assert.ok(names.includes(want), `/${want}`);
     }
     assert.strictEqual(new Set(names).size, names.length);
@@ -433,7 +448,7 @@ describe('The commands', () => {
       assert.strictEqual(c.requires, perm, `/${name} requires`);
       assert.strictEqual(c.data.toJSON().default_member_permissions, perm.toString(), `/${name} default`);
     }
-    for (const name of ['ping', 'help', 'userinfo', 'serverinfo', 'avatar']) {
+    for (const name of ['ping', 'help', 'userinfo', 'serverinfo', 'avatar', 'status']) {
       assert.strictEqual(loaded.byName.get(name).requires, undefined, `/${name} is for everyone`);
     }
   });
@@ -479,5 +494,212 @@ describe('The invite and the look', () => {
     assert.strictEqual(e.color, COLORS.brand);
     assert.ok(e.timestamp);
     assert.strictEqual(embed({ timestamp: false }).toJSON().timestamp, undefined);
+  });
+});
+
+describe('Roles people claim', () => {
+  const cfg = config.read({});
+  const four = { merchant: role('m1', 'Merchant', 3), buyer: role('b1', 'Buyer', 3), updates: role('u1', 'Updates', 2), status: role('s1', 'Status', 2) };
+
+  test('the panel names each role with its blurb and has one button per role the server has', () => {
+    const p = roles.panel(cfg, { roles: { member: role('x', 'Member', 4), ...four } });
+    const e = p.embeds[0].toJSON();
+    assert.strictEqual(e.title, 'Pick your roles');
+    for (const id of ['m1', 'b1', 'u1', 's1']) assert.ok(e.description.includes(`<@&${id}>`));
+    const buttons = p.components[0].toJSON().components;
+    assert.deepStrictEqual(buttons.map((b) => b.custom_id), ['role:merchant', 'role:buyer', 'role:updates', 'role:status']);
+    assert.deepStrictEqual(buttons.map((b) => b.label), ['Merchant', 'Buyer', 'Updates', 'Status']);
+    const partial = roles.panel(cfg, { roles: { merchant: four.merchant } });
+    assert.strictEqual(partial.components[0].toJSON().components.length, 1, 'a missing role has no button');
+    assert.ok(partial.embeds[0].toJSON().description.includes('**Buyer**'), 'but is still named, in bold');
+    assert.strictEqual(roles.panel(cfg, { roles: {} }).components.length, 0);
+    assert.ok(roles.isRoleButton('role:status') && !roles.isRoleButton('verify:member'));
+  });
+
+  test('a button toggles the role; an unknown one is refused; a role the bot cannot give says why', async () => {
+    const calls = [];
+    const replies = [];
+    const ctx = { found: { roles: four }, log: quiet };
+    const press = (key, has, fail) => roles.handleButton({
+      customId: `role:${key}`, user: { tag: 'a#1', id: 'a' },
+      member: { roles: { cache: new Set(has ? [four[key] && four[key].id] : []), add: async (r) => { if (fail) throw new Error('Missing Permissions'); calls.push(['add', r.id]); }, remove: async (r) => calls.push(['remove', r.id]) } },
+      reply: async (p) => replies.push(p.embeds[0].toJSON().description),
+    }, ctx);
+    await press('merchant', false);
+    await press('merchant', true);
+    await press('status', false);
+    assert.deepStrictEqual(calls, [['add', 'm1'], ['remove', 'm1'], ['add', 's1']]);
+    assert.ok(replies[0].includes('You now have **Merchant**'));
+    assert.ok(replies[1].includes('**Merchant** removed'));
+    assert.ok(replies[2].includes('pinged when something goes down'));
+    await press('admin', false);
+    assert.ok(replies[3].includes('not on this server'));
+    await press('buyer', false, true);
+    assert.ok(replies[4].includes('move my role above **Buyer**'));
+  });
+
+  test('missing claimable roles are made, in the configured names; the panel is posted once', async () => {
+    const made = [];
+    const g = fakeGuild({ roles: [role('m1', 'Merchant', 3)] });
+    g.roles.create = async (opts) => { made.push(opts.name); return role(`new-${opts.name}`, opts.name, 1); };
+    const rolesCh = channel('p', 'roles');
+    const sent = [];
+    rolesCh.send = async (payload) => { sent.push(payload); return { id: `rm${sent.length}` }; };
+    rolesCh.messages = { fetch: async () => { throw new Error('gone'); } };
+    const store = new Store(path.join(tmp(), 'discord.json'));
+    const ctx = { config: config.read({ DISCORD_UPDATES_ROLE: 'News' }), store, log: quiet, found: { channels: { roles: rolesCh }, roles: { merchant: role('m1', 'Merchant', 3), buyer: null, updates: null, status: null } } };
+    assert.deepStrictEqual(await roles.ensureClaimable(ctx, g), ['Buyer', 'News', 'Status']);
+    assert.strictEqual(ctx.found.roles.updates.name, 'News');
+    assert.deepStrictEqual(await roles.ensureClaimable(ctx, g), [], 'nothing to make the second time');
+    await roles.ensurePanel(ctx, g);
+    assert.strictEqual(sent.length, 1);
+    assert.strictEqual(store.data.panels.roles.messageId, 'rm1');
+    assert.strictEqual(sent[0].components[0].toJSON().components.length, 4);
+    assert.strictEqual(await roles.ensurePanel({ ...ctx, found: { channels: {}, roles: {} } }, g), null);
+  });
+});
+
+describe('The status embed', () => {
+  const cfg = config.read({});
+  const platform = (over = {}) => ({
+    generatedAt: '2026-09-21T21:30:00.000Z', overallStatus: 'operational', overallStatusLabel: 'Fully operational', uptimePercentage: 99.98,
+    services: [
+      { key: 'API', label: 'API', status: 'operational', statusLabel: 'Operational' },
+      { key: 'WALLET_SYNC', label: 'Wallet Sync', status: 'operational', statusLabel: 'Operational' },
+      { key: 'CHECKOUTS', label: 'Checkouts', status: 'operational', statusLabel: 'Operational' },
+      { key: 'PAYOUTS', label: 'Payout Engine', status: 'operational', statusLabel: 'Operational' },
+    ],
+    ...over,
+  });
+  const chains = (over = {}) => ({
+    checkedAt: '2026-09-21T21:24:59.876Z', counts: { up: 63, degraded: 2, down: 0, unknown: 0 },
+    chains: [
+      { code: 'ETH', name: 'Ethereum', status: 'up' }, { code: 'BTC', name: 'Bitcoin', status: 'up' },
+      { code: 'SOL', name: 'Solana', status: 'degraded' }, { code: 'CORE', name: 'Core', status: 'degraded' },
+    ],
+    events: [{ at: '2026-09-21T21:24:59.876Z', chain: 'BASE', name: 'Base', component: 'endpoints', from: '3/3', to: '2/3', detail: 'not answering: x' }],
+    ...over,
+  });
+  const fakeFetch = (bodies) => async (url) => {
+    const key = url.endsWith('/api/status/chains') ? 'chains' : 'platform';
+    const body = bodies[key];
+    if (body instanceof Error) throw body;
+    if (typeof body === 'number') return { ok: false, status: body, json: async () => ({}) };
+    return { ok: true, json: async () => body };
+  };
+
+  test('the picture, flattened: operational unless a service is off or a network is down; degraded networks are listed, not alarming', async () => {
+    const fine = status.summarise(await status.gather(cfg, { fetchImpl: fakeFetch({ platform: platform(), chains: chains() }) }));
+    assert.strictEqual(fine.overall, 'operational');
+    assert.strictEqual(fine.label, 'Fully operational');
+    assert.deepStrictEqual(fine.degraded.map((c) => c.code), ['SOL', 'CORE']);
+    assert.deepStrictEqual(fine.down, []);
+    assert.strictEqual(fine.uptime, 99.98);
+    assert.strictEqual(fine.events.length, 1);
+    assert.strictEqual(status.signature(fine), 'operational||');
+
+    const oneDown = status.summarise({ platform: platform(), chains: chains({ chains: [{ code: 'SOL', name: 'Solana', status: 'down' }], counts: { up: 64, degraded: 0, down: 1, unknown: 0 } }) });
+    assert.strictEqual(oneDown.overall, 'degraded');
+    assert.strictEqual(status.signature(oneDown), 'degraded||SOL');
+
+    const incident = status.summarise({ platform: platform({ overallStatus: 'degraded', overallStatusLabel: 'Partial outage', services: [{ key: 'API', label: 'API', status: 'operational', statusLabel: 'Operational' }, { key: 'PAYOUTS', label: 'Payout Engine', status: 'degraded', statusLabel: 'Degraded' }] }), chains: chains() });
+    assert.strictEqual(incident.overall, 'degraded');
+    assert.strictEqual(incident.label, 'Partial outage');
+    assert.strictEqual(status.signature(incident), 'degraded|PAYOUTS|');
+
+    const noChains = status.summarise(await status.gather(cfg, { fetchImpl: fakeFetch({ platform: platform(), chains: 503 }) }));
+    assert.strictEqual(noChains.overall, 'operational');
+    assert.strictEqual(noChains.counts, null);
+    assert.ok(noChains.chainsError.includes('503'));
+
+    const gone = status.summarise(await status.gather(cfg, { fetchImpl: fakeFetch({ platform: new Error('ECONNREFUSED'), chains: new Error('ECONNREFUSED') }) }));
+    assert.strictEqual(gone.ok, false);
+    assert.strictEqual(gone.overall, 'unreachable');
+    assert.strictEqual(gone.error, 'ECONNREFUSED');
+    assert.strictEqual(status.signature(gone), 'unreachable||');
+  });
+
+  test('the embed: a glyph and colour for the state, a field per service, the network counts, what is degraded, the recent changes, the status page', () => {
+    const fine = status.summarise({ platform: platform(), chains: chains() });
+    const e = status.statusEmbed(fine, cfg).toJSON();
+    assert.strictEqual(e.title, '🟢 Etheroute status - Fully operational');
+    assert.strictEqual(e.color, COLORS.ok);
+    assert.ok(e.description.includes('[Status page](https://etheroute.com/status)') && e.description.includes('**99.98%**'));
+    assert.deepStrictEqual(e.fields.map((f) => f.name), ['API', 'Wallet Sync', 'Checkouts', 'Payout Engine', 'Networks (4)', 'Degraded (some endpoints not answering)', 'Recent changes']);
+    assert.strictEqual(e.fields[0].value, '✅ Operational');
+    assert.strictEqual(e.fields[4].value, '🟢 63 up · 🟠 2 degraded · 🔴 0 down');
+    assert.strictEqual(e.fields[5].value, 'Solana (SOL), Core (CORE)');
+    assert.ok(e.fields[6].value.startsWith('Base: endpoints 3/3 → 2/3 <t:'));
+    assert.strictEqual(e.footer.text, 'Updates every 5 min');
+
+    const down = status.statusEmbed(status.summarise({ platform: platform(), chains: chains({ chains: [{ code: 'SOL', name: 'Solana', status: 'down' }], counts: { up: 64, degraded: 0, down: 1, unknown: 0 }, events: [] }) }), cfg).toJSON();
+    assert.strictEqual(down.title, '🟠 Etheroute status - Partial outage');
+    assert.strictEqual(down.color, COLORS.warn);
+    assert.ok(down.fields.some((f) => f.name === 'Down' && f.value === 'Solana (SOL)'));
+
+    const gone = status.statusEmbed(status.summarise({ platform: null, chains: null, error: 'ECONNREFUSED' }), cfg).toJSON();
+    assert.strictEqual(gone.title, '🔴 Etheroute status - API unreachable');
+    assert.strictEqual(gone.color, COLORS.danger);
+    assert.strictEqual(gone.fields[0].value, 'ECONNREFUSED');
+  });
+
+  test('the note on a change says what went down, what came back, which service degraded or recovered', () => {
+    const before = status.summarise({ platform: platform(), chains: chains() });
+    const after = status.summarise({ platform: platform({ overallStatus: 'degraded', overallStatusLabel: 'Partial outage', services: [{ key: 'API', label: 'API', status: 'operational', statusLabel: 'Operational' }, { key: 'PAYOUTS', label: 'Payout Engine', status: 'degraded', statusLabel: 'Degraded' }] }), chains: chains({ chains: [{ code: 'SOL', name: 'Solana', status: 'down' }] }) });
+    const e = status.changeEmbed(before, after, cfg).toJSON();
+    assert.strictEqual(e.title, '🟠 Fully operational → Partial outage');
+    assert.deepStrictEqual(e.fields.map((f) => [f.name, f.value]), [['Went down', 'Solana (SOL)'], ['Degraded', 'Payout Engine']]);
+    const back = status.changeEmbed(after, before, cfg).toJSON();
+    assert.strictEqual(back.title, '🟢 Partial outage → Fully operational');
+    assert.deepStrictEqual(back.fields.map((f) => [f.name, f.value]), [['Back up', 'Solana (SOL)'], ['Recovered', 'Payout Engine']]);
+    const gone = status.changeEmbed(before, status.summarise({ platform: null, error: 'timeout' }), cfg).toJSON();
+    assert.strictEqual(gone.fields[0].name, 'Problem');
+    const answering = status.changeEmbed(status.summarise({ platform: null, error: 'timeout' }), before, cfg).toJSON();
+    assert.deepStrictEqual(answering.fields.map((f) => f.name), ['API']);
+    assert.strictEqual(status.changeEmbed(null, before, cfg).toJSON().title, '🟢 Fully operational');
+  });
+
+  test('refresh edits one remembered message, and pings the Status role only when the picture changes', async () => {
+    const sent = [];
+    const edits = [];
+    const statusCh = channel('st', 'status');
+    let exists = false;
+    statusCh.send = async (payload) => { sent.push(payload); exists = true; return { id: 'sm1', channel: statusCh, edit: async (p) => edits.push(p) }; };
+    statusCh.messages = { fetch: async () => { if (!exists) throw new Error('gone'); return { id: 'sm1', channel: statusCh, edit: async (p) => edits.push(p) }; } };
+    const store = new Store(path.join(tmp(), 'discord.json'));
+    const ctx = { config: cfg, store, log: quiet, guild: {}, found: { channels: { status: statusCh }, roles: { status: role('s1', 'Status', 2) } } };
+    let bodies = { platform: platform(), chains: chains() };
+    const opts = { fetchImpl: (url, o) => fakeFetch(bodies)(url, o) };
+
+    let r = await status.refresh(ctx, opts);
+    assert.strictEqual(r.changed, false, 'the first picture is not a change');
+    assert.strictEqual(sent.length, 1, 'posted once');
+    assert.strictEqual(edits.length, 1, 'and edited with the same picture');
+    assert.strictEqual(store.data.panels.status.messageId, 'sm1');
+    assert.strictEqual(store.data.status.signature, 'operational||');
+
+    r = await status.refresh(ctx, opts);
+    assert.strictEqual(r.changed, false);
+    assert.strictEqual(sent.length, 1, 'still the one message');
+    assert.strictEqual(edits.length, 2);
+
+    bodies = { platform: platform(), chains: chains({ chains: [{ code: 'SOL', name: 'Solana', status: 'down' }], counts: { up: 64, degraded: 0, down: 1, unknown: 0 } }) };
+    r = await status.refresh(ctx, opts);
+    assert.strictEqual(r.changed, true);
+    assert.strictEqual(sent.length, 2, 'a note under the embed');
+    assert.strictEqual(sent[1].content, '<@&s1>');
+    assert.deepStrictEqual(sent[1].allowedMentions, { roles: ['s1'] });
+    assert.strictEqual(sent[1].embeds[0].toJSON().title, '🟠 Fully operational → Partial outage');
+    assert.strictEqual(store.data.status.signature, 'degraded||SOL');
+
+    bodies = { platform: platform(), chains: chains({ chains: [{ code: 'SOL', name: 'Solana', status: 'degraded' }] }) };
+    r = await status.refresh(ctx, opts);
+    assert.strictEqual(r.changed, true, 'down → degraded is a recovery');
+    assert.strictEqual(sent[2].embeds[0].toJSON().fields[0].name, 'Back up');
+    r = await status.refresh(ctx, opts);
+    assert.strictEqual(r.changed, false, 'degraded staying degraded is not news');
+    assert.strictEqual(sent.length, 3);
+
+    assert.deepStrictEqual(await status.refresh({ ...ctx, found: { channels: {}, roles: {} } }, opts).then((x) => x.changed), false, 'no channel: nothing to edit');
   });
 });

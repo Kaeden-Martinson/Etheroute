@@ -59,8 +59,8 @@ function resolveRole(guild, spec) {
   return match(Array.from(guild.roles.cache.values()).filter((r) => r.id !== guild.id), spec);
 }
 
-/** The Member role, made if the server has none by that name. */
-async function ensureRole(guild, spec, { reason = 'Etheroute bot: the role verified members receive' } = {}) {
+/** A role the bot hands out, made if the server has none by that name. */
+async function ensureRole(guild, spec, { reason = 'Etheroute bot: a role it hands out' } = {}) {
   const found = resolveRole(guild, spec);
   if (found) return { role: found, created: false };
   const name = specs(spec).find((s) => !isId(s)) || 'Member';
@@ -80,7 +80,7 @@ function botCan(channel, ...flags) {
 function resolveAll(guild, config) {
   const out = { channels: {}, roles: {} };
   for (const [purpose, spec] of Object.entries(config.channels)) out.channels[purpose] = resolveChannel(guild, spec);
-  out.roles.member = resolveRole(guild, config.roles.member);
+  for (const [purpose, spec] of Object.entries(config.roles)) out.roles[purpose] = resolveRole(guild, spec);
   return out;
 }
 
