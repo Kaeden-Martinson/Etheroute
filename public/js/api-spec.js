@@ -372,8 +372,16 @@ window.API_SPEC = {
       title: 'Webhooks',
       icon: 'responses',
       intro: [
-        'When a session settles, underpays or expires, we <code>POST</code> to the <code>webhookUrl</code> you gave it. Deliveries are retried with backoff (5 s, 30 s, 2 min, 10 min, 1 h) up to six times until your endpoint answers 2xx. Settlement runs server-side, so the webhook fires whether or not the customer kept the page open.',
-        'Every delivery is signed. The header is <code>Etheroute-Signature: t=&lt;unix seconds&gt;,v1=&lt;hex&gt;</code> where <code>v1</code> is HMAC-SHA256 over <code>&lt;t&gt;.&lt;raw body&gt;</code> with your signing secret. Compare in constant time and reject timestamps older than a few minutes.',
+        'When a session settles, underpays or expires, we <code>POST</code> to the <code>webhookUrl</code> you gave it. Settlement runs server-side, so the webhook fires whether or not the customer kept the page open, and a delivery is retried until your endpoint answers 2xx &mdash; so make your handler idempotent and key it on <code>Etheroute-Delivery</code> or the session id.',
+        'Every delivery is signed with your account\'s own secret. The header is <code>Etheroute-Signature: t=&lt;unix seconds&gt;,v1=&lt;hex&gt;</code> where <code>v1</code> is HMAC-SHA256 over <code>&lt;t&gt;.&lt;raw body&gt;</code>. Compare in constant time and reject timestamps older than a few minutes. Hash the <strong>raw request body</strong>, byte for byte, before any JSON parsing or re-serialising.',
+        'Read your secret with <code>GET /api/webhook-secret</code>, below, and configure it at your endpoint. It is stable &mdash; the same value every time you ask &mdash; until you replace it with <code>POST /api/webhook-secret/rotate</code>, which is what to do if it leaks. Rotation takes effect on the next delivery, so update your endpoint first.',
+      ],
+      facts: [
+        ['Signature', '<code>Etheroute-Signature: t=&lt;unix seconds&gt;,v1=&lt;hex&gt;</code>'],
+        ['Also sent', '<code>Etheroute-Event</code> &mdash; the event name. <code>Etheroute-Delivery</code> &mdash; an id for this delivery, the same across its retries, so you can discard a duplicate.'],
+        ['Retries', '6 attempts in all: at once, then after 5 s, 30 s, 2 min, 10 min and 1 h, until your endpoint answers 2xx'],
+        ['Timeout', '10 seconds per attempt'],
+        ['Redirects', 'Not followed &mdash; a 3xx counts as a failed attempt, so answer on the URL you gave us'],
       ],
       events: [
         ['checkout.session.completed', 'Paid in full and confirmed.'],
@@ -397,6 +405,22 @@ function verify(secret, header, rawBody, toleranceSeconds = 300) {
   return expected.length === parts.v1.length &&
     crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(parts.v1));
 }`,
+      endpoints: [
+        {
+          id: 'webhook-secret-get', method: 'GET', path: '/webhook-secret', auth: 'key',
+          summary: 'Your webhook signing secret',
+          description: 'The secret your deliveries are signed with, so you can verify them. Only ever your own &mdash; it is read from the credential, not from a parameter. <code>rotated</code> is <code>false</code> while you are on the secret the account started with and <code>true</code> once you have minted your own.',
+          response: { success: true, webhookSecret: 'Zm9vYmFyX3NlY3JldF9leGFtcGxlXzMyX2J5dGVz', rotated: false, algorithm: 'HMAC-SHA256', header: 'Etheroute-Signature', format: 't=<unix seconds>,v1=<hex>, where v1 = HMAC-SHA256(secret, `${t}.${rawBody}`)', note: 'Verify every webhook against this before acting on it, and reject timestamps older than a few minutes. Keep it secret.' },
+          notes: 'Treat the response like a password: it is the one value that proves a webhook came from us. It is not shown in the dashboard.',
+        },
+        {
+          id: 'webhook-secret-rotate', method: 'POST', path: '/webhook-secret/rotate', auth: 'key', status: 201,
+          summary: 'Replace the signing secret',
+          description: 'Mints a fresh random secret, stores it against your account and returns it. The old secret stops signing anything from the next delivery onwards, so put the new value at your endpoint before &mdash; or straight after &mdash; calling this, and expect signature failures on anything still in flight.',
+          response: { success: true, webhookSecret: 'bmV3X3JvdGF0ZWRfc2VjcmV0X2V4YW1wbGVfMzI', rotated: true, algorithm: 'HMAC-SHA256', header: 'Etheroute-Signature', format: 't=<unix seconds>,v1=<hex>, where v1 = HMAC-SHA256(secret, `${t}.${rawBody}`)', note: 'Verify every webhook against this before acting on it, and reject timestamps older than a few minutes. Keep it secret.', rotatedNote: 'Your previous webhook secret no longer verifies. Update your endpoint to this value now.' },
+          notes: 'There is one secret per account and no overlap window: a delivery is signed with whichever secret is current when it is sent. To avoid a gap, accept both the old and the new value at your endpoint for a few minutes around the call.',
+        },
+      ],
     },
 
     {

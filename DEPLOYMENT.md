@@ -395,25 +395,46 @@ Send the buyer to the returned `checkoutUrl`. Pass either `usdAmount` or
 ### Verifying the webhook
 
 Deliveries carry `Etheroute-Signature: t=<unix>,v1=<hmac>`. The HMAC is
-SHA-256 over `` `${t}.${rawBody}` `` using your client signing secret. Compare in
+SHA-256 over `` `${t}.${rawBody}` `` using that client's signing secret. Compare in
 constant time and reject timestamps older than five minutes.
+
+A client reads their own secret from the API:
+
+```
+GET  /api/webhook-secret          -> { webhookSecret, rotated, algorithm, header, format }
+POST /api/webhook-secret/rotate   -> a fresh secret; the old one stops signing at once
+```
+
+Both are scoped to the authenticated caller, so a client can only ever see
+their own. The secret a client starts with is derived from
+`KEY_ENCRYPTION_KEY`, which is why it survives a restart and can be shown
+again; rotating stores a random one on their record, and from the next
+delivery onwards that is what signs. There is no overlap window, so tell a
+client to accept both values for a few minutes around a rotation.
 
 ```js
 const crypto = require('crypto');
 
 function verify(rawBody, header, secret) {
   const parts = Object.fromEntries(header.split(',').map(p => p.split('=')));
+  if (!parts.t || !parts.v1) return false;
   if (Math.abs(Date.now() / 1000 - Number(parts.t)) > 300) return false;
 
   const expected = crypto.createHmac('sha256', secret)
     .update(`${parts.t}.${rawBody}`)
     .digest('hex');
 
-  return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(parts.v1));
+  // timingSafeEqual throws on a length mismatch, so check that first
+  return expected.length === parts.v1.length &&
+    crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(parts.v1));
 }
 ```
 
-Verify against the **raw request body**, before any JSON parsing.
+Verify against the **raw request body**, before any JSON parsing. Two other
+headers come with it: `Etheroute-Event` (the event name) and
+`Etheroute-Delivery` (one id per delivery, the same across its retries).
+Redirects are not followed - a 3xx from the endpoint counts as a failed
+attempt.
 
 Events: `checkout.session.completed`, `checkout.session.underpaid`,
 `checkout.session.expired`. Retried up to `WEBHOOK_MAX_ATTEMPTS` times with
