@@ -35,6 +35,7 @@ const statusRoutes = require('./routes/status');
 const checkoutRoutes = require('./routes/checkout');
 const ownerRoutes = require('./routes/owner');
 const telegramRoutes = require('./routes/telegram');
+const webhookSecretRoutes = require('./routes/webhook-secret');
 
 const app = express();
 const PUBLIC_DIR = path.join(__dirname, '../public');
@@ -258,6 +259,8 @@ app.use('/api/withdrawal', requireAuth, clientLimiter, trackApiCall, withdrawalR
 app.use('/api/transactions', requireAuth, clientLimiter, trackApiCall, transactionRoutes);
 app.use('/api/payouts', requireAuth, clientLimiter, trackApiCall, payoutRoutes);
 app.use('/api/api-keys', requireAuth, clientLimiter, trackApiCall, apiKeysRoutes);
+// A vendor's own webhook signing secret, so they can verify our signed deliveries.
+app.use('/api/webhook-secret', requireAuth, clientLimiter, trackApiCall, webhookSecretRoutes);
 app.use('/api/api-calls', requireAuth, clientLimiter, apiCallsRoutes);
 // The owner's view across every merchant. Guarded inside the router: a
 // signed-in session on an account flagged owner, never an API key.
