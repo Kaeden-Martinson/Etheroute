@@ -93,14 +93,49 @@ async function assertResolvesPublic(parsed) {
 }
 
 /**
- * Per-client webhook signing secret, derived deterministically from the master
- * key. Nothing extra to store, and it can always be shown to the vendor again.
+ * The original per-client secret, derived from the master key. Used for any
+ * client that has never rotated, so their existing verification keeps working.
  */
-function signingSecret(clientId) {
+function derivedSigningSecret(clientId) {
   return crypto
     .createHmac('sha256', config.keyEncryptionKey)
     .update(`webhook-secret:${clientId}`)
     .digest('base64url');
+}
+
+/**
+ * A client's effective webhook signing secret: the stored one if they have
+ * rotated, otherwise the derived one. Used to sign every delivery and returned
+ * by GET /api/webhook-secret.
+ *
+ * The derived value cannot be rotated on its own (it is tied to the master key,
+ * which also decrypts wallets), so a leaked secret used to be stuck. A client
+ * can now POST /api/webhook-secret/rotate for a fresh random secret stored on
+ * their record; from then on this returns that, and the old value stops working.
+ */
+function signingSecret(clientId) {
+  try {
+    const user = db.getById('users', clientId);
+    if (user && typeof user.webhookSecret === 'string' && user.webhookSecret) return user.webhookSecret;
+  } catch (e) { /* fall back to derived */ }
+  return derivedSigningSecret(clientId);
+}
+
+/**
+ * Mint a fresh random secret for this client, store it, and return it. The
+ * client's previous secret (rotated or derived) immediately stops verifying, so
+ * the vendor must update their endpoint's configured secret to the new value.
+ * Returns null if the client does not exist.
+ */
+function rotateSigningSecret(clientId) {
+  const secret = crypto.randomBytes(32).toString('base64url');
+  const updated = db.update('users', clientId, { webhookSecret: secret, webhookSecretRotatedAt: new Date().toISOString() });
+  return updated ? secret : null;
+}
+
+/** Whether this client is on a rotated (stored) secret rather than the derived one. */
+function signingSecretIsRotated(clientId) {
+  try { const user = db.getById('users', clientId); return !!(user && user.webhookSecret); } catch (e) { return false; }
 }
 
 /**
@@ -264,6 +299,9 @@ module.exports = {
   attempt,
   sweep,
   signingSecret,
+  derivedSigningSecret,
+  rotateSigningSecret,
+  signingSecretIsRotated,
   signPayload,
   verifySignature,
   unsafeTargetReason,
