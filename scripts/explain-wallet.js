@@ -12,10 +12,10 @@
  * wallet holds, so a wrong one looks the same as a wallet whose balance
  * really is all fee - and there was no way to tell which from the outside.
  *
- * This replays the books: every payment in, every withdrawal that booked a
- * fee (with the gas the float advanced, charged back the same way), every
- * sweep that took one out, and what a closure forfeited. The sum is what
- * the record should say. Where it does not, the figure was written by
+ * This replays the books: every payment in and the platform's share of it,
+ * every withdrawal that booked a fee the old way (with the gas the float
+ * advanced, charged back the same way), every sweep that took one out, and
+ * what a closure forfeited. The sum is what the record should say. Where it does not, the figure was written by
  * something other than arithmetic - most often the rule this project used
  * before fees were recorded natively, which divided a dollar fee by a price
  * it did not always have and fell back to 1, writing dollars into a figure
@@ -54,6 +54,18 @@ function replay(wallet) {
     .filter((t) => t.type === 'DEPOSIT' && String(t.toAddress || '').toLowerCase() === address)
     .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
 
+  // The platform's share of what arrived, taken as each payment settled.
+  // A payment recorded before the fee moved to the payment carries no
+  // figure at all: it paid its fee at withdrawal instead, or - if it was
+  // still sitting here when the fee moved - it paid none.
+  let accrued = 0;
+  const uncharged = [];
+  for (const d of deposits) {
+    if ((d.asset || symbol) !== symbol) continue;
+    if (d.platformFeeNative === undefined || d.platformFeeNative === null) { uncharged.push(d); continue; }
+    accrued += n(d.platformFeeNative);
+  }
+
   const withdrawals = [];
   for (const payout of db.getAll('payouts')) {
     for (const t of (payout.withdrawalPlan && payout.withdrawalPlan.transfers) || []) {
@@ -90,12 +102,13 @@ function replay(wallet) {
     .reduce((sum, c) => sum + n(c.amount), 0);
 
   const forfeited = wallet.isActive === false ? n(wallet.forfeited && wallet.forfeited.coin) : 0;
-  const expected = Math.max(0, n(bookedFees + bookedAdvances + forfeited - collected));
+  const expected = Math.max(0, n(accrued + bookedFees + bookedAdvances + forfeited - collected));
   const held = n(wallet.serviceSubtractions);
 
   return {
     symbol, deposits, withdrawals, collections,
     paidIn: n(deposits.filter((d) => (d.asset || symbol) === symbol).reduce((s, d) => s + n(d.nativeAmount), 0)),
+    accrued: n(accrued), uncharged,
     bookedFees: n(bookedFees), bookedAdvances: n(bookedAdvances), collected: n(collected), forfeited,
     expected, held, balance: n(wallet.balance), drift: n(held - expected),
     unreadable,
@@ -105,16 +118,21 @@ function replay(wallet) {
 // ── every wallet at once ─────────────────────────────────────────────────
 function audit() {
   const wallets = db.getAll('wallets').filter((w) => chains.has(w.chain));
-  const all = wallets.map((w) => ({ wallet: w, ...replay(w) })).filter((r) => Math.abs(r.drift) > 1e-8);
+  const every = wallets.map((w) => ({ wallet: w, ...replay(w) }));
+  const all = every.filter((r) => Math.abs(r.drift) > 1e-8);
   const blocked = all.filter((r) => r.unreadable.length);
   const rows = all.filter((r) => !r.unreadable.length);
   all.sort((a, b) => b.drift - a.drift);
   rows.sort((a, b) => b.drift - a.drift);
 
+  // payments that were never charged are worth saying whether or not the
+  // held figure is otherwise right
+  const stranded = every.filter((r) => r.uncharged.length && r.balance > 0);
   say(`${wallets.length} wallet(s) read, ${all.length} whose held fee the withdrawals do not account for.`);
-  if (!all.length) { say('Every held figure agrees with its book.'); return rows; }
+  if (!all.length && !stranded.length) { say('Every held figure agrees with its book.'); return rows; }
+  if (!all.length) say('Every held figure agrees with its book.');
   say();
-  say('CHAIN  HELD NOW        SHOULD BE       WALLET HOLDS     OVER BY        ADDRESS');
+  if (rows.length || blocked.length) say('CHAIN  HELD NOW        SHOULD BE       WALLET HOLDS     OVER BY        ADDRESS');
   for (const r of rows) {
     const over = r.balance > 0 && r.drift > 0 ? `${(r.held / r.balance).toFixed(r.held / r.balance > 100 ? 0 : 1)}x bal` : '';
     say(`${r.wallet.chain.padEnd(6)} ${String(r.held).padEnd(15)} ${String(r.expected).padEnd(15)} ${String(r.balance).padEnd(16)} ${String(n(r.drift)).padEnd(14)} ${r.wallet.address}${over ? `  (${over})` : ''}`);
@@ -130,6 +148,17 @@ function audit() {
     say('  Their fees were charged before the plan recorded one in the coin, so the record');
     say('  cannot say what they were. Setting these to what the rest of the book accounts');
     say('  for would forgive a fee that was really taken; decide each with --set-held.');
+    say();
+  }
+
+  if (stranded.length) {
+    say(`${stranded.length} wallet(s) still hold payments that were never charged a fee:`);
+    for (const r of stranded.slice(0, 10)) {
+      const amount = r.uncharged.reduce((sum, d) => sum + n(d.nativeAmount), 0);
+      say(`  ${r.wallet.chain.padEnd(6)} ${r.wallet.address}  ${r.uncharged.length} payment(s), ${n(amount)} ${r.symbol}`);
+    }
+    say('  They arrived before the fee moved to the payment and have not been withdrawn since,');
+    say('  so no fee was taken on either side. Charge them with --set-held if you mean to.');
     say();
   }
 
@@ -194,9 +223,17 @@ function explain(wallet) {
   say(`Payments in (${r.deposits.length})`);
   if (!r.deposits.length) say('  none recorded');
   for (const d of r.deposits) {
-    say(`  ${when(d.createdAt)}  +${n(d.nativeAmount)} ${d.asset || symbol}${d.usdAmount ? ` ($${Number(d.usdAmount).toFixed(2)})` : ''}  ${d.status}  ${d.sessionId ? `session ${String(d.sessionId).slice(0, 8)}` : ''}`);
+    const fee = d.platformFeeNative === undefined || d.platformFeeNative === null
+      ? 'no fee taken here'
+      : `fee ${n(d.platformFeeNative)} ${d.asset || symbol}`;
+    say(`  ${when(d.createdAt)}  +${n(d.nativeAmount)} ${d.asset || symbol}${d.usdAmount ? ` ($${Number(d.usdAmount).toFixed(2)})` : ''}  ${d.status}  ${fee}`);
   }
-  say(`  total in ${r.paidIn} ${symbol}${usd(r.paidIn)}`);
+  say(`  total in ${r.paidIn} ${symbol}${usd(r.paidIn)}, of which the platform's share was ${r.accrued} ${symbol}${usd(r.accrued)}`);
+  if (r.uncharged.length) {
+    say(`  ${r.uncharged.length} payment(s) carry no fee: they arrived before the fee moved from the`);
+    say('  withdrawal to the payment, so theirs was taken at withdrawal - or, if they were still');
+    say('  here when it moved, never taken at all.');
+  }
   say();
 
   say(`Withdrawals from this wallet (${r.withdrawals.length})`);
@@ -222,7 +259,8 @@ function explain(wallet) {
   say();
 
   say('Reconciliation');
-  say(`  fees booked at withdrawal   ${r.bookedFees} ${symbol}`);
+  say(`  taken from payments in      ${r.accrued} ${symbol}`);
+  say(`  booked at withdrawal (old)  ${r.bookedFees} ${symbol}`);
   say(`  gas advanced, charged back  ${r.bookedAdvances} ${symbol}`);
   if (r.forfeited) say(`  forfeited when closed       ${r.forfeited} ${symbol}`);
   say(`  less collected              ${r.collected} ${symbol}`);

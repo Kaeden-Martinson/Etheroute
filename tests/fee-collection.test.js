@@ -507,6 +507,47 @@ describe('The audit over every wallet', () => {
     assert.match(one, /corrected .*: ETH 5 -> 0\.00185 by explain-wallet\.js --audit/);
   });
 
+  test('the books balance against the fees the payments paid, and name a payment that paid none', () => {
+    const dir = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'etheroute-audit-'));
+    execFileSync(process.execPath, ['-e', `
+      process.env.DATA_DIR = ${JSON.stringify(dir)};
+      const { db } = require('./src/config/database');
+      const TransactionService = require('./src/services/TransactionService');
+      // paid under the new rule: the fee came off each payment
+      const a = db.create('wallets', { id: 'w-new', clientId: 'c', chain: 'ETH', address: '0x${'a'.repeat(40)}', balance: 0, isActive: true, privateKey: 'x', createdAt: new Date().toISOString() });
+      TransactionService.recordDeposit({ clientId: 'c', chain: 'ETH', asset: 'ETH', nativeAmount: 0.00502257, usdAmount: 13.63, toAddress: a.address, sessionId: 's1' });
+      TransactionService.recordDeposit({ clientId: 'c', chain: 'ETH', asset: 'ETH', nativeAmount: 0.02, usdAmount: 54, toAddress: a.address, sessionId: 's2' });
+      db.update('wallets', a.id, { balance: 0.02502257 });
+      // arrived before the fee moved, still here, never charged
+      const c = db.create('wallets', { id: 'w-old', clientId: 'c', chain: 'SOL', address: 'So1${'c'.repeat(37)}', balance: 2, isActive: true, privateKey: 'x', createdAt: new Date().toISOString() });
+      db.create('transactions', { clientId: 'c', type: 'DEPOSIT', status: 'CONFIRMED', chain: 'SOL', asset: 'SOL', nativeAmount: 2, usdAmount: 400, toAddress: c.address, sessionId: 's3', createdAt: '2026-09-15T00:00:00.000Z' });
+    `], { cwd: path.join(__dirname, '..'), encoding: 'utf-8', env: { ...process.env, DATA_DIR: dir }, timeout: 60000 });
+
+    const run = (args) => execFileSync(process.execPath, ['scripts/explain-wallet.js', ...args], {
+      cwd: path.join(__dirname, '..'), encoding: 'utf-8',
+      env: { ...process.env, DATA_DIR: dir, PLATFORM_FEE_ADDRESS_EVM: EVM_FEE }, timeout: 60000,
+    });
+
+    // the fee each payment paid is the book, and the record agrees with it
+    const one = run(['w-new']);
+    assert.match(one, /\+0\.00502257 ETH .*fee 0\.00025113 ETH/);
+    assert.match(one, /of which the platform's share was 0\.00125113 ETH/);
+    assert.match(one, /taken from payments in\s+0\.00125113 ETH/);
+    assert.match(one, /booked at withdrawal \(old\)\s+0 ETH/);
+    assert.match(one, /the book agrees with the record/);
+
+    // a payment from before the change is named, on the wallet and in the audit
+    const old = run(['w-old']);
+    assert.match(old, /no fee taken here/);
+    assert.match(old, /arrived before the fee moved from the/);
+
+    const audit = run(['--audit']);
+    assert.match(audit, /0 whose held fee the withdrawals do not account for/);
+    assert.match(audit, /1 wallet\(s\) still hold payments that were never charged a fee/);
+    assert.match(audit, /SOL\s+So1c\S+\s+1 payment\(s\), 2 SOL/);
+    assert.match(audit, /Charge them with --set-held if you mean to/);
+  });
+
   test('a withdrawal from before fees were planned in the coin is left alone, not forgiven', () => {
     const dir = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'etheroute-audit-'));
     execFileSync(process.execPath, ['-e', `
