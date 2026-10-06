@@ -430,6 +430,24 @@ describe('The audit over every wallet', () => {
     assert.match(one, /corrected .*: ETH 5 -> 0\.00185 by explain-wallet\.js --audit/);
   });
 
+  test('a withdrawal from before fees were planned in the coin is left alone, not forgiven', () => {
+    const dir = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'etheroute-audit-'));
+    execFileSync(process.execPath, ['-e', `
+      process.env.DATA_DIR = ${JSON.stringify(dir)};
+      const { db } = require('./src/config/database');
+      db.create('wallets', { id: 'w-old', clientId: 'c', chain: 'BTC', address: 'bc1qoldoldoldoldoldoldoldoldoldoldoldoldo', isActive: true, balance: 0.001, serviceSubtractions: 5, privateKey: 'x', createdAt: new Date().toISOString() });
+      db.create('payouts', { id: 'p-old', clientId: 'c', status: 'COMPLETED', createdAt: new Date().toISOString(),
+        withdrawalPlan: { transfers: [{ fromAddress: 'bc1qoldoldoldoldoldoldoldoldoldoldoldoldo', chain: 'BTC', payoutChain: 'BTC', nativeAmount: 0.001, platformFeeUSD: 4.2, status: 'CONFIRMED', txHash: '0xold' }] } });
+    `], { cwd: path.join(__dirname, '..'), encoding: 'utf-8', env: { ...process.env, DATA_DIR: dir }, timeout: 60000 });
+
+    const out = run(dir, ['--audit', '--yes']);
+    assert.match(out, /1 of them cannot be audited, and are left alone/);
+    assert.match(out, /no fee recorded in the coin \(worth \$4\.20 at the time\)/);
+    assert.match(out, /would forgive a fee that was really taken/);
+    assert.match(out, /Nothing here can be set automatically/);
+    assert.match(run(dir, ['w-old']), /stored held\s+5 BTC/, 'and the figure is still there');
+  });
+
   test('one wallet on its own tells the story and says how to correct it', () => {
     const dir = seeded();
     const out = run(dir, ['w-btc']);

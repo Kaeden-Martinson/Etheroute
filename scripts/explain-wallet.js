@@ -64,12 +64,21 @@ function replay(wallet) {
 
   let bookedFees = 0;
   let bookedAdvances = 0;
-  for (const { t } of withdrawals) {
+  // A payout from before fees were planned in the coin carries no
+  // platformFeeNative at all. Its fee was real; it just cannot be read back
+  // from the record, so a wallet with one of these is not something an
+  // audit may set - it would forgive a fee that was genuinely charged.
+  const unreadable = [];
+  for (const { payout, t } of withdrawals) {
     const rode = Boolean(t.feeOutput && t.feeOutput.amount > 0);
     // only a leg that was broadcast books anything, and only when the fee
     // did not ride along in the transaction itself
     if (!t.txHash || rode) continue;
     if ((t.asset || symbol) !== symbol) continue;
+    if (t.platformFeeNative === undefined || t.platformFeeNative === null) {
+      unreadable.push({ payout, t, usd: n(t.platformFeeUSD) || null });
+      continue;
+    }
     bookedFees += n(t.platformFeeNative);
     bookedAdvances += n(t.gasTopUp && t.gasTopUp.chargedInAsset);
   }
@@ -89,17 +98,21 @@ function replay(wallet) {
     paidIn: n(deposits.filter((d) => (d.asset || symbol) === symbol).reduce((s, d) => s + n(d.nativeAmount), 0)),
     bookedFees: n(bookedFees), bookedAdvances: n(bookedAdvances), collected: n(collected), forfeited,
     expected, held, balance: n(wallet.balance), drift: n(held - expected),
+    unreadable,
   };
 }
 
 // ── every wallet at once ─────────────────────────────────────────────────
 function audit() {
   const wallets = db.getAll('wallets').filter((w) => chains.has(w.chain));
-  const rows = wallets.map((w) => ({ wallet: w, ...replay(w) })).filter((r) => Math.abs(r.drift) > 1e-8);
+  const all = wallets.map((w) => ({ wallet: w, ...replay(w) })).filter((r) => Math.abs(r.drift) > 1e-8);
+  const blocked = all.filter((r) => r.unreadable.length);
+  const rows = all.filter((r) => !r.unreadable.length);
+  all.sort((a, b) => b.drift - a.drift);
   rows.sort((a, b) => b.drift - a.drift);
 
-  say(`${wallets.length} wallet(s) read, ${rows.length} whose held fee the withdrawals do not account for.`);
-  if (!rows.length) { say('Every held figure agrees with its book.'); return rows; }
+  say(`${wallets.length} wallet(s) read, ${all.length} whose held fee the withdrawals do not account for.`);
+  if (!all.length) { say('Every held figure agrees with its book.'); return rows; }
   say();
   say('CHAIN  HELD NOW        SHOULD BE       WALLET HOLDS     OVER BY        ADDRESS');
   for (const r of rows) {
@@ -108,14 +121,27 @@ function audit() {
   }
   say();
 
+  if (blocked.length) {
+    say(`${blocked.length} of them cannot be audited, and are left alone:`);
+    for (const r of blocked) {
+      const usd = r.unreadable.reduce((sum, u) => sum + (u.usd || 0), 0);
+      say(`  ${r.wallet.chain.padEnd(6)} ${r.wallet.address}  held ${r.held} ${r.symbol}, ${r.unreadable.length} withdrawal(s) with no fee recorded in the coin${usd ? ` (worth $${usd.toFixed(2)} at the time)` : ''}`);
+    }
+    say('  Their fees were charged before the plan recorded one in the coin, so the record');
+    say('  cannot say what they were. Setting these to what the rest of the book accounts');
+    say('  for would forgive a fee that was really taken; decide each with --set-held.');
+    say();
+  }
+
   const dollars = rows.reduce((sum, r) => sum + Math.max(0, r.drift) * (PriceService.rateFor(r.wallet.chain) || 0), 0);
   if (PriceService.updatedAt) say(`Booked to the platform beyond what the withdrawals explain: $${dollars.toFixed(2)} at today's prices.`);
   else say('(prices have not loaded in this process, so the figures above are in coin only)');
   say('Where a figure is many times the balance, it was written in dollars rather than in the coin:');
   say('the rule that did that divided by a price it did not always have, and fell back to 1.');
   say();
+  if (!rows.length) { say('Nothing here can be set automatically.'); return rows; }
   if (!flag('--yes')) {
-    say('Nothing written. Run again with --yes to set each of these to what its withdrawals account for.');
+    say(`Nothing written. Run again with --yes to set ${rows.length} of these to what its withdrawals account for.`);
     return rows;
   }
   let fixed = 0;
@@ -210,6 +236,11 @@ function explain(wallet) {
       say(`     That is ${(r.held / r.balance).toFixed(1)}x what the wallet holds. A figure that size is a dollar`);
       say('     amount written into a figure counted in coin - the fee was divided by a price');
       say('     that had not loaded, and the fallback was 1.');
+    }
+    if (r.unreadable.length) {
+      say(`     ${r.unreadable.length} withdrawal(s) here carry no fee in the coin - they predate the plan`);
+      say('     recording one - so what they charged cannot be read back, and the figure above');
+      say('     is only what the rest of the book accounts for. --audit leaves this wallet alone.');
     }
     say(`     Correct it with:  node scripts/collect-fees.js --set-held ${wallet.address} ${r.expected}${wallet.chain === symbol ? '' : ` --asset ${symbol}`} --yes`);
   } else {
