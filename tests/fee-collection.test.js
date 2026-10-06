@@ -376,6 +376,76 @@ describe('Correcting a held figure by hand', () => {
   });
 });
 
+describe('The audit over every wallet', () => {
+  // A store of its own: the audit reads them all, so it must not see the
+  // wallets the other tests leave behind.
+  function seeded() {
+    const dir = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'etheroute-audit-'));
+    const out = execFileSync(process.execPath, ['-e', `
+      process.env.DATA_DIR = ${JSON.stringify(dir)};
+      const { db } = require('./src/config/database');
+      const mk = (id, chain, address, balance, held, feeNative) => {
+        db.create('wallets', { id, clientId: 'c', chain, address, isActive: true, balance, serviceSubtractions: held, privateKey: 'x', createdAt: new Date().toISOString() });
+        db.create('payouts', { id: 'p-' + id, clientId: 'c', status: 'COMPLETED', createdAt: new Date().toISOString(),
+          withdrawalPlan: { transfers: [{ fromAddress: address, chain, payoutChain: chain, nativeAmount: balance, platformFeeNative: feeNative, status: 'CONFIRMED', txHash: '0x' + id }] } });
+      };
+      // the dollar-for-coin mistake, at three prices, and one wallet that is right
+      mk('w-sol', 'SOL', 'So1ana1111111111111111111111111111111111', 0.5, 5, 0.025);
+      mk('w-eth', 'ETH', '0x${'a'.repeat(40)}', 0.037, 5, 0.00185);
+      mk('w-btc', 'BTC', 'bc1qauditauditauditauditauditauditauditau', 0.001, 5, 0.00005);
+      mk('w-ltc', 'LTC', 'ltc1qauditauditauditauditauditauditauditau', 2, 0.1, 0.1);
+      console.log('seeded');
+    `], { cwd: path.join(__dirname, '..'), encoding: 'utf-8', env: { ...process.env, DATA_DIR: dir }, timeout: 60000 });
+    assert.match(out, /seeded/);
+    return dir;
+  }
+  const run = (dir, args) => execFileSync(process.execPath, ['scripts/explain-wallet.js', ...args], {
+    cwd: path.join(__dirname, '..'), encoding: 'utf-8',
+    env: { ...process.env, DATA_DIR: dir, PLATFORM_FEE_ADDRESS_EVM: EVM_FEE }, timeout: 60000,
+  });
+
+  test('names every wallet the withdrawals do not account for, with how many times the balance it is, and writes nothing', () => {
+    const dir = seeded();
+    const out = run(dir, ['--audit']);
+    assert.match(out, /4 wallet\(s\) read, 3 whose held fee the withdrawals do not account for/);
+    assert.match(out, /BTC\s+5\s+0\.00005\s+0\.001\s+4\.99995\s+bc1qaudit\S+\s+\(5000x bal\)/);
+    assert.match(out, /ETH\s+5\s+0\.00185\s+0\.037\s+4\.99815\s+0x[0-9a-f]+\s+\(135x bal\)/);
+    assert.match(out, /SOL\s+5\s+0\.025\s+0\.5\s+4\.975\s+So1ana\S+\s+\(10\.0x bal\)/);
+    assert.ok(!out.includes('ltc1qaudit'), 'the wallet whose book agrees is not listed');
+    assert.match(out, /Nothing written/);
+    assert.match(run(dir, ['--audit']), /3 whose held fee/, 'and it really wrote nothing');
+  });
+
+  test('--yes sets each one to what its withdrawals account for, and keeps what it was', () => {
+    const dir = seeded();
+    const out = run(dir, ['--audit', '--yes']);
+    assert.match(out, /3 held figure\(s\) set/);
+    assert.match(out, /BTC\s+bc1qaudit\S+\s+5 -> 0\.00005 BTC/);
+    assert.match(run(dir, ['--audit']), /0 whose held fee the withdrawals do not account for/);
+    assert.match(run(dir, ['--audit']), /Every held figure agrees with its book/);
+
+    const one = run(dir, ['w-eth']);
+    assert.match(one, /= expected held\s+0\.00185 ETH/);
+    assert.match(one, /the book agrees with the record/);
+    assert.match(one, /corrected .*: ETH 5 -> 0\.00185 by explain-wallet\.js --audit/);
+  });
+
+  test('one wallet on its own tells the story and says how to correct it', () => {
+    const dir = seeded();
+    const out = run(dir, ['w-btc']);
+    assert.match(out, /Withdrawals from this wallet \(1\)/);
+    assert.match(out, /fee 0\.00005 BTC .*held in the wallet/);
+    assert.match(out, /the record holds 4\.99995 BTC .*MORE than the withdrawals account for/);
+    assert.match(out, /5000\.0x what the wallet holds/);
+    assert.match(out, /a dollar\s*\n?\s*amount written into a figure counted in coin/);
+    assert.match(out, /--set-held bc1qaudit\S+ 0\.00005/);
+    // an unknown wallet exits non-zero, so read it off the error
+    let refusal = '';
+    try { run(dir, ['nope']); } catch (e) { refusal = `${e.stdout || ''}${e.stderr || ''}`; }
+    assert.match(refusal, /No wallet matches/);
+  });
+});
+
 describe('Wired in', () => {
   test('the server starts and stops the sweep; the CLI, env and dashboard know it', () => {
     const app = read('src/app.js');
