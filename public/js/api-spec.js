@@ -220,7 +220,7 @@ window.API_SPEC = {
       icon: 'walletIcon',
       intro: [
         'A wallet is a receiving address on one chain, with its key generated and held server-side, encrypted at rest. Create as many as you like per chain and give them names to tell them apart. Balances are re-read from the chain in the background at most every 30 seconds.',
-        '<code>balance</code> is what you can withdraw. <code>onChainBalance</code> is what the address really holds; the difference, <code>platformFeeHeld</code>, is the platform fee from earlier withdrawals awaiting collection. <code>tokens</code> lists the chain\'s dollar tokens the same way, each with its own <code>balance</code> and <code>platformFeeHeld</code>; a token is withdrawable like the coin.',
+        '<code>balance</code> is what you can withdraw. <code>onChainBalance</code> is what the address really holds; the difference, <code>platformFeeHeld</code>, is the platform\'s share of the payments that arrived here, taken as each one settled and awaiting collection. <code>tokens</code> lists the chain\'s dollar tokens the same way, each with its own <code>balance</code> and <code>platformFeeHeld</code>; a token is withdrawable like the coin.',
       ],
       endpoints: [
         {
@@ -527,7 +527,7 @@ function verify(secret, header, rawBody, toleranceSeconds = 300) {
       icon: 'transactionsIcon',
       intro: [
         'Transactions are the individual on-chain transfers a payout broadcasts. Statuses: <code>PENDING</code>, <code>PROCESSING</code> (broadcast, awaiting confirmation), <code>CONFIRMED</code>, <code>FAILED</code> with a <code>failureReason</code> such as <code>INSUFFICIENT_FUNDS</code>, <code>ORDER_REFUNDED</code> or <code>QUOTE_EXPIRED</code>.',
-        'Types: <code>DIRECT_TRANSFER</code>, <code>DEX_SWAP</code> and <code>SWAP</code> are a payout\'s legs; <code>DEPOSIT</code> is a checkout that settled into one of your wallets; <code>FEE_COLLECTION</code> is the platform collecting the fee it had held from earlier withdrawals (<code>platformFeeHeld</code> on the wallet comes down by the same amount). On Bitcoin-style chains the fee usually leaves in the withdrawal\'s own transaction instead, as a second output.',
+        'Types: <code>DIRECT_TRANSFER</code>, <code>DEX_SWAP</code> and <code>SWAP</code> are a payout\'s legs; <code>DEPOSIT</code> is a checkout that settled into one of your wallets; <code>FEE_COLLECTION</code> is the platform collecting the fee it had held from the payments that arrived (<code>platformFeeHeld</code> on the wallet comes down by the same amount). On Bitcoin-style chains the fee usually leaves in the withdrawal\'s own transaction instead, as a second output.',
       ],
       endpoints: [
         {

@@ -144,17 +144,24 @@ describe('The plan and the payout carry the fee output', () => {
     SwapService.thorchain = originalThor;
   });
 
-  test('a direct Bitcoin leg names the output; an Ethereum leg holds the fee as before', async () => {
-    const plan = await SwapService.planBatchWithdrawal([{ chain: 'BTC', address: 'BTC-addr', balance: 0.01, balanceUSD: 600 }], 600, 'BTC');
+  test('a direct Bitcoin leg carries out what is held; an Ethereum leg cannot', async () => {
+    const held = 0.001;
+    const plan = await SwapService.planBatchWithdrawal([{ chain: 'BTC', address: 'BTC-addr', balance: 0.01, balanceUSD: 600, serviceSubtractions: held }], 600, 'BTC');
     const [leg] = plan.transfers;
     assert.strictEqual(leg.route, 'direct');
-    assert.ok(leg.feeOutput, 'the fee rides along');
+    assert.ok(leg.feeOutput, 'what is held rides along');
     assert.strictEqual(leg.feeOutput.address, BTC_FEE);
-    assert.strictEqual(leg.feeOutput.amount, Number(leg.platformFeeNative.toFixed(8)));
-    assert.ok(Math.abs(leg.nativeAmount + leg.platformFeeNative - (0.01 - leg.networkReserveNative)) < 1e-12, 'sent plus fee is the sweep');
+    assert.strictEqual(leg.feeOutput.amount, held, 'the fee already taken from the payments, not a new one');
+    assert.strictEqual(leg.platformFeeNative, 0, 'and nothing is charged on top');
+    assert.ok(Math.abs(leg.nativeAmount + held - (0.01 - leg.networkReserveNative)) < 1e-12, 'sent plus held is the sweep');
 
-    const eth = await SwapService.planBatchWithdrawal([{ chain: 'ETH', address: '0x' + '2'.repeat(40), balance: 0.5, balanceUSD: 1500 }], 1500, 'ETH');
+    // nothing held, nothing to carry
+    const clean = await SwapService.planBatchWithdrawal([{ chain: 'BTC', address: 'BTC-addr', balance: 0.01, balanceUSD: 600 }], 600, 'BTC');
+    assert.strictEqual(clean.transfers[0].feeOutput, undefined);
+
+    const eth = await SwapService.planBatchWithdrawal([{ chain: 'ETH', address: '0x' + '2'.repeat(40), balance: 0.5, balanceUSD: 1500, serviceSubtractions: 0.02 }], 1500, 'ETH');
     assert.strictEqual(eth.transfers[0].feeOutput, undefined, 'one recipient per EVM send');
+    assert.ok(Math.abs(eth.transfers[0].nativeAmount - (0.5 - 0.02 - eth.transfers[0].networkReserveNative)) < 1e-12, 'so it stays in the wallet');
   });
 
   test('the broadcast passes the output to the sender, and books the fee as collected rather than held', async () => {
@@ -164,14 +171,14 @@ describe('The plan and the payout carry the fee output', () => {
 
     db.clear();
     const wallet = db.create('wallets', { clientId: 'c1', chain: 'BTC', address: 'bc1qtest', balance: 0.01, serviceSubtractions: 0.001, isActive: true });
-    PayoutService._recordServiceFee(wallet, { chain: 'BTC', platformFeeNative: 0.0005, feeOutput: { address: BTC_FEE, amount: 0.0005 } }, 'txhash1', 'payout1');
-    assert.strictEqual(db.getById('wallets', wallet.id).serviceSubtractions, 0.001, 'nothing more held');
+    PayoutService._recordServiceFee(wallet, { chain: 'BTC', platformFeeNative: 0, feeOutput: { address: BTC_FEE, amount: 0.0005 } }, 'txhash1', 'payout1');
+    near(db.getById('wallets', wallet.id).serviceSubtractions, 0.0005, 'what rode out is no longer held');
     const [row] = db.getAll('feeCollections');
     assert.deepStrictEqual({ chain: row.chain, asset: row.asset, amount: row.amount, address: row.address, txHash: row.txHash, via: row.via, status: row.status, payoutId: row.payoutId, usd: row.usd }, { chain: 'BTC', asset: 'BTC', amount: 0.0005, address: BTC_FEE, txHash: 'txhash1', via: 'payout', status: 'PROCESSING', payoutId: 'payout1', usd: 30 });
 
-    // the same call without an output holds, as it always did
-    PayoutService._recordServiceFee(wallet, { chain: 'BTC', platformFeeNative: 0.0002 }, 'txhash2', 'payout2');
-    near(db.getById('wallets', wallet.id).serviceSubtractions, 0.0012);
+    // a gas advance charged back in the asset is still held, as it always was
+    PayoutService._recordServiceFee(wallet, { chain: 'BTC', platformFeeNative: 0, gasTopUp: { chargedInAsset: 0.0002 } }, 'txhash2', 'payout2');
+    near(db.getById('wallets', wallet.id).serviceSubtractions, 0.0007);
 
     // the payout's transfer settling settles the fee that rode in it
     FeeCollection.onPayoutTransferResolved('txhash1', 'confirmed');
@@ -290,6 +297,76 @@ describe('The sweep', () => {
     assert.strictEqual(db.getById('wallets', w.id).serviceSubtractions, 0.00001285);
     assert.strictEqual(db.getById('wallets', t.id).serviceSubtractions, 0.1, 'within what is there: untouched');
     assert.deepStrictEqual(db.getById('wallets', t.id).serviceSubtractionsTokens, { USDC: 2 }, 'USDT: none held, none there');
+  });
+});
+
+describe('The fee on money arriving', () => {
+  test('a payment settling takes the platform\'s share there and then, in the asset it arrived as', () => {
+    db.clear();
+    const wallet = db.create('wallets', { clientId: 'c1', chain: 'ETH', address: '0x' + '9'.repeat(40), balance: 0.5, tokenBalances: { USDC: 100 }, isActive: true });
+
+    const coin = FeeCollection.accrueOnPayment(wallet, 'ETH', 0.00502257);
+    assert.strictEqual(coin.rate, 0.05);
+    assert.strictEqual(coin.fee, 0.00025113, '5% of the payment, in the coin');
+    assert.strictEqual(db.getById('wallets', wallet.id).serviceSubtractions, 0.00025113);
+
+    // a second payment adds to it rather than replacing it
+    FeeCollection.accrueOnPayment(db.getById('wallets', wallet.id), 'ETH', 0.00502257);
+    near(db.getById('wallets', wallet.id).serviceSubtractions, 0.00050226);
+
+    // a token payment is held in that token
+    const token = FeeCollection.accrueOnPayment(db.getById('wallets', wallet.id), 'USDC', 25);
+    assert.strictEqual(token.fee, 1.25);
+    assert.strictEqual(db.getById('wallets', wallet.id).serviceSubtractionsTokens.USDC, 1.25);
+
+    // nothing to take, nothing taken
+    assert.strictEqual(FeeCollection.accrueOnPayment(wallet, 'ETH', 0), null);
+    assert.strictEqual(FeeCollection.accrueOnPayment(wallet, 'ETH', -1), null);
+    assert.strictEqual(FeeCollection.accrueOnPayment(null, 'ETH', 1), null);
+    assert.strictEqual(FeeCollection.accrueOnPayment({ ...wallet, chain: 'NOPE' }, 'NOPE', 1), null);
+  });
+
+  test('recording a deposit is what takes it, once, and the transaction says how much', () => {
+    db.clear();
+    const TransactionService = require('../src/services/TransactionService');
+    const address = '0x' + '8'.repeat(40);
+    const wallet = db.create('wallets', { clientId: 'c1', chain: 'ETH', address, balance: 0.5, isActive: true });
+
+    const deposit = TransactionService.recordDeposit({
+      clientId: 'c1', chain: 'ETH', asset: 'ETH', nativeAmount: 0.00502257, usdAmount: 13.63,
+      transactionHash: '0xpaid', toAddress: address, sessionId: 'sess-1',
+    });
+    assert.strictEqual(deposit.platformFeeNative, 0.00025113);
+    assert.strictEqual(deposit.platformFeeRate, 0.05);
+    assert.strictEqual(db.getById('wallets', wallet.id).serviceSubtractions, 0.00025113);
+
+    // the same session settling twice does not charge twice
+    TransactionService.recordDeposit({
+      clientId: 'c1', chain: 'ETH', asset: 'ETH', nativeAmount: 0.00502257, usdAmount: 13.63,
+      transactionHash: '0xpaid', toAddress: address, sessionId: 'sess-1',
+    });
+    assert.strictEqual(db.getById('wallets', wallet.id).serviceSubtractions, 0.00025113);
+
+    // a payment to an address that is not one of ours charges nothing
+    const stray = TransactionService.recordDeposit({
+      clientId: 'c1', chain: 'ETH', asset: 'ETH', nativeAmount: 1, toAddress: '0x' + '7'.repeat(40), sessionId: 'sess-2',
+    });
+    assert.strictEqual(stray.platformFeeNative, 0);
+  });
+
+  test('the merchant sees the payment already net of it', () => {
+    db.clear();
+    const address = '0x' + '6'.repeat(40);
+    const wallet = db.create('wallets', { clientId: 'c1', chain: 'ETH', address, balance: 0, isActive: true });
+    require('../src/services/TransactionService').recordDeposit({
+      clientId: 'c1', chain: 'ETH', asset: 'ETH', nativeAmount: 1, toAddress: address, sessionId: 'sess-3',
+    });
+    // the chain read catches up a moment later
+    db.update('wallets', wallet.id, { balance: 1 });
+    const after = db.getById('wallets', wallet.id);
+    const held = Math.min(after.serviceSubtractions, after.balance);
+    assert.strictEqual(held, 0.05);
+    assert.strictEqual(after.balance - held, 0.95, 'what they can withdraw');
   });
 });
 

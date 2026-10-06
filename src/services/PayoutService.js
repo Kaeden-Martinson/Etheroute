@@ -146,7 +146,8 @@ class PayoutService {
         continue;
       }
       const rate = this.swapService.rateFor(chain, leg.asset);
-      const minBalanceUSD = this.swapService.minimumBalanceUsd(chain, payoutChain, config.payouts.platformFeeRate, gasUsd, route.kind);
+      // no fee is taken at withdrawal any more, so the minimum is the bare cost
+      const minBalanceUSD = this.swapService.minimumBalanceUsd(chain, payoutChain, 0, gasUsd, route.kind);
       if (leg.balance * rate >= minBalanceUSD) return { eligible: true };
       const isDirect = chain === payoutChain;
       const viaThor = /thorchain/.test(route.kind);

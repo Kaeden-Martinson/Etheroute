@@ -46,6 +46,18 @@ class TransactionService {
     const existing = sessionId ? db.findOneBy('transactions', { sessionId }) : null;
     if (existing) return existing;
     const now = new Date().toISOString();
+
+    // The platform's share is a share of what the merchant was paid, so it
+    // is taken here, once, on the way in - not again at withdrawal. It is
+    // set aside in the wallet it arrived in, in the asset it arrived as,
+    // and the sweep collects it from there.
+    const wallet = toAddress
+      ? db.getAll('wallets').find((w) => w.chain === chain && String(w.address).toLowerCase() === String(toAddress).toLowerCase())
+      : null;
+    const accrued = wallet
+      ? require('./FeeCollectionService').accrueOnPayment(wallet, asset || chain, nativeAmount)
+      : null;
+
     return db.create('transactions', {
       id: uuidv4(),
       clientId,
@@ -62,6 +74,9 @@ class TransactionService {
       toAddress: toAddress || null,
       finalAddress: null,
       blockNumber: null,
+      // what the platform took of this payment, in the asset it arrived as
+      platformFeeNative: accrued ? accrued.fee : 0,
+      platformFeeRate: accrued ? accrued.rate : 0,
       createdAt: now,
       completedAt: now,
     });

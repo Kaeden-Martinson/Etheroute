@@ -369,10 +369,11 @@ describe('Planning sweeps tokens with the coin', () => {
     const perTx = GAS.BASE * 1.5;
     assert.ok(Math.abs(eth.networkReserveNative - perTx * 3) < 1e-12, `reserve ${eth.networkReserveNative}`);
     assert.strictEqual(usdc.networkReserveNative, 0, 'a token has no reserve of its own');
-    // the token leg: 5% fee, the rest swapped, quoted to the recipient
-    assert.strictEqual(usdc.nativeAmount, 120 * 0.95);
-    assert.strictEqual(usdc.platformFeeNative, 120 * 0.05);
-    assert.strictEqual(usdc.platformFeeUSD, 120 * 0.05);
+    // the token leg: all of it swapped, quoted to the recipient - the
+    // platform's share came off the payment that brought it in
+    assert.strictEqual(usdc.nativeAmount, 120);
+    assert.strictEqual(usdc.platformFeeNative, 0);
+    assert.strictEqual(usdc.platformFeeUSD, 0);
     assert.strictEqual(dexCalls.length, 1);
     assert.strictEqual(dexCalls[0].recipient, RECIPIENT);
     assert.strictEqual(dexCalls[0].sender, 'BASE-addr');

@@ -467,7 +467,7 @@ describe('Withdrawal: three steps, one receipt, one button', () => {
     }
     const lines = dashboardJs.slice(dashboardJs.indexOf('function renderTransferBreakdown'), dashboardJs.indexOf('function renderTotals'));
     assert.ok(lines.includes("t.gasIsLive ? '' : ' <span class=\"muted\">· estimate</span>'"), 'an estimated network fee says so');
-    assert.ok(lines.includes('Platform fee (${rate}%)'), 'the rate is read from the preview');
+    assert.ok(lines.includes('Number(t.platformFeeUsd) > 0 ?'), 'a fee line only where one was taken');
     const totals = dashboardJs.slice(dashboardJs.indexOf('function renderTotals'), dashboardJs.indexOf('function setSendButton'));
     assert.ok(totals.includes('<div class="net"><span>You receive</span>'));
     // the send posts from the review, reports there, and lands on Sent
@@ -696,7 +696,7 @@ describe('Wallets: rows that open, a form in place, an address you can show', ()
   test('a row opens to the address, its three balances, a QR and the ways on', () => {
     const details = dashboardJs.slice(dashboardJs.indexOf('function renderWalletDetails'), dashboardJs.indexOf('async function loadWalletQr'));
     for (const label of ["'Address'", "'Available'", "'On chain'", "'Held for fees'", "'Made'", "'Explorer'"]) assert.ok(details.includes(`fact(${label}`), label);
-    assert.ok(details.includes('yours to withdraw') && details.includes('what the address holds') && details.includes('from earlier withdrawals, awaiting collection'), 'the help page\'s wording');
+    assert.ok(details.includes('yours to withdraw') && details.includes('what the address holds') && details.includes('the payments received, awaiting collection'), 'the help page\'s wording');
     assert.ok(details.includes('data-wallet-qr="${w.id}"'));
     assert.ok(details.includes('data-on-click="switchDashboardPage" data-arg="withdrawal"'), 'withdraw from it');
     // the explorer link is derived, never guessed
@@ -1619,17 +1619,18 @@ describe('Landing page: the settlement section', () => {
   });
 
   test('the receipt agrees with the configured platform fee', () => {
-    // The tile this replaced showed 0.00100 on 0.5 ETH - 0.2% - under a heading
-    // promising the number you see is the number that sends.
+    // The fee comes off the payment, so the receipt is a payment: what the
+    // customer sent, the fee, and what is left to withdraw. The network's
+    // fee is not in it - that is charged when the merchant withdraws.
     const envJs = fs.readFileSync(path.join(__dirname, '..', 'src/config/env.js'), 'utf-8');
     const rate = Number(/PLATFORM_FEE_RATE \|\| '([\d.]+)'/.exec(envJs)[1]);
     const payment = 0.5;
-    const network = 0.00042;
     const fee = payment * rate;
 
     assert.ok(html.includes(`${fee.toFixed(5)} ETH`), `platform fee should read ${fee.toFixed(5)} ETH`);
-    assert.ok(html.includes(`${(payment - fee - network).toFixed(5)} ETH`), 'the total should net out');
+    assert.ok(html.includes(`${(payment - fee).toFixed(5)} ETH`), 'what is left should net out');
     assert.ok(html.includes(`<i>${Math.round(rate * 100)}%</i>`), 'the rate is labelled');
+    assert.ok(html.includes('Yours to withdraw'), "and it is named as the merchant's");
   });
 });
 

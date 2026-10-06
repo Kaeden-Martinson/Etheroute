@@ -27,6 +27,7 @@ const crypto = require('crypto');
 const { db } = require('../config/database');
 const chains = require('../config/chains');
 const { validateCryptoAddress } = require('../utils/validators');
+const { config } = require('../config/env');
 const PriceService = require('./PriceService');
 const GasEstimator = require('./GasEstimator');
 const { walletServiceFor } = require('./wallets');
@@ -111,13 +112,49 @@ class FeeCollectionService {
     return { address, amount };
   }
 
+  /** What this wallet is holding for the platform in one asset. */
+  heldFor(wallet, asset) {
+    if (!wallet) return 0;
+    const coin = chains.has(wallet.chain) ? chains.get(wallet.chain).symbol : null;
+    const amount = asset === coin
+      ? Number(wallet.serviceSubtractions) || 0
+      : Number((wallet.serviceSubtractionsTokens || {})[asset]) || 0;
+    return amount > 0 ? amount : 0;
+  }
+
+  /**
+   * The platform's fee on money arriving, taken the moment it does.
+   *
+   * The fee is a share of what a merchant is paid, so it is worked out on
+   * the payment and set aside there and then: the merchant's balance is
+   * what they can withdraw from the first moment they see it, and a
+   * withdrawal afterwards charges nothing. Nothing moves on the chain -
+   * the coin sits at the merchant's address until the sweep collects it,
+   * exactly as it did when the fee was taken at withdrawal.
+   *
+   * Returns { fee, rate, held } or null when there is nothing to take.
+   */
+  accrueOnPayment(wallet, asset, amount) {
+    const rate = config.payouts.platformFeeRate;
+    const paid = Number(amount);
+    if (!wallet || !(paid > 0) || !(rate > 0)) return null;
+    if (!chains.has(wallet.chain)) return null;
+    const fee = Number((paid * rate).toFixed(8));
+    if (!(fee > 0)) return null;
+    const updated = this.adjustHeld(wallet.id, asset, fee);
+    logger.info(`[FeeCollection] ${(rate * 100).toFixed(2)}% of ${paid} ${asset} paid into ${wallet.address} is the platform's: ${fee} ${asset} held`);
+    return { fee, rate, held: this.heldFor({ ...wallet, ...updated }, asset) };
+  }
+
   /**
    * A fee that left in a withdrawal's own transaction: recorded as collected
-   * the moment the payout broadcasts, under the payout's hash.
+   * the moment the payout broadcasts, under the payout's hash. What rode out
+   * was held, so the held figure comes down by the same amount.
    */
   recordInPayout(wallet, transfer, txHash, payoutId) {
     const out = transfer.feeOutput;
     if (!out || !(out.amount > 0)) return null;
+    this.reduceHeld(wallet.id, chains.get(transfer.chain).symbol, out.amount);
     const rate = PriceService.rateFor(transfer.chain) || 0;
     return db.create('feeCollections', {
       id: crypto.randomUUID(),

@@ -1942,7 +1942,7 @@ function renderWalletDetails(w) {
             ${fact('Available', `${escapeHtml(formatBalance(w.balance))} ${escapeHtml(symbol)} ${muted(`${usd(w.balanceUSD)} · yours to withdraw`)}`)}
             ${walletTokens(w).map((t) => fact(escapeHtml(t.symbol), `${escapeHtml(Number(t.balance).toFixed(2))} ${muted(usd(t.balanceUSD))} <span class="held-pill" title="A token cannot leave a wallet yet: moving it needs gas the wallet may not hold. Token payouts are next.">held · token payouts are next</span>`)).join('')}
             ${fact('On chain', `${escapeHtml(formatBalance(w.onChainBalance))} ${escapeHtml(symbol)} ${muted('what the address holds')}`)}
-            ${fact('Held for fees', `${escapeHtml(formatBalance(w.platformFeeHeld))} ${escapeHtml(symbol)} ${muted('from earlier withdrawals, awaiting collection')}`)}
+            ${fact('Held for fees', `${escapeHtml(formatBalance(w.platformFeeHeld))} ${escapeHtml(symbol)} ${muted('the platform\'s share of the payments received, awaiting collection')}`)}
             ${fact('Made', escapeHtml(made))}
             ${explorer ? fact('Explorer', `<a href="${escapeHtml(explorer)}" target="_blank" rel="noopener noreferrer">${escapeHtml(explorer.replace(/^https?:\/\//, '').slice(0, 40))}…</a>`) : ''}
         </div>
@@ -2777,7 +2777,6 @@ function routeText(t) {
 function renderTransferBreakdown(data) {
     const transfers = Array.isArray(data.transfers) ? data.transfers : [];
     if (transfers.length === 0) return '';
-    const rate = Math.round((data.platformFeeRate || 0.05) * 100);
 
     const legs = transfers.map((t) => {
         const from = PAYOUT_CHAINS[t.chain] || { name: t.chain };
@@ -2789,7 +2788,7 @@ function renderTransferBreakdown(data) {
         return `<div class="receipt__src">
             <div class="h"><span>${escapeHtml(from.name)} · ${escapeHtml(walletLabelFor(t.fromAddress))}</span><span>${routeText(t)}</span></div>
             <div><span>Amount · ${escapeHtml(legAmount(t))}</span><span>${usd(t.grossUsd)}</span></div>
-            <div><span>Platform fee (${rate}%)</span><span>−${usd(t.platformFeeUsd)}</span></div>
+            ${Number(t.platformFeeUsd) > 0 ? `<div><span>Platform fee</span><span>−${usd(t.platformFeeUsd)}</span></div>` : ''}
             <div><span>Network fee${gasNote}</span><span>−${usd(networkFee)}</span></div>
             ${spread > 0 ? `<div><span>Swap spread</span><span>−${usd(spread)}</span></div>` : ''}
             ${Number(t.gasAdvanceUsd) > 0 ? `<div><span>Gas advanced for this wallet's tokens</span><span>−${usd(t.gasAdvanceUsd)}</span></div>` : ''}
@@ -2808,9 +2807,16 @@ function renderTransferBreakdown(data) {
 function renderTotals(data) {
     const transfers = Array.isArray(data.transfers) ? data.transfers : [];
     const swaps = transfers.some((t) => Number(t.swapFeeUsd) > 0);
+    // The platform's fee came off each payment as it arrived, so a withdrawal
+    // takes none: the line says so rather than showing a nought, and only a
+    // figure left over from the old way is shown as a deduction.
+    const rate = Math.round((data.platformFeeRate || 0.05) * 100);
+    const fee = Number(data.platformFee) || 0;
     return `<div class="receipt__tot">
         <div><span>Total</span><span>${usd(data.grossSweptUsd ?? data.totalAmountUsd)}</span></div>
-        <div><span>Platform fee</span><span>−${usd(data.platformFee)}</span></div>
+        ${fee > 0
+            ? `<div><span>Platform fee</span><span>−${usd(fee)}</span></div>`
+            : `<div><span>Platform fee</span><span class="muted">taken as each payment arrived (${rate}%)</span></div>`}
         <div><span>${swaps ? 'Network fees and swap spread' : 'Network fees'}</span><span>−${usd(data.totalGasUsd)}</span></div>
         ${Number(data.gasAdvanceUsd) > 0 ? `<div><span>Gas advanced</span><span>−${usd(data.gasAdvanceUsd)}</span></div>` : ''}
         <div class="net"><span>You receive</span><span>${usd(data.netAmountUsd)}</span></div>

@@ -129,21 +129,16 @@ describe('Previewing a payout in each supported chain', () => {
       assert.strictEqual(preview.eligibleCount, 4, 'all four funded wallets should qualify');
       assert.ok(preview.totalAmountUsd > 0);
 
-      // The fee is charged on what is actually swept, not on the raw balance -
-      // the reserve for network fees never reaches the client and is not
-      // chargeable.
+      // The platform's fee was taken from each payment as it arrived, so a
+      // withdrawal quotes none: what is swept is the merchant's, less only
+      // the reserve for the network's own fee.
       assert.ok(preview.grossSweptUsd > 0);
       assert.ok(preview.grossSweptUsd <= preview.totalAmountUsd, 'cannot sweep more than is held');
-
-      const expectedFee = preview.grossSweptUsd * 0.05;
-      assert.ok(
-        Math.abs(preview.platformFee - expectedFee) < 0.01,
-        `fee ${preview.platformFee} should be 5% of swept ${preview.grossSweptUsd}`
-      );
+      assert.strictEqual(preview.platformFee, 0, 'nothing is charged at withdrawal');
 
       assert.ok(
-        Math.abs(preview.netAmountUsd - (preview.grossSweptUsd - preview.platformFee - preview.totalGasUsd)) < 0.01,
-        'net must be swept minus fee minus gas'
+        Math.abs(preview.netAmountUsd - (preview.grossSweptUsd - preview.totalGasUsd)) < 0.01,
+        'net must be swept minus gas'
       );
       assert.ok(preview.netAmountUsd > 0);
 

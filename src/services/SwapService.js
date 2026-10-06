@@ -443,11 +443,15 @@ class SwapService {
     legsOf(wallet) {
         const chain = wallet.chain.toUpperCase();
         const spec = chains.get(chain);
-        const legs = [{ asset: spec.symbol, balance: parseFloat(wallet.balance) || 0, native: true }];
+        // What the address holds is not all the merchant's: the platform's
+        // fee was taken when the payment arrived and is waiting here for the
+        // sweep. A withdrawal moves what is theirs and leaves that behind.
+        const ours = (asset, balance) => Math.max(0, Number((balance - this.feeCollection.heldFor(wallet, asset)).toFixed(12)));
+        const legs = [{ asset: spec.symbol, balance: ours(spec.symbol, parseFloat(wallet.balance) || 0), native: true }];
         if (spec.family === 'evm') {
             const held = wallet.tokenBalances || {};
             for (const token of chains.tokensOf(chain)) {
-                const balance = parseFloat(held[token.symbol]) || 0;
+                const balance = ours(token.symbol, parseFloat(held[token.symbol]) || 0);
                 if (balance > 0) legs.push({ asset: token.symbol, balance, native: false });
             }
         }
@@ -531,25 +535,26 @@ class SwapService {
                 }
                 const rate = this.rateFor(chain, leg.asset);
                 const balanceUSD = leg.balance * rate;
-                const minBalanceUSD = this.minimumBalanceUsd(chain, payoutChain, feeRate, chainGas.usd * this.txCountFor(leg.route.kind, chain, leg.asset), leg.route.kind);
+                // The fee was taken on the way in, so the minimum is what it
+                // costs to send, not that grossed up for a fee to come.
+                const minBalanceUSD = this.minimumBalanceUsd(chain, payoutChain, 0, chainGas.usd * this.txCountFor(leg.route.kind, chain, leg.asset), leg.route.kind);
                 if (balanceUSD < minBalanceUSD) {
                     skip(leg.asset, `balance $${balanceUSD.toFixed(2)} below $${minBalanceUSD.toFixed(2)} minimum for a ${wanted}@${payoutChain} payout`);
                     continue;
                 }
 
-                // Everything above the reserve is swept. The platform fee is
-                // taken out of this amount rather than left sitting in the
-                // wallet, so the figure quoted to the client is the figure
-                // that is actually sent. A token has no reserve: its gas is
-                // the coin's - and when the float advanced that gas, the
-                // first token leg pays it back at par.
+                // Everything of theirs above the reserve is swept. The
+                // platform's fee is not taken here - it was taken when the
+                // payment arrived and is already out of `leg.balance` - so
+                // what comes off is the network's reserve and, for a token
+                // leg the float fronted gas for, that advance at par.
                 const sweepable = Math.max(0, leg.balance - (leg.native ? reserved : 0));
-                const feeAmount = sweepable * feeRate;
+                const feeAmount = 0;
                 const advance = !leg.native && gasTopUp && !gasTopUp.charged ? gasTopUp : null;
                 const advanceInAsset = advance ? advance.usd / rate : 0;
-                const sendAmount = sweepable - feeAmount - advanceInAsset;
+                const sendAmount = sweepable - advanceInAsset;
                 if (sendAmount <= 0) {
-                    skip(leg.asset, advance ? `nothing left after fees and the ${advance.usd.toFixed(2)} USD gas advance` : 'nothing left after fees');
+                    skip(leg.asset, advance ? `nothing left after the ${advance.usd.toFixed(2)} USD gas advance` : 'nothing left to send');
                     continue;
                 }
                 if (advance) advance.charged = true;
@@ -594,12 +599,12 @@ class SwapService {
                 const gasUsd = chainGas.usd * this.txCountFor(kind, chain, leg.asset);
 
                 // On a Bitcoin-style chain a plain send (direct, or the
-                // deposit to a shift) can pay the platform in the same
-                // transaction: a second output, nothing left to hold. A
-                // THORChain deposit is not given one - the vault's parser
-                // is owed a transaction it expects.
+                // deposit to a shift) can carry the fee already held out to
+                // the platform as a second output, saving it a transaction of
+                // its own later. A THORChain deposit is not given one - the
+                // vault's parser is owed a transaction it expects.
                 const feeOutput = leg.native && (kind === 'direct' || kind === 'sideshift')
-                    ? this.feeCollection.feeOutputFor(chain, feeAmount)
+                    ? this.feeCollection.feeOutputFor(chain, this.feeCollection.heldFor(wallet, leg.asset))
                     : null;
 
                 plan.transfers.push({
@@ -614,12 +619,13 @@ class SwapService {
                     // every leg was the chain's coin; the API still reads it.
                     nativeAmount: sendAmount,
                     expectedOutputAmount,
-                    // What this leg contributes, gross of the platform fee.
+                    // What this leg contributes. The platform's fee is not
+                    // in it: that was taken when the money arrived.
                     walletValueUSD: sweepable * rate,
                     platformFeeNative: feeAmount,
                     platformFeeUSD: feeAmount * rate,
-                    // The fee paid to the platform in this very transaction,
-                    // when the chain allows it; otherwise it stays held.
+                    // A fee held from earlier payments, leaving in this very
+                    // transaction because the chain allows a second output.
                     ...(feeOutput && { feeOutput }),
                     // The gas the float advanced for this wallet's tokens,
                     // charged here in the token. Sent to the wallet right

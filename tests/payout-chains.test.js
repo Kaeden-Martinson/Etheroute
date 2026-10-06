@@ -178,38 +178,54 @@ describe('Planning a withdrawal', () => {
     assert.strictEqual(directPlan.transfers.length, 1, 'large enough to send directly');
   });
 
-  test('the network fee is reserved and the platform fee is deducted, exactly', async () => {
+  test('the network fee is reserved and no platform fee is taken here', async () => {
     stubQuotes();
     const balance = 0.01;
     const plan = await SwapService.planBatchWithdrawal([wallet('BTC', balance, 600)], 600, 'BTC');
     const transfer = plan.transfers[0];
 
-    // reserve = live gas x safety multiplier; fee = 5% of what is left.
+    // The fee came off each payment as it arrived, so a withdrawal only
+    // keeps back the network's own cost: reserve = live gas x safety.
     const reserved = GAS_NATIVE.BTC * 1.5;
-    const sweepable = balance - reserved;
-    const fee = sweepable * FEE_RATE;
-
     assert.ok(Math.abs(transfer.networkReserveNative - reserved) < 1e-12);
-    assert.ok(Math.abs(transfer.platformFeeNative - fee) < 1e-12);
+    assert.strictEqual(transfer.platformFeeNative, 0, 'nothing is charged at withdrawal');
+    assert.strictEqual(transfer.platformFeeUSD, 0);
     assert.ok(
-      Math.abs(transfer.nativeAmount - (sweepable - fee)) < 1e-12,
-      `expected ${sweepable - fee}, got ${transfer.nativeAmount}`
+      Math.abs(transfer.nativeAmount - (balance - reserved)) < 1e-12,
+      `expected ${balance - reserved}, got ${transfer.nativeAmount}`
     );
   });
 
-  test('the amount sent plus the fee plus the reserve equals the balance', async () => {
+  test("what the platform already holds is not the merchant's to withdraw", async () => {
     stubQuotes();
     const balance = 0.01;
-    const plan = await SwapService.planBatchWithdrawal([wallet('BTC', balance, 600)], 600, 'BTC');
+    const held = 0.0004;
+    const withHeld = { ...wallet('BTC', balance, 600), serviceSubtractions: held };
+    const plan = await SwapService.planBatchWithdrawal([withHeld], 600, 'BTC');
     const t = plan.transfers[0];
+    const reserved = GAS_NATIVE.BTC * 1.5;
 
-    // The whole point of the rewrite: nothing is unaccounted for. Previously
-    // 10% was withheld while only 5% was recorded as a fee.
-    const total = t.nativeAmount + t.platformFeeNative + t.networkReserveNative;
     assert.ok(
-      Math.abs(total - balance) < 1e-12,
-      `send + fee + reserve = ${total}, should equal balance ${balance}`
+      Math.abs(t.nativeAmount - (balance - held - reserved)) < 1e-12,
+      `expected ${balance - held - reserved}, got ${t.nativeAmount}`
     );
+    assert.strictEqual(t.platformFeeNative, 0, 'and still nothing is charged on top');
+    // (that the held amount leaves with it as a second output, where the
+    //  chain allows one, is in tests/fee-collection.test.js)
+  });
+
+  test('the amount sent plus what is held plus the reserve equals the balance', async () => {
+    stubQuotes();
+    const balance = 0.01;
+    const held = 0.0004;
+    for (const [label, w] of [['nothing held', wallet('BTC', balance, 600)], ['a fee held', { ...wallet('BTC', balance, 600), serviceSubtractions: held }]]) {
+      const plan = await SwapService.planBatchWithdrawal([w], 600, 'BTC');
+      const t = plan.transfers[0];
+      // Nothing is unaccounted for: what goes to the merchant, what is the
+      // platform's, and what the network takes, add up to what is there.
+      const total = t.nativeAmount + (w.serviceSubtractions || 0) + t.networkReserveNative;
+      assert.ok(Math.abs(total - balance) < 1e-12, `${label}: send + held + reserve = ${total}, should equal ${balance}`);
+    }
   });
 });
 

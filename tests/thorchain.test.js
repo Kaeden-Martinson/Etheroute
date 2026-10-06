@@ -455,8 +455,10 @@ describe('Planning across chains', () => {
     assert.ok(Math.abs(t.gasTopUp.amountNative - need) < 1e-12, t.gasTopUp.amountNative);
     assert.ok(Math.abs(t.gasTopUp.usd - need * 2624) < 1e-9);
     assert.ok(Math.abs(t.gasAdvanceUsd - t.gasTopUp.usd) < 1e-12);
-    // charged in the token: 5% fee, then the advance at par, then the rest goes
-    assert.ok(Math.abs(t.nativeAmount - (120 * 0.95 - t.gasTopUp.usd)) < 1e-9, t.nativeAmount);
+    // charged in the token: the advance at par, then the rest goes. No
+    // platform fee here - that was taken when the 120 USDC arrived.
+    assert.strictEqual(t.platformFeeNative, 0);
+    assert.ok(Math.abs(t.nativeAmount - (120 - t.gasTopUp.usd)) < 1e-9, t.nativeAmount);
     assert.ok(Math.abs(t.gasTopUp.chargedInAsset - t.gasTopUp.usd) < 1e-12, 'a dollar token at par');
     assert.deepStrictEqual(topUps[0], { chain: 'BASE', amount: need, perTx: GAS.BASE * 1.5 });
     assert.deepStrictEqual(plan.skipped, []);
