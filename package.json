@@ -18,6 +18,7 @@
     "chains:health": "node scripts/chain-health.js",
     "wallets:platform": "node scripts/platform-wallets.js",
     "fees:collect": "node scripts/collect-fees.js",
+    "wallet:explain": "node scripts/explain-wallet.js",
     "owner": "node scripts/owner.js",
     "discord": "node discord/index.js",
     "discord:channels": "node discord/scripts/channels.js",
