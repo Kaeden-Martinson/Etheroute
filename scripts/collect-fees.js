@@ -8,6 +8,8 @@
  *   node scripts/collect-fees.js --collect       # send it
  *   node scripts/collect-fees.js --collect --chain ETH
  *   node scripts/collect-fees.js --reconcile     # cap held figures at what the wallets hold
+ *   node scripts/collect-fees.js --set-held <address|id> <amount> [--asset USDC] [--reason "..."]
+ *                                                # correct one wrong figure by hand
  *
  * Needs PLATFORM_FEE_ADDRESS_* in the environment for the families to
  * collect on. Runs against the same DATA_DIR as the server; a sweep from
@@ -21,6 +23,7 @@ validate();
 
 const FeeCollectionService = require('../src/services/FeeCollectionService');
 const chains = require('../src/config/chains');
+const { db } = require('../src/config/database');
 
 // The logger takes over console.log; this speaks to the terminal directly.
 const say = (line = '') => process.stdout.write(`${line}\n`);
@@ -58,8 +61,57 @@ async function pricesReady() {
   if (!PriceService.updatedAt) say(`(prices have not loaded${PriceService.lastError ? `: ${PriceService.lastError}` : ''}; coin figures show as $0.00 and nothing is collected on them)`);
 }
 
+/** A wallet by id or address, for the hand corrections. */
+function findWallet(query) {
+  const wallets = db.getAll('wallets');
+  return wallets.find((w) => w.id === query)
+    || wallets.find((w) => String(w.address).toLowerCase() === String(query).toLowerCase())
+    || null;
+}
+
+/**
+ * Set one wallet's held figure. Guarded: it says what it is about to do and
+ * does nothing without --yes, since this is the one command that can hand a
+ * merchant money that was the platform's, or take money that was theirs.
+ */
+function setHeld() {
+  const i = args.indexOf('--set-held');
+  const [query, amount] = [args[i + 1], args[i + 2]];
+  if (!query || amount === undefined || String(query).startsWith('--') || String(amount).startsWith('--')) {
+    say('Usage: node scripts/collect-fees.js --set-held <address|wallet id> <amount> [--asset USDC] [--reason "..."] [--yes]');
+    process.exit(1);
+  }
+  const wallet = findWallet(query);
+  if (!wallet) { say(`No wallet matches "${query}".`); process.exit(1); }
+  if (!Number.isFinite(Number(amount)) || Number(amount) < 0) { say(`"${amount}" is not an amount.`); process.exit(1); }
+  const coin = chains.has(wallet.chain) ? chains.get(wallet.chain).symbol : wallet.chain;
+  const asset = option('--asset') ? String(option('--asset')).toUpperCase() : coin;
+  const onChain = asset === coin ? Number(wallet.balance) || 0 : Number((wallet.tokenBalances || {})[asset]) || 0;
+  const from = asset === coin
+    ? Number(wallet.serviceSubtractions) || 0
+    : Number((wallet.serviceSubtractionsTokens || {})[asset]) || 0;
+  const to = Number(amount);
+
+  say(`${wallet.chain} ${wallet.address}  (wallet ${wallet.id}, client ${wallet.clientId})`);
+  say(`  the wallet holds   ${onChain} ${asset}`);
+  say(`  held for fees      ${from} ${asset}  ->  ${to} ${asset}`);
+  say(`  the merchant could withdraw ${Math.max(0, onChain - Math.min(from, onChain))} ${asset}  ->  ${Math.max(0, onChain - Math.min(to, onChain))} ${asset}`);
+  if (to > onChain) say(`  note: that is more than the wallet holds, so the merchant sees nothing withdrawable either way.`);
+  if (!flag('--yes')) {
+    say();
+    say('Nothing written. Add --yes to make the change.');
+    return;
+  }
+  const result = FeeCollectionService.setHeld(wallet.id, asset, to, { reason: option('--reason') || null, by: 'collect-fees.js' });
+  if (result.error) { say(`✗ ${result.error}`); process.exit(1); }
+  say();
+  say(`Set. ${asset} held on ${wallet.address}: ${result.from} -> ${result.to}${option('--reason') ? ` (${option('--reason')})` : ''}`);
+  say('The change is on the wallet record as a correction, and in the log.');
+}
+
 async function main() {
   const chain = option('--chain') ? String(option('--chain')).toUpperCase() : null;
+  if (flag('--set-held')) { setHeld(); return; }
   await pricesReady();
   if (chain && !chains.has(chain)) {
     say(`Unknown chain ${chain}`);

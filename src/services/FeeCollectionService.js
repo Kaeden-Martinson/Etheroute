@@ -364,6 +364,49 @@ class FeeCollectionService {
   }
 
   /**
+   * Set a held figure outright, for correcting a wrong one.
+   *
+   * Nothing in the running system calls this: a fee is booked by a
+   * withdrawal and reduced by a sweep, and both of those are arithmetic on
+   * what actually happened. This is the operator's hand, for a figure that
+   * is wrong for a reason no arithmetic will undo - a fee booked twice, or
+   * one left behind by an older rule that guessed the fee from a balance
+   * drop. The previous value and the reason are written onto the wallet so
+   * the correction is visible afterwards, and to the log.
+   *
+   * Returns { wallet, asset, from, to } or { error }.
+   */
+  setHeld(walletId, asset, amount, { reason = null, by = 'operator' } = {}) {
+    const wallet = db.getById('wallets', walletId);
+    if (!wallet) return { error: `No wallet ${walletId}` };
+    if (!chains.has(wallet.chain)) return { error: `Wallet ${walletId} is on ${wallet.chain}, which this deployment does not carry` };
+    const coin = chains.get(wallet.chain).symbol;
+    const want = Number(amount);
+    if (!Number.isFinite(want) || want < 0) return { error: `"${amount}" is not an amount` };
+    const known = asset === coin || chains.tokensOf(wallet.chain).some((t) => t.symbol === asset);
+    if (!known) return { error: `${wallet.chain} has no ${asset}: it pays in ${coin}${chains.tokensOf(wallet.chain).length ? `, ${chains.tokensOf(wallet.chain).map((t) => t.symbol).join(' and ')}` : ''}` };
+
+    const on = asset === coin
+      ? Number(wallet.balance) || 0
+      : Number((wallet.tokenBalances || {})[asset]) || 0;
+    const from = asset === coin
+      ? Number(wallet.serviceSubtractions) || 0
+      : Number((wallet.serviceSubtractionsTokens || {})[asset]) || 0;
+    const to = Number(want.toFixed(8));
+
+    const note = { at: new Date().toISOString(), asset, from, to, onChain: on, reason, by };
+    db.transaction('wallets', walletId, (current) => {
+      const corrections = [...(current.heldCorrections || []), note].slice(-20);
+      if (asset === coin) return { serviceSubtractions: to, heldCorrections: corrections };
+      const held = { ...(current.serviceSubtractionsTokens || {}) };
+      if (to > 0) held[asset] = to; else delete held[asset];
+      return { serviceSubtractionsTokens: held, heldCorrections: corrections };
+    });
+    logger.warn(`[FeeCollection] held ${asset} on wallet ${walletId} (${wallet.chain} ${wallet.address}) set by hand: ${from} -> ${to}${reason ? ` (${reason})` : ''}`);
+    return { wallet, asset, from, to, onChain: on };
+  }
+
+  /**
    * Cap every wallet's held figures at what the wallet actually holds: the
    * figures from before fees were recorded exactly could exceed the chain.
    * Returns how many figures moved.

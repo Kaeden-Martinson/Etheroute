@@ -293,6 +293,89 @@ describe('The sweep', () => {
   });
 });
 
+describe('Correcting a held figure by hand', () => {
+  const wallet = (over = {}) => db.create('wallets', {
+    clientId: 'client-held', chain: 'ETH', address: `0x${'c'.repeat(40)}`, isActive: true,
+    balance: 0.005, balanceUSD: 15, serviceSubtractions: 0.004,
+    tokenBalances: { USDC: 20 }, serviceSubtractionsTokens: { USDC: 3 },
+    privateKey: 'x', createdAt: new Date().toISOString(), ...over,
+  });
+
+  test('sets the coin figure, remembers what it was, and says so', () => {
+    const w = wallet();
+    const result = FeeCollection.setHeld(w.id, 'ETH', 0.00025113, { reason: 'booked twice' });
+    assert.strictEqual(result.error, undefined);
+    assert.strictEqual(result.from, 0.004);
+    assert.strictEqual(result.to, 0.00025113);
+    assert.strictEqual(result.onChain, 0.005);
+    const after = db.getById('wallets', w.id);
+    assert.strictEqual(after.serviceSubtractions, 0.00025113);
+    assert.strictEqual(after.heldCorrections.length, 1);
+    assert.strictEqual(after.heldCorrections[0].reason, 'booked twice');
+    assert.strictEqual(after.heldCorrections[0].from, 0.004);
+    assert.strictEqual(after.heldCorrections[0].to, 0.00025113);
+    assert.ok(after.heldCorrections[0].at, 'and when');
+    assert.strictEqual(after.serviceSubtractionsTokens.USDC, 3, 'the token figure is untouched');
+  });
+
+  test('sets a token figure, and zero removes it rather than leaving a nought behind', () => {
+    const w = wallet();
+    assert.strictEqual(FeeCollection.setHeld(w.id, 'USDC', 1.5).to, 1.5);
+    assert.strictEqual(db.getById('wallets', w.id).serviceSubtractionsTokens.USDC, 1.5);
+    FeeCollection.setHeld(w.id, 'USDC', 0);
+    assert.strictEqual(db.getById('wallets', w.id).serviceSubtractionsTokens.USDC, undefined);
+    assert.strictEqual(db.getById('wallets', w.id).serviceSubtractions, 0.004, 'the coin figure is untouched');
+    assert.strictEqual(db.getById('wallets', w.id).heldCorrections.length, 2, 'both corrections are on the record');
+  });
+
+  test('refuses what it cannot mean: no wallet, a negative or unreadable amount, an asset the chain does not carry', () => {
+    const w = wallet();
+    assert.match(FeeCollection.setHeld('nope', 'ETH', 1).error, /No wallet/);
+    assert.match(FeeCollection.setHeld(w.id, 'ETH', -1).error, /not an amount/);
+    assert.match(FeeCollection.setHeld(w.id, 'ETH', 'abc').error, /not an amount/);
+    assert.match(FeeCollection.setHeld(w.id, 'DOGE', 1).error, /has no DOGE/);
+    assert.strictEqual(db.getById('wallets', w.id).serviceSubtractions, 0.004, 'and writes nothing');
+  });
+
+  test('a figure above the balance is allowed - the chain may be read later - and only the display caps it', () => {
+    const w = wallet();
+    assert.strictEqual(FeeCollection.setHeld(w.id, 'ETH', 9).to, 9);
+    assert.strictEqual(db.getById('wallets', w.id).serviceSubtractions, 9);
+    assert.strictEqual(FeeCollection.reconcileHeld() >= 1, true, 'and --reconcile is what brings it back to the balance');
+    assert.strictEqual(db.getById('wallets', w.id).serviceSubtractions, 0.005);
+  });
+
+  test('the CLI shows the change and writes nothing without --yes', () => {
+    const dir = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'etheroute-fees-'));
+    const run = (args) => execFileSync(process.execPath, ['scripts/collect-fees.js', ...args], {
+      cwd: path.join(__dirname, '..'),
+      encoding: 'utf-8',
+      env: { ...process.env, DATA_DIR: dir, PLATFORM_FEE_ADDRESS_EVM: EVM_FEE },
+      timeout: 60000,
+    });
+    // a store of its own, seeded through the same CLI's process
+    const seed = execFileSync(process.execPath, ['-e', `
+      process.env.DATA_DIR = ${JSON.stringify(dir)};
+      const { db } = require('./src/config/database');
+      db.create('wallets', { id: 'w-cli', clientId: 'c', chain: 'ETH', address: '0x${'d'.repeat(40)}', isActive: true, balance: 0.005, serviceSubtractions: 0.004, privateKey: 'x', createdAt: new Date().toISOString() });
+      console.log('seeded');
+    `], { cwd: path.join(__dirname, '..'), encoding: 'utf-8', env: { ...process.env, DATA_DIR: dir }, timeout: 60000 });
+    assert.match(seed, /seeded/);
+
+    const preview = run(['--set-held', 'w-cli', '0.00025']);
+    assert.match(preview, /held for fees\s+0\.004 ETH\s+->\s+0\.00025 ETH/);
+    assert.match(preview, /Nothing written\. Add --yes/);
+
+    const done = run(['--set-held', 'w-cli', '0.00025', '--reason', 'corrected', '--yes']);
+    assert.match(done, /Set\. ETH held on 0x[0-9a-f]+: 0\.004 -> 0\.00025 \(corrected\)/);
+    assert.match(run(['--set-held', 'w-cli', '0.00025']), /0\.00025 ETH\s+->\s+0\.00025 ETH/, 'and it stuck');
+    // a refusal exits non-zero, which is the point of it
+    const refusal = (args) => { try { run(args); return 'did not refuse'; } catch (e) { return `${e.stdout || ''}${e.stderr || ''}`; } };
+    assert.match(refusal(['--set-held', 'nope', '1']), /No wallet matches/);
+    assert.match(refusal(['--set-held', 'w-cli', 'abc']), /not an amount/);
+  });
+});
+
 describe('Wired in', () => {
   test('the server starts and stops the sweep; the CLI, env and dashboard know it', () => {
     const app = read('src/app.js');
